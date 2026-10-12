@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Cocoon.Api/Cocoon.Api.csproj" />
+    <Project Path="src/Cocoon.Application/Cocoon.Application.csproj" />
+    <Project Path="src/Cocoon.Domain/Cocoon.Domain.csproj" />
+    <Project Path="src/Cocoon.Infrastructure/Cocoon.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Cocoon.Tests/Cocoon.Tests.csproj" />
+  </Folder>
+</Solution>

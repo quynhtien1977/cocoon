@@ -1,0 +1,6 @@
+@Cocoon.Api_HostAddress = http://localhost:5267
+
+GET {{Cocoon.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
