@@ -1,6 +1,11 @@
-@Cocoon.Api_HostAddress = http://localhost:5267
+@api = http://localhost:5080
 
-GET {{Cocoon.Api_HostAddress}}/weatherforecast/
+GET {{api}}/api/v1/health
 Accept: application/json
 
-###
+### OpenAPI
+GET {{api}}/swagger/v1/swagger.json
+
+### RFC ProblemDetails
+GET {{api}}/api/v1/missing
+Accept: application/problem+json

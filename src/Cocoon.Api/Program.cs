@@ -1,23 +1,92 @@
+using System.Text;
+using Cocoon.Api.Configuration;
+using Cocoon.Infrastructure.Persistence;
+using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Authorization;
+using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Scalar.AspNetCore;
+using Serilog;
+using Serilog.Formatting.Compact;
+
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-
-builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.AddSerilog(config => config
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(new RenderedCompactJsonFormatter()));
+builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilter()))
+    .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = context =>
+    {
+        var problem = new ValidationProblemDetails(context.ModelState) { Status = 400 };
+        ApiProblems.Customize(problem, 400);
+        return new BadRequestObjectResult(problem) { ContentTypes = { "application/problem+json" } };
+    });
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+    ApiProblems.Customize(context.ProblemDetails, context.HttpContext.Response.StatusCode));
 builder.Services.AddOpenApi();
-
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(
+    builder.Configuration.GetConnectionString("Default")));
+builder.Services.AddCors(options => options.AddPolicy("Web", policy => policy
+    .WithOrigins(builder.Configuration["Web:Origin"] ?? "http://localhost:3000")
+    .AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
+builder.Services.AddOptions<JwtOptions>().BindConfiguration("Jwt")
+    .Validate(options => Encoding.UTF8.GetByteCount(options.Key) >= 32
+        && !options.Key.StartsWith("replace_", StringComparison.Ordinal), "Jwt:Key phải là khóa ngẫu nhiên ít nhất 32 byte.")
+    .Validate(options => !string.IsNullOrWhiteSpace(options.Issuer) && !string.IsNullOrWhiteSpace(options.Audience),
+        "Thiếu Jwt:Issuer hoặc Jwt:Audience.")
+    .ValidateOnStart();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<IOptions<JwtOptions>>((options, jwt) =>
+    {
+        options.MapInboundClaims = false;
+        options.IncludeErrorDetails = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true, ValidIssuer = jwt.Value.Issuer,
+            ValidateAudience = true, ValidAudience = jwt.Value.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Value.Key)),
+            ValidateLifetime = true, ClockSkew = TimeSpan.FromSeconds(30),
+            RoleClaimType = "role", NameClaimType = "sub",
+            ValidAlgorithms = [SecurityAlgorithms.HmacSha256]
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (!context.Request.Headers.ContainsKey("Authorization"))
+                    context.Token = context.Request.Cookies["access_token"];
+                return Task.CompletedTask;
+            }
+        };
+    });
+builder.Services.AddAuthorization(options =>
+{
+    foreach (var role in new[] { "Customer", "Staff", "Manager", "Admin" })
+        options.AddPolicy($"Require{role}", policy => policy.RequireAuthenticatedUser().RequireRole(role));
+});
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+if (!app.Environment.IsDevelopment()) app.UseHttpsRedirection();
+app.UseCors("Web");
+app.UseSerilogRequestLogging();
+app.UseAuthentication();
+app.UseAuthorization();
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.MapOpenApi("/swagger/{documentName}/swagger.json");
+    app.MapScalarApiReference("/swagger", options => options
+        .WithTitle("Cocoon CRM API")
+        .WithOpenApiRoutePattern("/swagger/{documentName}/swagger.json"));
 }
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();
+
+public partial class Program;
