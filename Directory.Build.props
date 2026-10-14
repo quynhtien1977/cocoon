@@ -3,4 +3,7 @@
     <BaseIntermediateOutputPath>obj-docker/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
     <BaseOutputPath>bin-docker/$(MSBuildProjectName)/</BaseOutputPath>
   </PropertyGroup>
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/bin/**;**/obj/**;**/bin-docker/**;**/obj-docker/**</DefaultItemExcludes>
+  </PropertyGroup>
 </Project>

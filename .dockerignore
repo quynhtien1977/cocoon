@@ -1,0 +1,13 @@
+.git
+.codegraph
+.agents
+.env
+.env.*
+**/.env*
+**/node_modules
+**/.next
+**/bin
+**/obj
+**/bin-docker
+**/obj-docker
+backups
