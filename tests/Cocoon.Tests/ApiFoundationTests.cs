@@ -63,6 +63,22 @@ public sealed class ApiFoundationTests : IClassFixture<FoundationFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("Manager", HttpStatusCode.NotImplemented)]
+    [InlineData("Customer", HttpStatusCode.Forbidden)]
+    public async Task Stub_endpoints_enforce_policy_then_report_not_implemented(string role, HttpStatusCode expected)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/customers");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", FoundationFactory.Token(role));
+        using var response = await _client.SendAsync(request);
+        Assert.Equal(expected, response.StatusCode);
+        if (expected == HttpStatusCode.NotImplemented)
+        {
+            var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+            Assert.Equal("NOT_IMPLEMENTED", problem!.Extensions["code"]?.ToString());
+        }
+    }
+
     [Fact]
     public async Task Signed_token_can_be_read_from_http_only_cookie_transport()
     {

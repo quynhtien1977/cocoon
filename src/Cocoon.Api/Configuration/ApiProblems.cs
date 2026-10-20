@@ -14,6 +14,7 @@ public static class ApiProblems
             404 => ("NOT_FOUND", "Không tìm thấy dữ liệu yêu cầu."),
             409 => ("CONFLICT", "Dữ liệu đang có xung đột."),
             429 => ("RATE_LIMITED", "Bạn thao tác quá nhanh. Vui lòng thử lại sau."),
+            501 => ("NOT_IMPLEMENTED", "Chức năng đang được xây dựng."),
             _ => ("SERVER_ERROR", "Hệ thống gặp lỗi. Vui lòng thử lại sau.")
         };
         problem.Title = title;

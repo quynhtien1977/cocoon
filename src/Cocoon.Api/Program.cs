@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using Cocoon.Api.Configuration;
 using Cocoon.Infrastructure.Persistence;
 using FluentValidation;
@@ -19,6 +20,7 @@ builder.Services.AddSerilog(config => config
     .Enrich.FromLogContext()
     .WriteTo.Console(new RenderedCompactJsonFormatter()));
 builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilter()))
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
     .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = context =>
     {
         var problem = new ValidationProblemDetails(context.ModelState) { Status = 400 };
@@ -27,7 +29,8 @@ builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilt
     });
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
-    ApiProblems.Customize(context.ProblemDetails, context.HttpContext.Response.StatusCode));
+    // Controller Problem(statusCode: x) sets Status before the response status is written.
+    ApiProblems.Customize(context.ProblemDetails, context.ProblemDetails.Status ?? context.HttpContext.Response.StatusCode));
 builder.Services.AddOpenApi();
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(
     builder.Configuration.GetConnectionString("Default")));

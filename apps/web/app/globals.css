@@ -7,9 +7,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-nunito);
+  --font-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --font-heading: var(--font-vollkorn);
+  --font-label: var(--font-barlow);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -17,6 +18,7 @@
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
   --color-sidebar: var(--sidebar);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
@@ -39,6 +41,20 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-gold: var(--gold);
+  --color-gold-strong: var(--gold-strong);
+  --color-status-lotus-bg: var(--status-lotus-bg);
+  --color-status-lotus-fg: var(--status-lotus-fg);
+  --color-status-turmeric-bg: var(--status-turmeric-bg);
+  --color-status-turmeric-fg: var(--status-turmeric-fg);
+  --color-status-sage-bg: var(--status-sage-bg);
+  --color-status-sage-fg: var(--status-sage-fg);
+  --color-status-beige-bg: var(--status-beige-bg);
+  --color-status-beige-fg: var(--status-beige-fg);
+  --color-status-gray-bg: var(--status-gray-bg);
+  --color-status-gray-fg: var(--status-gray-fg);
+  --color-status-danger-bg: var(--status-danger-bg);
+  --color-status-danger-fg: var(--status-danger-fg);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -48,73 +64,64 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Cocoon palette, spec 4.1. Contrast pairs are checked in spec 4.2; never use --gold as text on light surfaces. */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: #fefbf4;
+  --foreground: #1f1c17;
+  --card: #ffffff;
+  --card-foreground: #1f1c17;
+  --popover: #ffffff;
+  --popover-foreground: #1f1c17;
+  --primary: #1f1c17;
+  --primary-foreground: #fefbf4;
+  --secondary: #ede0cc;
+  --secondary-foreground: #1f1c17;
+  --muted: #f4f1ea;
+  --muted-foreground: #6b6760;
+  --accent: #f4f1ea;
+  --accent-foreground: #1f1c17;
+  --destructive: #b33a32;
+  --border: #e7e5df;
+  --input: #8f8a80;
+  --ring: #8a6a2b;
+  --radius: 0.25rem;
+
+  --gold: #c5a25d;
+  --gold-strong: #8a6a2b;
+
+  --sidebar: #1f1c17;
+  --sidebar-foreground: #fefbf4;
+  --sidebar-primary: #c5a25d;
+  --sidebar-primary-foreground: #1f1c17;
+  --sidebar-accent: #2e2a23;
+  --sidebar-accent-foreground: #fefbf4;
+  --sidebar-border: #3a352d;
+  --sidebar-ring: #c5a25d;
+  --sidebar-muted: #b8b6af;
+
+  --status-lotus-bg: #fce8ee;
+  --status-lotus-fg: #a3324f;
+  --status-turmeric-bg: #fbf0df;
+  --status-turmeric-fg: #8a5a14;
+  --status-sage-bg: #e8f0e6;
+  --status-sage-fg: #3d6338;
+  --status-beige-bg: #ede0cc;
+  --status-beige-fg: #6b5530;
+  --status-gray-bg: #efede8;
+  --status-gray-fg: #55524c;
+  --status-danger-bg: #fbe9e7;
+  --status-danger-fg: #b33a32;
+
+  --chart-1: #c5a25d;
+  --chart-2: #ef7b9a;
+  --chart-3: #4f7a4a;
+  --chart-4: #d39746;
+  --chart-5: #6b6760;
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+/* Customer portal and public pages follow the cocoonvietnam.com square-corner language. */
+[data-portal="customer"] {
+  --radius: 0rem;
 }
 
 @layer base {

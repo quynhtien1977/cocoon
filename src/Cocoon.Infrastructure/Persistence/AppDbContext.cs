@@ -37,6 +37,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         customerPreference.HasKey(x => new { x.CustomerId, x.PreferenceId });
         customerPreference.HasOne<CustomerProfile>().WithMany().HasForeignKey(x => x.CustomerId);
         customerPreference.HasOne<Preference>().WithMany().HasForeignKey(x => x.PreferenceId);
+        customerPreference.Property(x => x.Source).HasConversion<string>().HasMaxLength(32);
 
         var supplier = model.Entity<Supplier>();
         supplier.HasKey(x => x.Id);
@@ -80,6 +81,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         feedback.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId);
         feedback.HasOne<StaffProfile>().WithMany().HasForeignKey(x => x.AcceptedBy);
         feedback.HasOne<StaffProfile>().WithMany().HasForeignKey(x => x.AssignedStaffId);
+        // One review per purchased line; manager-entered feedback has no order line.
+        feedback.HasOne<OrderItem>().WithMany().HasForeignKey(x => x.OrderItemId);
+        feedback.HasIndex(x => x.OrderItemId).IsUnique();
         feedback.Property(x => x.Content).HasMaxLength(1000);
         feedback.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
         feedback.ToTable(table => table.HasCheckConstraint("CK_Feedback_Rating", "\"Rating\" BETWEEN 1 AND 5"));
@@ -103,6 +107,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         var survey = model.Entity<Survey>();
         survey.HasKey(x => x.Id);
         survey.HasOne<StaffProfile>().WithMany().HasForeignKey(x => x.CreatedBy);
+        survey.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId);
         survey.Property(x => x.Purpose).HasConversion<string>().HasMaxLength(32);
         survey.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
         survey.Property(x => x.Description).HasMaxLength(4000);
@@ -118,6 +123,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         option.HasKey(x => x.Id);
         option.HasOne<SurveyQuestion>().WithMany().HasForeignKey(x => x.QuestionId);
         option.Property(x => x.Text).HasMaxLength(1000);
+        option.HasOne<Preference>().WithMany().HasForeignKey(x => x.PreferenceId);
 
         var recipient = model.Entity<SurveyRecipient>();
         recipient.HasKey(x => x.Id);
@@ -137,6 +143,49 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         answer.HasOne<QuestionOption>().WithMany().HasForeignKey(x => x.OptionId);
         answer.Property(x => x.NumericValue).HasPrecision(18, 2);
         answer.Property(x => x.TextValue).HasMaxLength(1000);
+
+        var order = model.Entity<Order>();
+        order.HasKey(x => x.Id);
+        order.HasOne<CustomerProfile>().WithMany().HasForeignKey(x => x.CustomerId);
+        order.HasIndex(x => x.Code).IsUnique();
+        order.Property(x => x.Code).HasMaxLength(20);
+        order.Property(x => x.Channel).HasConversion<string>().HasMaxLength(32);
+        order.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+        order.Property(x => x.TotalAmount).HasPrecision(12, 0);
+        order.HasIndex(x => new { x.CustomerId, x.OrderedAt }).IsDescending(false, true);
+        var orderItem = model.Entity<OrderItem>();
+        orderItem.HasKey(x => x.Id);
+        orderItem.HasOne<Order>().WithMany().HasForeignKey(x => x.OrderId);
+        orderItem.HasOne<ProductVariant>().WithMany().HasForeignKey(x => x.ProductVariantId);
+        orderItem.HasIndex(x => x.ProductVariantId);
+        orderItem.Property(x => x.UnitPrice).HasPrecision(12, 0);
+        orderItem.ToTable(table => table.HasCheckConstraint("CK_OrderItem_Quantity", "\"Quantity\" > 0"));
+
+        var plan = model.Entity<RecommendationPlan>();
+        plan.HasKey(x => x.Id);
+        plan.HasOne<StaffProfile>().WithMany().HasForeignKey(x => x.CreatedBy);
+        plan.Property(x => x.Name).HasMaxLength(120);
+        plan.Property(x => x.Goal).HasMaxLength(1000);
+        plan.Property(x => x.Segment).HasColumnType("jsonb");
+        plan.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+        plan.ToTable(table => table.HasCheckConstraint("CK_RecommendationPlan_Dates", "\"EndAt\" > \"StartAt\""));
+        var planProduct = model.Entity<RecommendationPlanProduct>();
+        planProduct.HasKey(x => new { x.PlanId, x.ProductId });
+        planProduct.HasOne<RecommendationPlan>().WithMany().HasForeignKey(x => x.PlanId);
+        planProduct.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId);
+        var recommendation = model.Entity<Recommendation>();
+        recommendation.HasKey(x => x.Id);
+        recommendation.HasOne<CustomerProfile>().WithMany().HasForeignKey(x => x.CustomerId);
+        recommendation.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId);
+        recommendation.HasOne<RecommendationPlan>().WithMany().HasForeignKey(x => x.PlanId);
+        recommendation.Property(x => x.Score).HasPrecision(5, 4);
+        recommendation.Property(x => x.Breakdown).HasColumnType("jsonb");
+        recommendation.Property(x => x.Reasons).HasColumnType("jsonb");
+        recommendation.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+        recommendation.ToTable(table => table.HasCheckConstraint("CK_Recommendation_Score", "\"Score\" BETWEEN 0 AND 1"));
+        recommendation.HasIndex(x => new { x.CustomerId, x.Status });
+        // Older Active rows are expired before a rebuild inserts new ones.
+        recommendation.HasIndex(x => new { x.CustomerId, x.ProductId }).IsUnique().HasFilter("\"Status\" = 'Active'");
 
         var notification = model.Entity<Notification>();
         notification.HasKey(x => x.Id);
@@ -161,7 +210,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         foreach (var entity in model.Model.GetEntityTypes())
         {
             entity.SetTableName(entity.ClrType.Name);
-            foreach (var property in entity.GetProperties().Where(x => x.ClrType == typeof(string) && x.GetMaxLength() is null))
+            foreach (var property in entity.GetProperties().Where(x => x.ClrType == typeof(string) && x.GetMaxLength() is null
+                && x.GetColumnType() != "jsonb"))
                 property.SetMaxLength(256);
             // Historical records must survive soft deletion; block physical parent deletion.
             foreach (var foreignKey in entity.GetForeignKeys())
