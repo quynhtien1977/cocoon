@@ -127,6 +127,49 @@ public sealed class SchemaIntegrationTests : IClassFixture<DatabaseFixture>
         await AssertConstraint(db, PostgresErrorCodes.ForeignKeyViolation);
     });
 
+    [Fact]
+    public Task Order_line_quantity_must_be_positive() => InTransaction(async db =>
+    {
+        var (orderId, variantId) = await AddOrder(db);
+        db.Add(new OrderItem { OrderId = orderId, ProductVariantId = variantId, Quantity = 0, UnitPrice = 100000 });
+        await AssertConstraint(db, PostgresErrorCodes.CheckViolation);
+    });
+
+    [Fact]
+    public Task Order_line_can_be_reviewed_only_once() => InTransaction(async db =>
+    {
+        var (customer, _, product, _) = await AddParents(db);
+        var (orderId, variantId) = await AddOrder(db, customer, product);
+        var line = new OrderItem { OrderId = orderId, ProductVariantId = variantId, Quantity = 1, UnitPrice = 100000 };
+        db.Add(line);
+        await db.SaveChangesAsync();
+        db.AddRange(new Feedback { CustomerId = customer, ProductId = product, OrderItemId = line.Id, Rating = 5, Content = "Lần 1" },
+            new Feedback { CustomerId = customer, ProductId = product, OrderItemId = line.Id, Rating = 4, Content = "Lần 2" });
+        await AssertConstraint(db, PostgresErrorCodes.UniqueViolation);
+    });
+
+    [Fact]
+    public Task Only_one_active_recommendation_per_customer_and_product() => InTransaction(async db =>
+    {
+        var (customer, _, product, _) = await AddParents(db);
+        db.Add(new Recommendation { CustomerId = customer, ProductId = product, Score = 0.5m, Status = RecommendationStatus.Expired });
+        db.Add(new Recommendation { CustomerId = customer, ProductId = product, Score = 0.6m });
+        await db.SaveChangesAsync(); // An expired row may coexist with the active one.
+        db.Add(new Recommendation { CustomerId = customer, ProductId = product, Score = 0.7m });
+        await AssertConstraint(db, PostgresErrorCodes.UniqueViolation);
+    });
+
+    private static async Task<(int Order, int Variant)> AddOrder(AppDbContext db, int? customer = null, int? product = null)
+    {
+        if (customer is null || product is null)
+            (customer, _, product, _) = await AddParents(db);
+        var variant = new ProductVariant { ProductId = product.Value, Name = "140 ml", Sku = $"SKU-{Guid.NewGuid():N}", Price = 100000 };
+        var order = new Order { Code = $"CO-{Random.Shared.Next(100000, 999999)}", CustomerId = customer.Value, TotalAmount = 100000 };
+        db.AddRange(variant, order);
+        await db.SaveChangesAsync();
+        return (order.Id, variant.Id);
+    }
+
     private async Task InTransaction(Func<AppDbContext, Task> test)
     {
         await using var db = _database.CreateContext();

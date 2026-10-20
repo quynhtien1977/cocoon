@@ -1,0 +1,60 @@
+﻿Work Item Id,Parent,Work Type,Summary,Description,Labels,Labels,Story Points
+E1,,Epic,Nền tảng & Design system,"Token màu Cocoon, font, shell 5 route group, component dùng chung, hợp đồng OpenAPI. Spec mục 4, 8.5.",cocoon,,
+E2,,Epic,Xác thực & Admin,"Đăng ký, đăng nhập, phân quyền theo role; Admin quản lý tài khoản (đề II.2).",cocoon,,
+E3,,Epic,Cổng khách hàng,"Trang chủ khách, hồ sơ & sở thích, đơn hàng, chi tiết sản phẩm. Spec mục 8.2.",cocoon,,
+E4,,Epic,Phản hồi sản phẩm,"Khách đánh giá sản phẩm đã mua; Manager tiếp nhận/giao/đóng; Staff trả lời (đề 4.1.4, 4.3.3).",cocoon,,
+E5,,Epic,Khảo sát,"Tạo khảo sát, gửi theo phân khúc, khách làm khảo sát, thống kê kết quả (đề 4.1.6, 4.1.7, 4.3.4).",cocoon,,
+E6,,Epic,Quản lý khách hàng & Báo cáo,"Thêm/xóa/khóa khách, chi tiết khách, dashboard báo cáo (đề 4.1.1–4.1.5).",cocoon,,
+E7,,Epic,Gợi ý sản phẩm theo sở thích,"Engine chấm điểm lai, gắn tag sản phẩm, kế hoạch gợi ý theo phân khúc. Spec mục 7.",cocoon,,
+E8,,Epic,"CSDL, Seed, QA & Báo cáo đồ án","Migration, view phân tích, seed, ERD, sơ đồ, test, báo cáo, đóng gói nộp. Sao lưu/phục hồi tạm bỏ (spec mục 10).",cocoon,,
+T1,E1,Task,"Token màu Cocoon, font Nunito/Vollkorn/Barlow, bỏ dark mode","Cập nhật apps/web/app/globals.css (spec 4.1) và app/layout.tsx (spec 4.3, subset vietnamese).",p1-fe-customer,sprint-1,3
+T2,E1,Task,"Shell cho 5 route group: PublicShell, CustomerShell, BackofficeShell","Route groups (public), (customer)/account, (staff), (manager), (admin). Admin có nav riêng. Spec 4.4, 4.5, 8.1.",p1-fe-customer,sprint-1,5
+T3,E1,Task,Component brand dùng chung,"Logo, PageHeader, StatTile, StatusBadge, EmptyState, ConfirmDialog, RatingInput, ProductCard, ReasonChip; thêm primitive shadcn còn thiếu (spec 4.5).",p1-fe-customer,sprint-1,5
+T4,E1,Task,"DataTable: tìm kiếm, sắp xếp, lọc, phân trang qua URL","components/data/DataTable với skeleton, empty, error.",p1-fe-customer,sprint-1,5
+T5,E1,Task,ChartCard (Recharts) và script api:types,ChartCard lấy màu --chart-*; npm run api:types sinh lib/api/schema.d.ts (spec 8.5).,p2-fe-backoffice,sprint-1,3
+T6,E1,Task,"UI tĩnh back-office với fixture: M1, M2, M5, M8","Dựng layout với *.fixture.ts, chưa nối API.",p2-fe-backoffice,sprint-1,5
+T7,E1,Task,Contract stub OpenAPI cho mọi controller ưu tiên A,Controller + DTO trả 501 để swagger đủ schema (spec 6.2). Lỗi theo ProblemDetails có code.,p3-backend,sprint-1,5
+T8,E2,Task,"API xác thực: register, login, refresh, logout, me, preferences","Cookie JWT, khóa sau nhiều lần sai, GET/PUT me, GET/PUT me/preferences.",p3-backend,sprint-1,5
+T9,E2,Task,"Màn U1 Landing, U2 Đăng nhập, U3 Đăng ký",Brand thuần Cocoon; đăng ký bước 2 chọn sở thích; đăng nhập chuyển hướng theo role.,p1-fe-customer,sprint-1,5
+T10,E2,Task,proxy.ts chuyển hướng theo role,"Matcher /account, /staff, /manager, /admin; sai role về /login.",p1-fe-customer,sprint-2,2
+T11,E2,Task,"API Admin: tài khoản, phân quyền, khóa","GET/POST admin/accounts, PATCH role/status, DELETE (xóa mềm). Audit log tạm bỏ (spec mục 10).",p3-backend,sprint-2,2
+T12,E2,Task,"Màn Admin A1 Tài khoản, A2 Tạo tài khoản",Admin console tách biệt (đề II.2); xóa/khóa qua ConfirmDialog. Màn A3 Nhật ký tạm bỏ.,p1-fe-customer,sprint-2,3
+T13,E3,Task,"UI tĩnh C0 Trang chủ, C2 Đơn hàng, C4 Gửi phản hồi",Dựng với fixture theo spec 8.2.,p1-fe-customer,sprint-1,3
+T14,E3,Task,"API cổng khách: me/home, me/orders, me/reviewable-items, products/{id}","me/home gộp khảo sát chờ, sản phẩm chờ đánh giá, gợi ý (rỗng tới sprint 3).",p3-backend,sprint-2,5
+T15,E3,Task,C0 Trang chủ khách hàng nối API,3 section; section rỗng thì ẩn; cả 3 rỗng hiện EmptyState.,p1-fe-customer,sprint-2,5
+T16,E3,Task,C1 Hồ sơ và sở thích,"Form thông tin + chip sở thích, lưu riêng từng khối.",p1-fe-customer,sprint-2,3
+T17,E3,Task,C2 Đơn hàng của tôi,Nút Đánh giá cho dòng đơn Completed chưa đánh giá.,p1-fe-customer,sprint-2,3
+T18,E3,Task,C9 Chi tiết sản phẩm,"Biến thể, sao TB, công dụng, thành phần.",p1-fe-customer,sprint-2,3
+T19,E4,Task,API phản hồi phía khách: GET/POST me/feedback,"Chỉ OrderItem của chính khách, đơn Completed, chưa có phản hồi; content 20–1000 ký tự.",p3-backend,sprint-2,5
+T20,E4,Task,"API xử lý phản hồi: accept, assign, close, replies, staff/feedback",State machine New → Accepted → Assigned → Replied → Closed (spec 5.6.2).,p3-backend,sprint-2,5
+T21,E4,Task,"C3 Phản hồi của tôi, C4 Gửi phản hồi, C5 Chi tiết phản hồi",FeedbackThread dùng chung; gửi xong toast và chuyển C5.,p1-fe-customer,sprint-2,5
+T22,E4,Task,"M5 Hộp phản hồi, M6 Tiếp nhận, giao, đóng","Lọc status, rating, sản phẩm, danh mục.",p2-fe-backoffice,sprint-2,5
+T23,E4,Task,"Staff portal S1 Phản hồi được giao, S2 Trả lời",BackofficeShell variant staff.,p2-fe-backoffice,sprint-2,3
+T24,E5,Task,"API khảo sát cho Manager: CRUD, publish, close, recipients, results, segments/preview",Chỉ sửa khi Draft; QuestionOption có preferenceId; SegmentFilter spec 6.3.,p3-backend,sprint-3,8
+T25,E5,Task,API khảo sát phía khách + ghi nhận sở thích từ câu trả lời,"Chỉ nhận khi Open và trong khung giờ, mỗi khách 1 lần (luật 5.6.4).",p3-backend,sprint-3,3
+T26,E5,Task,"M7 Danh sách khảo sát, M8 Trình tạo khảo sát","QuestionEditor 4 loại câu hỏi, gắn sở thích cho lựa chọn, khảo sát sản phẩm mới.",p2-fe-backoffice,sprint-3,8
+T27,E5,Task,M9 Gửi khảo sát với SegmentFilterBuilder,Hiện số khách khớp và 5 khách mẫu.,p2-fe-backoffice,sprint-3,5
+T28,E5,Task,M10 Kết quả khảo sát,"Tỷ lệ hoàn thành, ChartCard từng câu.",p2-fe-backoffice,sprint-3,5
+T29,E5,Task,"C6 Hộp khảo sát, C7 Làm khảo sát (SurveyStepper)","Một câu một bước, tiến độ, màn xem lại trước khi gửi.",p1-fe-customer,sprint-3,5
+T30,E6,Task,"API khách hàng: CRUD, lock, unlock, xóa mềm, tab đơn hàng/phản hồi/khảo sát",Xóa mềm giữ đơn và phản hồi (spec 5.6.6).,p3-backend,sprint-2,5
+T31,E6,Task,"M2 Danh sách khách, M3 Thêm khách, M4 Chi tiết khách",M4 tab Hồ sơ | Đơn hàng | Phản hồi | Khảo sát | Gợi ý; Khóa/Xóa.,p2-fe-backoffice,sprint-2,8
+T32,E6,Task,"API báo cáo: overview, customers age/gender/preferences, feedback ratings, purchases",Tích hợp SQL do P4 viết.,p3-backend,sprint-3,5
+T33,E6,Task,"M1 Dashboard: Tổng quan, Báo cáo khách hàng, Phân tích",Spec 8.3.,p2-fe-backoffice,sprint-3,8
+T34,E7,Task,"View phân tích: mv_product_copurchase, category affinity, product rating, low-rated category",Raw SQL trong migration (spec 5.5).,p4-db-qa-report,sprint-2,5
+T35,E7,Task,RecommendationScorer + RecommendationService + unit test,Công thức spec 7.2; top 6 score >= 0.25; 2 lý do lớn nhất; test theo 7.4.,p3-backend,sprint-3,8
+T36,E7,Task,"API gợi ý: me/recommendations, click/dismiss, rebuild, plans, products tag/status/insights","Kích hoạt kế hoạch tạo Notification và tính lại (spec 5.6.5, 7.3).",p3-backend,sprint-3,8
+T37,E7,Task,C8 Gợi ý cho bạn + nối gợi ý vào C0,ReasonChip; Không quan tâm có Hoàn tác.,p1-fe-customer,sprint-3,3
+T38,E7,Task,"M11 Sản phẩm, M12 Chi tiết sản phẩm và gắn tag sở thích",Đổi trạng thái Active/Upcoming/Inactive; insights.,p2-fe-backoffice,sprint-3,5
+T39,E7,Task,"M13 Tổng quan gợi ý, M14 Soạn kế hoạch gợi ý",Ưu tiên B: cắt M14 rồi M13 nếu trễ.,p2-fe-backoffice,sprint-3,8
+T40,E8,Task,Migration AddOrdersAndRecommendations,"Thêm 5 bảng, sửa 4 bảng và enum ProductStatus (spec 5.3, 5.4). P4 review.",p3-backend,sprint-1,5
+T41,E8,Task,Vẽ lại ERD theo bảng ánh xạ,Theo spec 5.2; P3 xác nhận.,p4-db-qa-report,sprint-1,2
+T42,E8,Task,"Seed v1: tài khoản, sở thích, sản phẩm, khách hàng, đơn hàng",Theo spec 9.1; idempotent.,p4-db-qa-report,sprint-1,5
+T43,E8,Task,"Báo cáo phần I: giới thiệu DN, bảng khảo sát HTTT, sơ đồ chức năng/ngữ cảnh/DFD",Theo bảng yêu cầu đồ án mục I.1–I.2.,p4-db-qa-report,sprint-1,5
+T44,E8,Task,Seed v2: phản hồi đủ 5 trạng thái,">= 60 phản hồi, có phản hồi <= 2 sao.",p4-db-qa-report,sprint-2,3
+T45,E8,Task,SQL cho reports/*,Giao P3 tích hợp.,p4-db-qa-report,sprint-2,5
+T46,E8,Task,"Seed v3: khảo sát, câu trả lời, kế hoạch gợi ý",">= 3 khảo sát, >= 40 lượt nộp.",p4-db-qa-report,sprint-3,3
+T47,E8,Task,Checklist test luồng và ghi bug,Test theo bảng yêu cầu spec mục 1.,p4-db-qa-report,sprint-3,5
+T48,E8,Task,"Polish cổng khách hàng: responsive, a11y, chụp màn","Chụp U1–U3, C0–C9, A1–A3.",p1-fe-customer,sprint-4,3
+T49,E8,Task,Polish back-office và chụp màn,"Chụp M1–M14, S1–S2.",p2-fe-backoffice,sprint-4,3
+T50,E8,Task,"Sửa bug backend, xuất db/schema.sql",Theo README.,p3-backend,sprint-4,2
+T51,E8,Task,"Hoàn thiện báo cáo, hướng dẫn, readme.txt, đóng gói nộp",Gồm mục thuật toán gợi ý; bảng kế hoạch 15 tuần.,p4-db-qa-report,sprint-4,5

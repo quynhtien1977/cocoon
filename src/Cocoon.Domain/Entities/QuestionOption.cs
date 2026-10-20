@@ -8,5 +8,6 @@ public sealed class QuestionOption
     public int QuestionId { get; set; }
     public string Text { get; set; } = string.Empty;
     public int SortOrder { get; set; }
+    public int? PreferenceId { get; set; }
 }
 
