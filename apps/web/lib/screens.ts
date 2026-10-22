@@ -9,6 +9,7 @@ export interface Screen {
   href: string;
   /** Shown in the portal navigation. Detail and form screens are reached from lists. */
   nav?: boolean;
+  exact?: boolean;
 }
 
 export const screens = {
@@ -46,7 +47,8 @@ export const screens = {
   M14: { portal: "manager", href: "/manager/recommendations/plans/new", title: "Soạn kế hoạch gợi ý", description: "Phân khúc, sản phẩm và thời gian chạy." },
 
   A1: { portal: "admin", href: "/admin", nav: true, title: "Tài khoản", description: "Danh sách tài khoản, phân quyền, khóa, xóa." },
-  A2: { portal: "admin", href: "/admin/accounts/new", title: "Tạo tài khoản", description: "Tạo tài khoản nội bộ và gán role." },
+  A2: { portal: "admin", href: "/admin/accounts/new", nav: true, title: "Tạo tài khoản", description: "Tạo tài khoản nội bộ và gán role." },
+  A3: { portal: "admin", href: "/admin/activity", nav: true, title: "Nhật ký hoạt động", description: "Theo dõi hoạt động quản trị hệ thống." },
 } satisfies Record<string, Omit<Screen, "code">>;
 
 export type ScreenCode = keyof typeof screens;
@@ -56,5 +58,8 @@ export function screen(code: ScreenCode): Screen {
 }
 
 export function navFor(portal: Portal): Screen[] {
-  return (Object.keys(screens) as ScreenCode[]).map(screen).filter((s) => s.portal === portal && s.nav);
+  return (Object.keys(screens) as ScreenCode[])
+    .map(screen)
+    .filter((s) => s.portal === portal && s.nav)
+    .map((s) => ({ ...s, exact: ["/", "/account", "/manager", "/admin"].includes(s.href) }));
 }

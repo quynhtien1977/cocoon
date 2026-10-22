@@ -1,5 +1,5 @@
-import { BackofficeShell } from "@/components/shell/backoffice-shell";
+import { AdminShell } from "@/components/shell/admin-shell";
 
 export default function Layout({ children }: LayoutProps<"/admin">) {
-  return <BackofficeShell portal="admin">{children}</BackofficeShell>;
+  return <AdminShell>{children}</AdminShell>;
 }
