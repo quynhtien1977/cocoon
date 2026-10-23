@@ -2,35 +2,49 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ClipboardList, House, LayoutDashboard, MessageSquare, Package, ScrollText, Sparkles, UserRound, UserRoundPlus, UsersRound, type LucideIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { Screen } from "@/lib/screens";
+import { isNavActive, type NavItem } from "@/lib/navigation";
 
-const portalRoots = new Set(["/account", "/manager", "/admin"]);
+const icons: Record<string, LucideIcon> = {
+  U1: House, U2: UserRound, U3: UserRoundPlus,
+  C0: House, C1: UserRound, C2: Package, C3: MessageSquare, C6: ClipboardList, C8: Sparkles,
+  S1: MessageSquare, M1: LayoutDashboard, M2: UsersRound, M5: MessageSquare,
+  M7: ClipboardList, M11: Package, M13: Sparkles, A1: UsersRound, A2: UserRoundPlus, A3: ScrollText,
+};
 
-function isActive(pathname: string, href: string) {
-  // Portal home must match exactly, otherwise every page in the portal highlights it.
-  return pathname === href || (!portalRoots.has(href) && pathname.startsWith(`${href}/`));
-}
-
-export function NavLinks({ items, className, linkClassName, activeClassName }: {
-  items: Screen[];
+export function NavLinks({ items, className, linkClassName, activeClassName, showIcons = false, labelClassName, onNavigate }: {
+  items: NavItem[];
   className?: string;
   linkClassName?: string;
   activeClassName?: string;
+  showIcons?: boolean;
+  labelClassName?: string;
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   return (
     <ul className={className}>
       {items.map((item) => {
-        const active = isActive(pathname, item.href);
+        const active = isNavActive(pathname, item);
+        const Icon = icons[item.code] ?? House;
         return (
           <li key={item.code}>
             <Link
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={cn(linkClassName, active && activeClassName)}
+              title={item.title}
+              onClick={onNavigate}
+              className={cn("focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring", linkClassName, active && activeClassName)}
             >
-              {item.title}
+              {showIcons && <Icon className="size-5 shrink-0" aria-hidden="true" strokeWidth={1.5} />}
+              <span className={labelClassName}>{item.title}</span>
+              {item.badge !== undefined && (
+                <Badge variant="secondary" className="min-w-5 rounded-full px-1 font-label" aria-label={`${item.badge} khảo sát chờ làm`}>
+                  {item.badge}
+                </Badge>
+              )}
             </Link>
           </li>
         );
