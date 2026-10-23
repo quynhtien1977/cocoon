@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
+using Cocoon.Api.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -103,7 +104,17 @@ public sealed class FoundationFactory : WebApplicationFactory<Program>
             ["Jwt:Audience"] = "cocoon-tests",
             ["Web:Origin"] = "http://localhost:3000"
         }));
-        builder.ConfigureServices(services => services.AddControllers().AddApplicationPart(typeof(PolicyProbeController).Assembly));
+        builder.ConfigureServices(services =>
+        {
+            services.AddControllers().AddApplicationPart(typeof(PolicyProbeController).Assembly);
+            // Policy tests sign tokens for account 1 without a database row; DB-backed tests re-register DbAccountGate.
+            services.AddScoped<IAccountGate, AllowAllAccountGate>();
+        });
+    }
+
+    private sealed class AllowAllAccountGate : IAccountGate
+    {
+        public Task<bool> IsAllowedAsync(int accountId, string role, CancellationToken cancellationToken = default) => Task.FromResult(true);
     }
 
     public static string Token(string role)
