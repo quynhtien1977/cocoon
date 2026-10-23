@@ -205,6 +205,7 @@ public sealed class SchemaIntegrationTests : IClassFixture<DatabaseFixture>
 public sealed class DatabaseFixture : IAsyncLifetime
 {
     private string _connectionString = string.Empty;
+    public string ConnectionString => _connectionString;
 
     public async Task InitializeAsync()
     {
