@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Barlow_Condensed, Nunito, Vollkorn } from "next/font/google";
 import "./globals.css";
 
-const nunito = Nunito({ variable: "--font-nunito", subsets: ["latin", "vietnamese"] });
-const vollkorn = Vollkorn({ variable: "--font-vollkorn", subsets: ["latin", "vietnamese"] });
+const nunito = Nunito({ variable: "--font-nunito", subsets: ["latin", "vietnamese"], weight: ["400", "600", "700"]});
+const vollkorn = Vollkorn({ variable: "--font-vollkorn", subsets: ["latin", "vietnamese"], weight: ["400", "500"]});
 const barlow = Barlow_Condensed({
   variable: "--font-barlow",
   subsets: ["latin", "vietnamese"],
