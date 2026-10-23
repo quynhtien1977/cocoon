@@ -1,6 +1,9 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using Cocoon.Api.Auth;
 using Cocoon.Api.Configuration;
+using Cocoon.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
 using Cocoon.Infrastructure.Persistence;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -64,11 +67,23 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
             OnMessageReceived = context =>
             {
                 if (!context.Request.Headers.ContainsKey("Authorization"))
-                    context.Token = context.Request.Cookies["access_token"];
+                    context.Token = context.Request.Cookies[TokenService.AccessCookie];
                 return Task.CompletedTask;
+            },
+            // A valid signature is not enough: locked, disabled, deleted or re-roled accounts lose access immediately.
+            OnTokenValidated = async context =>
+            {
+                var gate = context.HttpContext.RequestServices.GetRequiredService<IAccountGate>();
+                var role = context.Principal?.FindFirst("role")?.Value;
+                if (!int.TryParse(context.Principal?.FindFirst("sub")?.Value, out var id) || role is null
+                    || !await gate.IsAllowedAsync(id, role, context.HttpContext.RequestAborted))
+                    context.Fail("Tài khoản không còn quyền truy cập.");
             }
         };
     });
+builder.Services.AddScoped<IAccountGate, DbAccountGate>();
+builder.Services.AddScoped<TokenService>();
+builder.Services.AddSingleton<IPasswordHasher<Account>, PasswordHasher<Account>>();
 builder.Services.AddAuthorization(options =>
 {
     foreach (var role in new[] { "Customer", "Staff", "Manager", "Admin" })
