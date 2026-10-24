@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { useSelectedLayoutSegment } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
 import { BrandFooter } from "@/components/shell/brand-footer";
 import { NavLinks } from "@/components/shell/nav-links";
@@ -11,8 +11,9 @@ import { screen } from "@/lib/screens";
 const items = [screen("U1"), screen("U2"), screen("U3")].map((item) => ({ ...item, exact: true }));
 
 export function PublicShell({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  if (pathname === "/") return <>{children}</>;
+  const segment = useSelectedLayoutSegment();
+  // Intercepted login changes the URL while the underlying page keeps its shell.
+  if (segment === null || segment === "login" || segment === "admin") return <>{children}</>;
   return (
     <div data-portal="public" className="flex min-h-dvh flex-col">
       <a href="#main-content" className="skip-link">Đến nội dung chính</a>

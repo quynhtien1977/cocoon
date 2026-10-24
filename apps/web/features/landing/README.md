@@ -10,7 +10,7 @@ Trang `/` dựng theo bố cục và hình ảnh công khai tại https://cocoon
 - Đăng nhập/đăng ký dùng route dự án. Xem sản phẩm/bài viết mở website thương hiệu; không có giỏ hàng, đặt hàng hoặc gửi email giả.
 - Hình ảnh được lưu local. Nguồn từng tệp ở `public/images/landing/sources.json`. Giá là dữ liệu tham khảo tại thời điểm dựng trang, không phải API tồn kho/giá trực tiếp.
 - CSS Modules chỉ áp dụng landing. Rule Tailwind trong `next.config.ts` giới hạn ở `globals.css`; rule `*.css` cũ làm mất exports class của CSS Modules.
-- `PublicShell` giữ layout cũ cho login/register và để landing tự sở hữu header/main/footer ở `/`.
+- `PublicShell` giữ layout cũ cho register; landing tự sở hữu header/main/footer ở `/`. Đăng nhập chung mở pop-up qua route interception, admin có trang `/admin/login` riêng.
 
 Chạy `npm run dev`, mở `/`. Kiểm tra `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`.
 

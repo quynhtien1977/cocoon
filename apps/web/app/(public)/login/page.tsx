@@ -1,7 +1,9 @@
-import { ScreenPlaceholder, screenMetadata } from "@/components/brand/screen-placeholder";
+import type { Metadata } from "next";
+import { LoginDialog } from "@/features/auth/login-dialog";
+import { LandingPage } from "@/features/landing/landing-page";
 
-export const metadata = screenMetadata("U2");
+export const metadata: Metadata = { title: "Đăng nhập", robots: { index: false, follow: false } };
 
 export default function Page() {
-  return <ScreenPlaceholder code="U2" />;
+  return <><LandingPage /><LoginDialog direct /></>;
 }
