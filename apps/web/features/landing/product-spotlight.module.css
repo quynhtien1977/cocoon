@@ -1,0 +1,110 @@
+.spotlight {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: max(640px, min(56.09375vw, calc(100svh - var(--header-height, 92px))));
+  background: #fefbf4;
+}
+
+.heading,
+.description,
+.layer {
+  transform: translate3d(0, calc(var(--reveal-offset, 0) * var(--layer-offset)), 0);
+}
+
+.heading {
+  --layer-offset: 100px;
+  position: absolute;
+  z-index: 1;
+  left: 6.23%;
+  top: 6.43%;
+  margin: 0;
+  font-family: var(--font-vollkorn), serif;
+  font-size: 45px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.artwork {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.layer {
+  object-fit: contain;
+}
+
+.left { --layer-offset: 50px; }
+.right { --layer-offset: -50px; }
+.product { --layer-offset: -150px; }
+
+.description {
+  --layer-offset: 200px;
+  position: absolute;
+  z-index: 1;
+  width: 288px;
+  right: 6.67%;
+  bottom: 25.81%;
+  font-family: var(--font-spotlight), sans-serif;
+  font-size: 18px;
+  line-height: 1.5;
+  color: #79766d;
+}
+
+.description p { margin: 0; }
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 24px;
+  color: #25221b;
+}
+
+.link:hover { text-decoration: underline; text-underline-offset: 6px; }
+.link:focus-visible { outline: 2px solid #947545; outline-offset: 6px; }
+
+@media (min-width: 1536px) {
+  .heading { left: 13.23%; top: 16.43%; }
+  .description { right: 11.67%; }
+}
+
+@media (max-width: 1279px) {
+  .spotlight {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: auto;
+    padding: 24px 24px 64px;
+  }
+
+  .artwork {
+    position: relative;
+    inset: auto;
+    order: -1;
+    width: min(100%, 400px);
+    height: clamp(360px, 120vw, 500px);
+  }
+
+  .heading,
+  .description {
+    --layer-offset: 0px;
+    position: relative;
+    inset: auto;
+    width: 100%;
+    max-width: 480px;
+    text-align: center;
+  }
+
+  .heading { font-size: 36px; margin: 24px 0 16px; }
+  .description { font-size: 17px; }
+  .left { --layer-offset: 60px; }
+  .right { --layer-offset: 95px; }
+  .product { --layer-offset: 130px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heading, .description, .layer { transform: none; }
+}
