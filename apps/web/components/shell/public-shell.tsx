@@ -13,7 +13,7 @@ const items = [screen("U1"), screen("U2"), screen("U3")].map((item) => ({ ...ite
 export function PublicShell({ children }: { children: ReactNode }) {
   const segment = useSelectedLayoutSegment();
   // Intercepted login changes the URL while the underlying page keeps its shell.
-  if (segment === null || segment === "login" || segment === "admin") return <>{children}</>;
+  if (segment === null || segment === "login" || segment === "register" || segment === "admin") return <>{children}</>;
   return (
     <div data-portal="public" className="flex min-h-dvh flex-col">
       <a href="#main-content" className="skip-link">Đến nội dung chính</a>

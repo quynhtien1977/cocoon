@@ -81,7 +81,7 @@ export function LoginPage({ portal = "shared", modal = false, onClose }: { porta
           <div className={styles.topline}><span>{isAdmin ? "ADMIN CONSOLE" : "Đăng nhập"}</span>{modal ? <button type="button" onClick={onClose} aria-label="Đóng đăng nhập" className={styles.close}><X size={24} strokeWidth={1.5} /></button> : <Link href="/" aria-label="Đóng đăng nhập, về trang chủ" className={styles.close}><X size={24} strokeWidth={1.5} /></Link>}</div>
           {isAdmin && <span className={styles.formMark}><ShieldCheck size={28} /></span>}
           <h1>{isAdmin ? "Đăng nhập quản trị" : "Cocoon chào bạn trở lại."}</h1>
-          {isAdmin ? <p className={styles.intro}>Sử dụng tài khoản quản trị viên được cấp để tiếp tục.</p> : <p className={styles.intro}>Bạn chưa có tài khoản? <Link href="/register">Tạo tài khoản</Link></p>}
+          {isAdmin ? <p className={styles.intro}>Sử dụng tài khoản quản trị viên được cấp để tiếp tục.</p> : <p className={styles.intro}>Bạn chưa có tài khoản? <Link href="/register" replace scroll={false}>Tạo tài khoản</Link></p>}
           <form ref={formRef} onSubmit={submit} noValidate aria-label={isAdmin ? "Đăng nhập quản trị viên" : "Đăng nhập Cocoon"} aria-busy={pending}>
             <div className={styles.field} data-invalid={!!errors.email}>
               <label htmlFor="login-email" className={styles.visuallyHidden}>Email</label>
