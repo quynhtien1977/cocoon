@@ -9,6 +9,8 @@ const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'star
 const browser = spawn('C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', ['--headless=new', '--no-first-run', '--remote-debugging-port=9293', '--user-data-dir=' + resolve('.next/login-browser'), 'about:blank'], { windowsHide: true, stdio: 'ignore' });
 let ws, id = 0;
 let registrationStatus = 501;
+let profileStatus = 401;
+let profile = { role: 'Customer' };
 const registrations = [];
 const pending = new Map();
 async function until(fn) { for (let i = 0; i < 100; i++) { try { if (await fn()) return; } catch {} await delay(100); } throw Error('Browser check timed out'); }
@@ -31,6 +33,14 @@ try {
     const m = JSON.parse(e.data), p = pending.get(m.id);
     if (p) { clearTimeout(p.timer); pending.delete(m.id); if (m.error) p.reject(Error(JSON.stringify(m.error))); else p.resolve(m.result); }
     if (m.method === 'Fetch.requestPaused') {
+      if (m.params.request.url.includes('cocoonvietnam.com/san-pham/')) {
+        void send('Fetch.fulfillRequest', { requestId: m.params.requestId, responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: 'text/html' }], body: Buffer.from('<h1>Verified product destination</h1>').toString('base64') });
+        return;
+      }
+      if (m.params.request.url.endsWith('/api/v1/me')) {
+        void send('Fetch.fulfillRequest', { requestId: m.params.requestId, responseCode: profileStatus, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }], body: Buffer.from(JSON.stringify(profile)).toString('base64') });
+        return;
+      }
       // Simulate the repository's current auth stub; no real credentials or backend writes.
       const isRegistration = m.params.request.url.endsWith('/auth/register');
       if (isRegistration) registrations.push(JSON.parse(m.params.request.postData));
@@ -38,7 +48,7 @@ try {
     }
   };
   await send('Page.enable');
-  await send('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/auth/login*' }, { urlPattern: '*/api/v1/auth/register*' }, { urlPattern: '*/api/v1/preferences*' }] });
+  await send('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/auth/login*' }, { urlPattern: '*/api/v1/auth/register*' }, { urlPattern: '*/api/v1/preferences*' }, { urlPattern: '*/api/v1/me' }, { urlPattern: 'https://cocoonvietnam.com/san-pham/*', resourceType: 'Document' }] });
   await mkdir('.next/login-previews', { recursive: true });
   await send('Emulation.setDeviceMetricsOverride', { width: 1366, height: 768, deviceScaleFactor: 1, mobile: false });
   await navigate('/');
@@ -88,6 +98,29 @@ try {
   await until(() => evaluate(() => location.pathname === '/' && !document.querySelector('[role="dialog"]')));
   console.log('PASS register/login switch and backdrop dismissal');
 
+  for (const [status, selector] of [[401, '#bestseller-track article a'], [501, '#bestseller-track h3 a'], [401, '#cau-chuyen a']]) {
+    profileStatus = status;
+    await navigate('/');
+    await until(() => evaluate(`!!document.querySelector('${selector}')`));
+    await evaluate(`document.querySelector('${selector}').scrollIntoView({ behavior: 'instant', block: 'center' })`);
+    const before = await evaluate(() => scrollY);
+    await evaluate(`document.querySelector('${selector}').click()`);
+    await until(() => evaluate(() => location.pathname === '/login' && !!document.querySelector('#login-email')));
+    assert.ok(Math.abs(await evaluate(() => scrollY) - before) < 5, 'Product login gate preserves scroll');
+    await key('Escape');
+    await until(() => evaluate(() => location.pathname === '/' && !document.querySelector('[role="dialog"]')));
+  }
+  profileStatus = 200;
+  profile = {};
+  await evaluate(() => document.querySelector('#bestseller-track article a').click());
+  await until(() => evaluate(() => !!document.querySelector('#login-email')));
+  await key('Escape');
+  await until(() => evaluate(() => !document.querySelector('[role="dialog"]')));
+  profile = { role: 'Customer' };
+  await evaluate(() => document.querySelector('#bestseller-track article a').click());
+  await until(() => evaluate(() => document.querySelector('h1')?.textContent === 'Verified product destination'));
+  console.log('PASS product gate: 401/501/invalid profile open login; verified session opens product');
+
   await navigate('/register');
   await until(() => evaluate(() => !!document.querySelector('#register-fullName')));
   await delay(250);
@@ -112,14 +145,16 @@ try {
   await key('Enter', 'Enter', 13);
   await until(() => evaluate(() => !!document.querySelector('[aria-labelledby="preference-skin"]')));
   assert.equal(registrations.length, 0, 'Enter advances without submitting registration');
+  await delay(250);
+  assert.equal(await evaluate(() => getComputedStyle(document.querySelector('[role="dialog"] button[type="submit"]')).backgroundColor), 'rgb(33, 30, 24)', 'Registration action has dark brand background');
   await screenshot('register-step-2-desktop');
   for (const [group, count] of [['skin', 6], ['products', 5], ['criteria', 4]]) {
     await evaluate(`document.querySelector('[aria-labelledby="preference-${group}"]').click()`);
-    await until(() => evaluate(`document.querySelectorAll('[role="option"]').length === ${count}`));
-    await evaluate(() => { const option = document.querySelector('[role="option"]'); option.focus(); option.click(); });
+    await until(() => evaluate(`[...document.querySelectorAll('[role="option"]')].filter(e => e.getBoundingClientRect().height > 0).length === ${count}`));
+    await evaluate(() => { const option = [...document.querySelectorAll('[role="option"]')].find(e => e.getBoundingClientRect().height > 0); option.focus(); option.click(); });
     await delay(150);
     await key('Escape');
-    await until(() => evaluate(() => !document.querySelector('[role="listbox"]') || document.querySelector('[role="listbox"]').getBoundingClientRect().height === 0));
+    await until(() => evaluate(() => [...document.querySelectorAll('[role="listbox"]')].every(e => e.getBoundingClientRect().height === 0)));
     assert.equal(await evaluate(() => document.querySelectorAll('[role="dialog"]').length), 1, 'Escape closes dropdown, not registration');
   }
   await evaluate(() => document.querySelector('[aria-label="Quay lại bước 1: Thông tin tài khoản"]').click());
@@ -180,7 +215,7 @@ try {
     options: [...document.querySelectorAll('[role="option"]')].map(e => ({ text: e.textContent, height: e.getBoundingClientRect().height })),
     lists: [...document.querySelectorAll('[role="listbox"]')].map(e => ({ html: e.outerHTML.slice(0, 450), height: e.getBoundingClientRect().height })),
     triggers: [...document.querySelectorAll('[aria-labelledby^="preference-"]')].map(e => e.outerHTML.slice(0, 450)),
-  }))));
+  })));
   await screenshot('debug-registration');
   throw error;
 } finally {

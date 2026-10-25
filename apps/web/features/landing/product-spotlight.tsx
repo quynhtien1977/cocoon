@@ -6,6 +6,7 @@ import { Barlow_Condensed } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 import assets from "@/public/images/landing/sources.json";
 import styles from "./product-spotlight.module.css";
+import { ProductLink } from "./product-link";
 
 const spotlightFont = Barlow_Condensed({
   variable: "--font-spotlight",
@@ -74,7 +75,7 @@ export function ProductSpotlight() {
       </div>
       <div className={styles.description}>
         <p>Giải pháp làm sạch gàu và chăm sóc da đầu với chiết xuất bồ kết Việt Nam, BHA (Salicylic Acid), Crinipan PMC và Bioecolia®. Tác động đa tầng làm sạch gàu đến 100%*, giúp giảm ngứa, giảm dầu nhờn và hạn chế tình trạng gàu quay lại, đồng thời hỗ trợ cân bằng hệ vi sinh da đầu, giúp duy trì da đầu sạch khỏe. Công thức không chứa sulfate, giúp làm sạch dịu nhẹ, phù hợp cho da đầu nhạy cảm.</p>
-        <a href="https://cocoonvietnam.com/san-pham/dau-goi-bo-ket-500ml" target="_blank" rel="noreferrer" className={styles.link}>MUA NGAY <ArrowRight size={20} aria-hidden="true" /></a>
+        <ProductLink href="https://cocoonvietnam.com/san-pham/dau-goi-bo-ket-500ml" className={styles.link}>MUA NGAY <ArrowRight size={20} aria-hidden="true" /></ProductLink>
       </div>
     </section>
   );

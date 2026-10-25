@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import styles from "./landing.module.css";
 import carousel from "./product-carousel.module.css";
+import { ProductLink } from "./product-link";
 
 type Product = {
   name: string;
@@ -77,13 +78,13 @@ export function ProductCarousel({ products }: { products: Product[] }) {
         }}>
         {products.map((product) => (
           <article key={product.url} className={carousel.card}>
-            <a href={product.url} target="_blank" rel="noreferrer" className={`${styles.productImage} ${carousel.image}`}>
+            <ProductLink href={product.url} className={`${styles.productImage} ${carousel.image}`}>
               <Image src={product.image} alt={product.name} fill sizes="(min-width: 801px) 25vw, 50vw" />
               <Image className={carousel.hoverImage} src={product.hoverImage} alt="" aria-hidden="true" fill sizes="(min-width: 801px) 25vw, 50vw" />
               <span>XEM SẢN PHẨM <ArrowUpRight size={16} /></span>
-            </a>
+            </ProductLink>
             <p className={styles.productCategory}>{product.category}</p>
-            <h3><a href={product.url} target="_blank" rel="noreferrer">{product.name}</a></h3>
+            <h3><ProductLink href={product.url}>{product.name}</ProductLink></h3>
             <p className={styles.productSize}>{product.size}</p>
             <p className={styles.price}>{product.price}</p>
           </article>

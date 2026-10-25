@@ -1,5 +1,14 @@
 # Đăng nhập
 
+## Đăng ký khách hàng
+
+- `/register` dùng pop-up cùng chiều rộng 500px và bố cục gọn như đăng nhập. Bước 1 bắt buộc tên, email, mật khẩu, xác nhận mật khẩu. Enter hoặc mũi tên tiếp tục kiểm tra thông tin rồi chuyển bước, chưa gửi API.
+- Bước 2 gồm ba dropdown chọn nhiều: 6 loại da, 5 dòng sản phẩm, 4 tiêu chí. Tất cả tùy chọn; mũi tên quay lại giữ dữ liệu. Nút đăng ký chỉ nằm ở bước 2. Không có lựa chọn role hoặc đăng ký nhân sự/admin.
+- Gửi `POST /api/v1/auth/register` theo contract hiện có. Nếu chọn sở thích, đọc `GET /api/v1/preferences` để đối chiếu tên và lấy ID thật; không tự gán ID, không bỏ qua lựa chọn khi API lỗi. API hiện trả 501 nên chưa thể tạo tài khoản thật; giao diện báo rõ, chỉ hiển thị thành công sau response thành công.
+- Script kiểm tra trình duyệt có giả lập cả lỗi 501 và thành công, kiểm tra Enter, quay lại, dropdown, đóng bằng Esc và kích thước ở 1366px/390px/320px; không ghi dữ liệu backend.
+
+## Đăng nhập chung và quản trị
+
 - `/login`: pop-up màu kem trên landing, dùng chung Customer/Staff/Manager. Route interception giữ trang nền và vị trí cuộn khi mở từ landing; đóng bằng X/Esc/nền tối hoặc Back, Forward mở lại. Mở trực tiếp `/login` cũng hiển thị pop-up, đóng về `/`. `/admin/login`: trang quản trị xanh đậm riêng, ngoài AdminShell và PublicShell thông thường.
 - Dùng email thay số điện thoại vì `LoginRequest` hiện nhận `Email`, `Password`. Chỉ kiểm tra email hợp lệ và mật khẩu không rỗng khi đăng nhập; quy tắc tạo mật khẩu không áp dụng lại cho mật khẩu đã có.
 - Gọi `POST /api/v1/auth/login` qua API client, rồi `GET /api/v1/me` để đọc `role`; không chọn role ở client. Đích: Customer → `/account`, Staff → `/staff/feedback`, Manager → `/manager`, Admin → `/admin`. Cổng sai role hoặc không đọc được hồ sơ sẽ gọi logout và báo lỗi.

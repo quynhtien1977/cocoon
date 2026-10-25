@@ -7,10 +7,10 @@ Trang `/` dựng theo bố cục và hình ảnh công khai tại https://cocoon
 - Menu mobile dùng Sheet; tìm kiếm và danh mục lọc dữ liệu mẫu ở client. Banner quay lại slide đầu sau slide cuối; bộ đếm 2 giây bắt đầu lại khi đổi slide và được dọn khi rời trang.
 - Logo lớn hơn; logo ở header/footer và tên Cocoon CRM ở footer cuộn về đầu trang, có hỗ trợ bàn phím và chế độ giảm chuyển động.
 - `ProductCarousel` giữ kiểu thẻ và bốn cột desktop/hai cột mobile, thêm ảnh phụ chuyển mờ khi hover hoặc focus. Danh sách gồm năm sản phẩm bán chạy tham khảo Cocoon; hỗ trợ vuốt ngang, mũi tên từng sản phẩm và thanh kéo có thể dùng bàn phím. Lọc/tìm kiếm đặt lại vị trí đầu; ẩn điều hướng khi kết quả vừa khung.
-- Đăng nhập/đăng ký dùng route dự án. Xem sản phẩm/bài viết mở website thương hiệu; không có giỏ hàng, đặt hàng hoặc gửi email giả.
+- Đăng nhập/đăng ký dùng route dự án. `ProductLink` kiểm tra `GET /api/v1/me` khi bấm ảnh/tên sản phẩm hoặc Mua ngay; chỉ mở sản phẩm khi API trả hồ sơ có role hợp lệ. Phiên hết hạn, API chưa triển khai hoặc không xác minh được phiên sẽ mở pop-up đăng nhập và giữ vị trí cuộn. Không lưu trạng thái đăng nhập giả ở client. Sản phẩm mở website thương hiệu trong cùng tab sau khi xác minh; bài viết vẫn là liên kết công khai.
 - Hình ảnh được lưu local. Nguồn từng tệp ở `public/images/landing/sources.json`. Giá là dữ liệu tham khảo tại thời điểm dựng trang, không phải API tồn kho/giá trực tiếp.
 - CSS Modules chỉ áp dụng landing. Rule Tailwind trong `next.config.ts` giới hạn ở `globals.css`; rule `*.css` cũ làm mất exports class của CSS Modules.
-- `PublicShell` giữ layout cũ cho register; landing tự sở hữu header/main/footer ở `/`. Đăng nhập chung mở pop-up qua route interception, admin có trang `/admin/login` riêng.
+- Landing tự sở hữu header/main/footer ở `/`, `/login`, `/register`. `AuthDialogs` quản lý một pop-up đăng nhập hoặc đăng ký, kể cả khi chuyển qua lại giữa hai route. Admin có trang `/admin/login` riêng.
 
 Chạy `npm run dev`, mở `/`. Kiểm tra `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`.
 
