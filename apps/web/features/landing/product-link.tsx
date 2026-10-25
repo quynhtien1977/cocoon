@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api/client";
 import { getAccountRole } from "@/features/auth/login-service";
 
@@ -13,8 +13,14 @@ export function ProductLink({ href, className, children }: {
   children: ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const checking = useRef(false);
   const [pending, setPending] = useState(false);
+
+  if (pathname.startsWith("/account")) {
+    const slug = href.split("/").filter(Boolean).at(-1);
+    return <Link href={`/account/products/${slug}`} className={className}>{children}</Link>;
+  }
 
   return <Link href="/login" scroll={false} prefetch={false} className={className}
     aria-busy={pending} aria-disabled={pending || undefined}

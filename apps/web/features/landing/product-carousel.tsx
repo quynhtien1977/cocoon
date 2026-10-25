@@ -17,12 +17,13 @@ type Product = {
   url: string;
 };
 
-export function ProductCarousel({ products }: { products: Product[] }) {
+export function ProductCarousel({ products, grid = false }: { products: Product[]; grid?: boolean }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const stepRef = useRef(0);
   const [position, setPosition] = useState({ index: 0, max: 0, visible: 4 });
 
   useEffect(() => {
+    if (grid) return;
     const track = trackRef.current;
     if (!track) return;
     let frame = 0;
@@ -52,7 +53,7 @@ export function ProductCarousel({ products }: { products: Product[] }) {
       track.removeEventListener("scroll", schedule);
       cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [grid]);
 
   const goTo = (index: number, smooth = true) => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -64,8 +65,9 @@ export function ProductCarousel({ products }: { products: Product[] }) {
 
   return (
     <div className={carousel.carousel}>
-      <div ref={trackRef} id="bestseller-track" className={carousel.track} role="region" aria-label="Danh sách sản phẩm bán chạy" tabIndex={0}
+      <div ref={trackRef} id={grid ? "catalog-grid" : "bestseller-track"} className={grid ? styles.productGrid : carousel.track} role="region" aria-label={grid ? "Tất cả sản phẩm" : "Danh sách sản phẩm bán chạy"} tabIndex={0}
         onKeyDown={(event) => {
+          if (grid) return;
           if (event.target !== event.currentTarget) return;
           if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
             event.preventDefault();
@@ -90,7 +92,7 @@ export function ProductCarousel({ products }: { products: Product[] }) {
           </article>
         ))}
       </div>
-      {position.max > 0 && <>
+      {!grid && position.max > 0 && <>
         <div className={carousel.arrows}>
           <button type="button" aria-label="Sản phẩm trước" aria-controls="bestseller-track" disabled={position.index === 0} onClick={() => goTo(position.index - 1)}><ChevronLeft size={22} /></button>
           <button type="button" aria-label="Sản phẩm tiếp theo" aria-controls="bestseller-track" disabled={position.index === position.max} onClick={() => goTo(position.index + 1)}><ChevronRight size={22} /></button>

@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Select } from "@base-ui/react/select";
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Eye, EyeOff, LockKeyhole, Mail, UserRound, X } from "lucide-react";
 import { preferenceGroups, registerCustomer, registrationErrorMessage, validateRegistration, type Registration, type RegistrationErrors } from "./register-service";
 import styles from "./login.module.css";
 import registration from "./register.module.css";
+import { loginErrorMessage, signIn } from "./login-service";
 
 const emptyValues: Registration = { fullName: "", email: "", password: "", confirmation: "" };
 const fields = [
@@ -17,6 +19,7 @@ const fields = [
 ] as const;
 
 export function RegisterForm({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [values, setValues] = useState<Registration>(emptyValues);
   const [selections, setSelections] = useState<Record<string, string[]>>({ skin: [], products: [], criteria: [] });
@@ -59,6 +62,15 @@ export function RegisterForm({ onClose }: { onClose: () => void }) {
     try {
       await registerCustomer(values, Object.values(selections).flat());
       if (!active.current) return;
+      try {
+        const destination = await signIn(values.email, values.password, "customer");
+        if (!active.current) return;
+        router.replace(destination);
+        router.refresh();
+      } catch (error) {
+        if (!active.current) return;
+        setMessage(loginErrorMessage(error));
+      }
       setValues(emptyValues);
       setSuccess(true);
     } catch (error) { if (active.current) setMessage(registrationErrorMessage(error)); }
@@ -69,7 +81,7 @@ export function RegisterForm({ onClose }: { onClose: () => void }) {
     <div className={styles.modalPage} data-portal="public">
       <div className={`${styles.panel} ${registration.panel}`}>
         <div className={styles.topline}><span>Xin chào thành viên mới</span><button type="button" className={styles.close} onClick={onClose} aria-label="Đóng đăng ký"><X size={24} strokeWidth={1.5} /></button></div>
-        {success ? <div className={registration.success} role="status"><Check size={40} /><h1>Chào mừng bạn đến với Cocoon!</h1><p>Tài khoản khách hàng đã được tạo. Bạn có thể đăng nhập để tiếp tục.</p><Link href="/login" replace scroll={false} className={styles.submit}>ĐĂNG NHẬP <ArrowRight size={18} /></Link></div> : <>
+        {success ? <div className={registration.success} role="status"><Check size={40} /><h1>Chào mừng bạn đến với Cocoon!</h1><p>Tài khoản khách hàng đã được tạo. Bạn có thể đăng nhập để tiếp tục.</p>{message && <p role="alert">{message}</p>}<Link href="/login" replace scroll={false} className={styles.submit}>ĐĂNG NHẬP <ArrowRight size={18} /></Link></div> : <>
           <h1 ref={heading} tabIndex={-1} className={registration.heading}>{step === 1 ? "Tạo tài khoản cùng Cocoon." : "Cocoon hiểu bạn hơn."}</h1>
           <p className={registration.step} aria-live="polite"><span>Bước {step}/2</span> · {step === 1 ? "Thông tin tài khoản — bắt buộc" : "Sở thích của bạn — không bắt buộc"}</p>
           <form ref={form} onSubmit={submit} onKeyDown={(event) => {

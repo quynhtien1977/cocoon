@@ -5,6 +5,7 @@
 - `/register` dùng pop-up cùng chiều rộng 500px và bố cục gọn như đăng nhập. Bước 1 bắt buộc tên, email, mật khẩu, xác nhận mật khẩu. Enter hoặc mũi tên tiếp tục kiểm tra thông tin rồi chuyển bước, chưa gửi API.
 - Bước 2 gồm ba dropdown chọn nhiều: 6 loại da, 5 dòng sản phẩm, 4 tiêu chí. Tất cả tùy chọn; mũi tên quay lại giữ dữ liệu. Nút đăng ký chỉ nằm ở bước 2. Không có lựa chọn role hoặc đăng ký nhân sự/admin.
 - Gửi `POST /api/v1/auth/register` theo contract hiện có. Nếu chọn sở thích, đọc `GET /api/v1/preferences` để đối chiếu tên và lấy ID thật; không tự gán ID, không bỏ qua lựa chọn khi API lỗi. API hiện trả 501 nên chưa thể tạo tài khoản thật; giao diện báo rõ, chỉ hiển thị thành công sau response thành công.
+- Sau khi tạo tài khoản thành công, gọi đăng nhập rồi đọc `/me`; chỉ khi role là Customer mới chuyển tới `/account`. Nếu tài khoản đã tạo nhưng đăng nhập lỗi, giữ thông báo đã tạo và liên kết đăng nhập, không gửi lại đăng ký hoặc dựng phiên giả. Mật khẩu chỉ giữ trong bộ nhớ trong thời gian xử lý và được xóa khỏi form sau đó.
 - Script kiểm tra trình duyệt có giả lập cả lỗi 501 và thành công, kiểm tra Enter, quay lại, dropdown, đóng bằng Esc và kích thước ở 1366px/390px/320px; không ghi dữ liệu backend.
 
 ## Đăng nhập chung và quản trị
