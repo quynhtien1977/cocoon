@@ -1,21 +1,12 @@
 import { ApiError, apiRequest } from "../../lib/api/client";
+import { getAccountRole, type AccountRole } from "../../lib/auth/roles";
+export { getAccountRole } from "../../lib/auth/roles";
 
 export type LoginPortal = "shared" | "admin" | "customer";
-type AccountRole = "Admin" | "Manager" | "Staff" | "Customer";
 
 const destinations: Record<AccountRole, string> = {
   Admin: "/admin", Manager: "/manager", Staff: "/staff/feedback", Customer: "/account",
 };
-
-export function getAccountRole(profile: unknown): AccountRole | null {
-  if (!profile || typeof profile !== "object" || !("role" in profile)) return null;
-  const role = profile.role;
-  // AccountRole is currently a C# enum; accept numeric and named serialization.
-  const roles: AccountRole[] = ["Admin", "Manager", "Staff", "Customer"];
-  if (typeof role === "number") return roles[role] ?? null;
-  if (typeof role === "string") return roles.find((name) => name.toLowerCase() === role.toLowerCase()) ?? null;
-  return null;
-}
 
 export function validateLogin(email: string, password: string) {
   return {
