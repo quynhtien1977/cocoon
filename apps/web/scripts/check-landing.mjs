@@ -96,5 +96,5 @@ try {
     }
     console.log(`PASS ${width}px: CSS, overflow, carousel, filtering`);
   }
-  for(const path of ['/login','/admin']) { await send('Page.navigate',{url:'http://127.0.0.1:3191'+path});await until(()=>evaluate('document.readyState==="complete" && location.pathname==='+JSON.stringify(path)));assert.equal(await evaluate('document.querySelectorAll("main").length'),1);console.log('PASS preserved '+path); }
+  for(const path of ['/login','/admin/login']) { await send('Page.navigate',{url:'http://127.0.0.1:3191'+path});await until(()=>evaluate('document.readyState==="complete" && location.pathname==='+JSON.stringify(path)));assert.equal(await evaluate('document.querySelectorAll("main").length'),1);console.log('PASS preserved '+path); }
 } finally { if(ws?.readyState===1){await send('Browser.close').catch(()=>{});ws.close();}browser.kill();server.kill(); }

@@ -4,8 +4,16 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
 
-const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '--port', '3193', '--hostname', '127.0.0.1'], { windowsHide: true, stdio: 'ignore' });
+// Server-side proxy calls cannot be intercepted by the browser CDP fixture.
+const authApi = createServer((request, response) => {
+  response.setHeader('Content-Type', 'application/json');
+  if (request.url === '/api/v1/me' && request.headers.cookie === 'access_token=browser-smoke-test') response.end(JSON.stringify({ role: 'Customer' }));
+  else response.writeHead(401).end('{}');
+});
+await new Promise(resolve => authApi.listen(0, '127.0.0.1', resolve));
+const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '--port', '3193', '--hostname', '127.0.0.1'], { windowsHide: true, stdio: 'ignore', env: { ...process.env, API_URL: `http://127.0.0.1:${authApi.address().port}` } });
 const browser = spawn('C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', ['--headless=new', '--no-first-run', '--remote-debugging-port=9293', '--user-data-dir=' + resolve('.next/login-browser'), 'about:blank'], { windowsHide: true, stdio: 'ignore' });
 let ws, id = 0;
 let registrationStatus = 501;
@@ -234,6 +242,7 @@ try {
   }
   await send('Emulation.setDeviceMetricsOverride', { width: 1366, height: 768, deviceScaleFactor: 1, mobile: false });
   loginStatus = 200;
+  await send('Network.setCookie', { name: 'access_token', value: 'browser-smoke-test', url: 'http://127.0.0.1:3193', httpOnly: true, sameSite: 'Lax' });
   profileStatus = 200;
   profile = { role: 'Customer' };
   await navigate('/register');
@@ -436,4 +445,6 @@ try {
 } finally {
   if (ws?.readyState === 1) { await send('Browser.close').catch(() => {}); ws.close(); }
   browser.kill(); server.kill();
+  authApi.closeAllConnections();
+  await new Promise(resolve => authApi.close(resolve));
 }
