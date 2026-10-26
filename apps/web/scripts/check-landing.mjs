@@ -45,7 +45,7 @@ try {
     const afterScroll=await evaluate('getComputedStyle(document.querySelector("#cau-chuyen img")).transform');
     assert.notEqual(afterScroll,beforeScroll,'Product layers move with scroll');
     assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,'No overflow at spotlight');
-    assert.equal(await evaluate('document.querySelector("#cau-chuyen a").href'),'https://cocoonvietnam.com/san-pham/dau-goi-bo-ket-500ml','Buy link opens the featured product');
+    assert.equal(await evaluate('new URL(document.querySelector("#cau-chuyen a").href).pathname'),'/login','Product link requires session verification before opening the destination');
     const spotlightShot=await send('Page.captureScreenshot',{format:'png'});
     await writeFile(`.next/landing-previews/spotlight-${width}.png`,Buffer.from(spotlightShot.data,'base64'));
     await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});

@@ -11,6 +11,10 @@ Trang `/` dựng theo bố cục và hình ảnh công khai tại https://cocoon
 - Hình ảnh được lưu local. Nguồn từng tệp ở `public/images/landing/sources.json`. Giá là dữ liệu tham khảo tại thời điểm dựng trang, không phải API tồn kho/giá trực tiếp.
 - CSS Modules chỉ áp dụng landing. Rule Tailwind trong `next.config.ts` giới hạn ở `globals.css`; rule `*.css` cũ làm mất exports class của CSS Modules.
 - Landing tự sở hữu header/main/footer ở `/`, `/login`, `/register`. `AuthDialogs` quản lý một pop-up đăng nhập hoặc đăng ký, kể cả khi chuyển qua lại giữa hai route. Admin có trang `/admin/login` riêng.
+- `LandingFrame` dùng chung khung thương hiệu cho public và customer. `/account` dùng lại toàn bộ nội dung landing; navbar customer thêm Khảo sát, Đơn hàng ở trái, thay Kết nối bằng Giỏ hàng ở phải và trỏ biểu tượng người dùng đến `/account/profile`. CTA đăng ký được đổi thành khảo sát cho khách hàng. Các trang con dùng cùng navbar; logo từ trang con quay về `/account`.
+- `/account/products` là danh mục mới, dùng dữ liệu tham khảo từ `products.ts`, có tìm kiếm không dấu, lọc danh mục, sắp xếp giá và ảnh hover như landing. Tìm kiếm trên navbar customer dẫn đến trang này với `?q=`. Hiện `GET /products` yêu cầu role Manager và trả stub; không gọi API quản lý thay cho danh mục customer, không tự tạo ID sản phẩm. Cần nối API danh mục customer khi endpoint được cung cấp.
+- Nút Giỏ hàng mở `CartDrawer` bên phải ngay trên trang hiện tại, không đổi URL hoặc vị trí cuộn; đóng bằng X/Esc/nền tối. Mobile đóng menu trước khi mở giỏ. `/account/cart` mở cùng drawer trên nền trang chủ. Hiện chỉ dựng trạng thái trống theo thiết kế; chưa có API giỏ hàng hoặc chức năng thêm/checkout.
+- Trong khu vực `/account`, ảnh/tên sản phẩm và Mua ngay mở `/account/products/[slug]` nội bộ. Trang chi tiết dùng hình ảnh và dữ liệu tham khảo đã có, hỗ trợ đổi ảnh, dung tích và giá tham khảo. Slug không phải ID backend; không gọi endpoint `{id:int}` với ID tự gán. Slug không có dữ liệu trả 404. Hồ sơ, đơn hàng và khảo sát giữ nội dung scaffold hiện có.
 
 Chạy `npm run dev`, mở `/`. Kiểm tra `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`.
 

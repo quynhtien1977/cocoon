@@ -1,6 +1,6 @@
 import { ApiError, apiRequest } from "../../lib/api/client";
 
-export type LoginPortal = "shared" | "admin";
+export type LoginPortal = "shared" | "admin" | "customer";
 type AccountRole = "Admin" | "Manager" | "Staff" | "Customer";
 
 const destinations: Record<AccountRole, string> = {
@@ -33,6 +33,7 @@ export async function signIn(email: string, password: string, portal: LoginPorta
     if (!role) throw new Error("Không xác định được quyền truy cập của tài khoản. Vui lòng thử lại sau.");
     if (portal === "admin" && role !== "Admin") throw new Error("Tài khoản này không thuộc quản trị viên. Vui lòng dùng trang đăng nhập chung.");
     if (portal === "shared" && role === "Admin") throw new Error("Tài khoản quản trị viên cần đăng nhập tại trang dành riêng cho Admin.");
+    if (portal === "customer" && role !== "Customer") throw new Error("Không thể mở phiên khách hàng. Vui lòng đăng nhập lại.");
     return destinations[role];
   } catch (error) {
     // Clear a partially established session on profile failure or wrong entry point.

@@ -14,7 +14,7 @@ test("login accepts existing passwords and rejects invalid email or empty passwo
   assert.equal(getAccountRole({ role: "ADMIN" }), "Admin");
 });
 
-for (const [role, portal, destination] of [["Customer", "shared", "/account"], ["Staff", "shared", "/staff/feedback"], ["Manager", "shared", "/manager"], [0, "admin", "/admin"]]) {
+for (const [role, portal, destination] of [["Customer", "shared", "/account"], ["Customer", "customer", "/account"], ["Staff", "shared", "/staff/feedback"], ["Manager", "shared", "/manager"], [0, "admin", "/admin"]]) {
   test(`login routes ${role} using the authenticated profile`, async () => {
     const calls = [];
     globalThis.fetch = async (url, options) => {
@@ -32,7 +32,7 @@ for (const [role, portal, destination] of [["Customer", "shared", "/account"], [
   });
 }
 
-for (const [role, portal] of [["Admin", "shared"], ["Customer", "admin"], ["Unknown", "shared"]]) {
+for (const [role, portal] of [["Admin", "shared"], ["Customer", "admin"], ["Unknown", "shared"], ["Staff", "customer"], ["Manager", "customer"], ["Admin", "customer"]]) {
   test(`wrong or unknown role ${role} is rejected and its session is cleared`, async () => {
     const calls = [];
     globalThis.fetch = async (url) => {

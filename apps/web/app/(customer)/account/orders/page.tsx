@@ -1,7 +1,7 @@
-import { ScreenPlaceholder, screenMetadata } from "@/components/brand/screen-placeholder";
+import { OrdersPage } from "@/features/customer/orders-page";
 
-export const metadata = screenMetadata("C2");
+export const metadata = { title: "Đơn hàng của bạn | Cocoon" };
 
 export default function Page() {
-  return <ScreenPlaceholder code="C2" />;
+  return <OrdersPage />;
 }
