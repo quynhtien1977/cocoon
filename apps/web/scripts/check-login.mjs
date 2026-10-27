@@ -55,6 +55,10 @@ try {
     const m = JSON.parse(e.data), p = pending.get(m.id);
     if (p) { clearTimeout(p.timer); pending.delete(m.id); if (m.error) p.reject(Error(JSON.stringify(m.error))); else p.resolve(m.result); }
     if (m.method === 'Fetch.requestPaused') {
+      if (m.params.request.url.includes('/api/v1/me/surveys')) {
+        void send('Fetch.fulfillRequest', { requestId: m.params.requestId, responseCode: 501, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }], body: Buffer.from('{}').toString('base64') });
+        return;
+      }
       if (m.params.request.url.includes('/api/v1/me/notifications')) {
         if (m.params.request.method === 'POST') {
           const notificationId = Number(new URL(m.params.request.url).pathname.split('/').at(-2));
@@ -114,7 +118,7 @@ try {
     }
   };
   await send('Page.enable');
-  await send('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/me/notifications*' }, { urlPattern: '*/api/v1/me/feedback/*' }, { urlPattern: '*/api/v1/auth/login*' }, { urlPattern: '*/api/v1/auth/register*' }, { urlPattern: '*/api/v1/preferences*' }, { urlPattern: '*/api/v1/me/preferences' }, { urlPattern: '*/api/v1/products/1' }, { urlPattern: '*/api/v1/me' }, { urlPattern: '*/api/v1/me/orders*' }, { urlPattern: '*/api/v1/me/reviewable-items' }, { urlPattern: '*/api/v1/me/feedback' }, { urlPattern: 'https://cocoonvietnam.com/san-pham/*', resourceType: 'Document' }] });
+  await send('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/me/surveys*' }, { urlPattern: '*/api/v1/me/notifications*' }, { urlPattern: '*/api/v1/me/feedback/*' }, { urlPattern: '*/api/v1/auth/login*' }, { urlPattern: '*/api/v1/auth/register*' }, { urlPattern: '*/api/v1/preferences*' }, { urlPattern: '*/api/v1/me/preferences' }, { urlPattern: '*/api/v1/products/1' }, { urlPattern: '*/api/v1/me' }, { urlPattern: '*/api/v1/me/orders*' }, { urlPattern: '*/api/v1/me/reviewable-items' }, { urlPattern: '*/api/v1/me/feedback' }, { urlPattern: 'https://cocoonvietnam.com/san-pham/*', resourceType: 'Document' }] });
   await mkdir('.next/login-previews', { recursive: true });
   await send('Emulation.setDeviceMetricsOverride', { width: 1366, height: 768, deviceScaleFactor: 1, mobile: false });
   await navigate('/');
@@ -536,6 +540,19 @@ try {
     await key('Escape');
   }
   console.log('PASS feedback detail and notifications: reviewed-row keyboard link, sample/real API isolation, retry, replies, toast, read receipt and mobile dropdown');
+  for (const width of [1366, 390, 320]) {
+    await send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: false });
+    await navigate('/account/surveys');
+    await until(() => evaluate(() => !!document.querySelector('[role="alert"]')));
+    await evaluate(() => [...document.querySelectorAll('button')].find(e => e.textContent === 'Xem giao diện mẫu').click());
+    await until(() => evaluate(() => document.querySelectorAll('article').length === 2));
+    assert.equal(await evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Survey cards fit the viewport');
+    assert.equal(await evaluate(() => [...document.querySelectorAll('article button')].every(e => e.disabled)), true, 'Missing form links are disabled');
+    await screenshot(`surveys-${width}`);
+    await evaluate(() => [...document.querySelectorAll('button[aria-pressed]')].find(e => e.textContent.startsWith('Đã làm')).click());
+    assert.equal(await evaluate(() => document.querySelectorAll('article').length), 1);
+  }
+  console.log('PASS surveys: 501, labeled preview, pending/completed tabs and desktop/mobile layout');
 } catch (error) {
   console.log(await evaluate(() => ({
     path: location.pathname,
