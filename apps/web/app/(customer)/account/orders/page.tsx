@@ -1,7 +1,10 @@
-import { ScreenPlaceholder, screenMetadata } from "@/components/brand/screen-placeholder";
+import { OrdersPage } from "@/features/customer/orders-page";
 
-export const metadata = screenMetadata("C2");
+export const metadata = { title: "Đơn hàng của bạn | Cocoon" };
 
-export default function Page() {
-  return <ScreenPlaceholder code="C2" />;
+export default async function Page({ searchParams }: PageProps<"/account/orders">) {
+  const query = await searchParams;
+  const initialFilter = query.tab === "reviewed" ? "reviewed" : "all";
+  const initialPreview = query.preview === "1";
+  return <OrdersPage key={`${initialFilter}:${initialPreview}`} initialFilter={initialFilter} initialPreview={initialPreview} />;
 }

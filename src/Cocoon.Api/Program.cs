@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using Cocoon.Api.Auth;
 using Cocoon.Api.Configuration;
+using Cocoon.Api.Seeding;
 using Cocoon.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Cocoon.Infrastructure.Persistence;
@@ -16,7 +17,13 @@ using Scalar.AspNetCore;
 using Serilog;
 using Serilog.Formatting.Compact;
 
-var builder = WebApplication.CreateBuilder(args);
+var seedRequested = args is ["seed"];
+var builder = WebApplication.CreateBuilder(seedRequested ? [] : args);
+if (seedRequested)
+{
+    Environment.ExitCode = await LocalSeedCommand.RunAsync(builder.Environment, builder.Configuration);
+    return;
+}
 builder.Services.AddSerilog(config => config
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)

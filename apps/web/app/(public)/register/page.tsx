@@ -1,7 +1,8 @@
-import { ScreenPlaceholder, screenMetadata } from "@/components/brand/screen-placeholder";
+import type { Metadata } from "next";
+import { LandingPage } from "@/features/landing/landing-page";
 
-export const metadata = screenMetadata("U3");
+export const metadata: Metadata = { title: "Đăng ký khách hàng", robots: { index: false, follow: false } };
 
 export default function Page() {
-  return <ScreenPlaceholder code="U3" />;
+  return <LandingPage />;
 }

@@ -6,7 +6,7 @@ Monorepo đồ án HTTTDN 841065: Next.js trên host, ASP.NET Core .NET 10 và P
 
 Giai đoạn 0B: Docker Compose, health API, JWT bearer từ cookie, policy bốn vai trò, CORS, ProblemDetails, log Serilog và OpenAPI/Scalar.
 
-Phần GPT của 0C: 23 entity, DbContext, `InitialCreate`, script schema, fetch client có refresh một lần và rewrite API. UI, shadcn và layout năm nhóm route được bàn giao cho Antigravity. Scaffold chưa có đăng nhập, endpoint refresh, seed hay tính năng CRM; cấu hình JWT hiện chỉ là nền tảng. Kiểm tra tài khoản trong DB mỗi request được triển khai ở Giai đoạn 1 trước khi có endpoint nghiệp vụ.
+Phần GPT của 0C ban đầu: DbContext, `InitialCreate`, script schema, fetch client có refresh một lần và rewrite API. Hiện source có 28 entity và migration `AddOrdersAndRecommendations`; auth đã có đăng nhập/refresh và kiểm tra tài khoản mỗi request. COC-50 bổ sung [seed v1 local](db/SEED_V1.md) cho tài khoản, sở thích, sản phẩm, khách hàng và đơn mua mô phỏng. Các endpoint CRM còn stub không được coi là hoàn thành từ bộ seed.
 
 ## Yêu cầu máy
 
@@ -71,8 +71,16 @@ rtk docker compose run --rm --no-deps api dotnet test
 
 ## Tài khoản demo và giới hạn
 
-Chưa có seed hoặc tài khoản đăng nhập. Theo PRD, các giai đoạn sau sẽ tạo `admin@cocoon.demo`, `manager@cocoon.demo`, `staff1@cocoon.demo`, `staff2@cocoon.demo`, `customer01@cocoon.demo`… với mật khẩu demo `Demo@12345`. Không sử dụng các giá trị demo ở production.
+Chạy [seed v1 — COC-50](db/SEED_V1.md) để tạo tài khoản demo và dữ liệu nền. Lệnh chỉ chạy trong Compose Development local, không tự chạy khi mở API và không reset dữ liệu:
 
-Sao lưu/phục hồi, seed dữ liệu, state machine phản hồi, chuẩn hóa tìm kiếm và tính năng auth/CRM được thực hiện ở các giai đoạn sau. `proxy.ts` hiện là khung pass-through, không kiểm tra role; backend vẫn áp dụng authorization cho controller không public. Next.js 16 đã đổi convention `middleware.ts` thành `proxy.ts` theo tài liệu đi kèm package.
+```powershell
+rtk docker compose run --rm --no-deps api dotnet run --project src/Cocoon.Api --no-launch-profile -- seed
+```
+
+Database phải chạy và đã áp dụng migration theo hướng dẫn local bên trên. Trên database trống, seed thêm 87 tài khoản (83 Customer), 12 sở thích, 24 sản phẩm/48 biến thể và 320 đơn/640 dòng. Chạy lặp giữ dữ liệu đã có. Tài khoản `admin@cocoon.demo`, `manager@cocoon.demo`, `staff1@cocoon.demo`, `staff2@cocoon.demo`, `customer01@cocoon.demo`… dùng mật khẩu demo `Demo@12345` khi mới tạo. Không sử dụng các giá trị demo ở production.
+
+Seed phản hồi/khảo sát/kế hoạch gợi ý và các tính năng CRM tương ứng được thực hiện ở task sau. Backend áp dụng authorization cho controller không public. Next.js 16 dùng convention `proxy.ts` theo tài liệu đi kèm package.
 
 Audit dependency production không có cảnh báo tại lần kiểm tra 12/10/2026. Dependency ESLint còn advisory `GHSA-vfj7-8cjw-p6xm` ở `braces <=3.0.3`, chưa có bản stable mới hơn khi kiểm tra. Chuỗi này dùng cho glob file local của lint, không xử lý request/người dùng trong runtime web; không hạ Next.js để làm mất cảnh báo. Bàn giao có ghi việc theo dõi bản vá.
+
+Cập nhật 23/10/2026: audit production hiện báo critical cho `next@16.4.0`; chi tiết và giới hạn đối chiếu tại [ghi chú COC-50](db/SEED_V1.md#vấn-đề-ngoài-coc-50). Chưa cập nhật dependency trong task seed.

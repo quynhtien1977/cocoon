@@ -1,7 +1,7 @@
-import { ScreenPlaceholder, screenMetadata } from "@/components/brand/screen-placeholder";
+import { LandingPage } from "@/features/landing/landing-page";
 
-export const metadata = screenMetadata("C0");
+export const metadata = { title: "Trang chủ khách hàng | Cocoon" };
 
 export default function Page() {
-  return <ScreenPlaceholder code="C0" />;
+  return <LandingPage customer />;
 }

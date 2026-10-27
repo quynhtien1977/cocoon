@@ -14,7 +14,7 @@ export interface Screen {
 
 export const screens = {
   U1: { portal: "public", href: "/", title: "Giới thiệu", description: "Giới thiệu Cocoon CRM, dẫn tới đăng nhập và đăng ký." },
-  U2: { portal: "public", href: "/login", title: "Đăng nhập", description: "Đăng nhập cho mọi vai trò, chuyển hướng theo role." },
+  U2: { portal: "public", href: "/login", title: "Đăng nhập", description: "Đăng nhập cho khách hàng, nhân viên và quản lý; quản trị viên dùng /admin/login." },
   U3: { portal: "public", href: "/register", title: "Đăng ký", description: "Tạo tài khoản khách hàng, bước 2 chọn sở thích." },
 
   C0: { portal: "customer", href: "/account", nav: true, title: "Trang chủ", description: "Khảo sát đang chờ, sản phẩm chờ đánh giá và gợi ý cho bạn." },
