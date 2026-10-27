@@ -12,7 +12,7 @@ export type CustomerProfile = {
 };
 export type ProfileErrors = Partial<Record<keyof CustomerProfile, string>>;
 export type PreferenceOption = { id: number; label: string; group: string; inactive: boolean };
-export type CustomerPreferences = { selected: number[]; options: PreferenceOption[] };
+export type CustomerPreferences = { selected: number[]; options: PreferenceOption[]; derived: { id: number; label: string }[] };
 
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Dữ liệu hồ sơ chưa đầy đủ. Vui lòng thử lại sau.");
@@ -39,7 +39,7 @@ export function localToday(): string {
 
 export function validateProfile(values: CustomerProfile): ProfileErrors {
   const errors: ProfileErrors = {};
-  if (!values.fullName.trim() || values.fullName.trim().length > 256) errors.fullName = "Vui lòng nhập họ tên, tối đa 256 ký tự.";
+  if (!values.fullName.trim() || values.fullName.trim().length > 150) errors.fullName = "Vui lòng nhập họ tên, tối đa 150 ký tự.";
   const phone = values.phone.trim();
   if (phone && (phone.length > 32 || !/^\+?[\d\s().-]+$/.test(phone) || phone.replace(/\D/g, "").length < 8 || phone.replace(/\D/g, "").length > 15)) errors.phone = "Vui lòng nhập số điện thoại hợp lệ (8–15 chữ số).";
   const birthday = values.dateOfBirth;
@@ -83,10 +83,17 @@ export async function loadPreferences(signal?: AbortSignal): Promise<CustomerPre
   if (new Set(catalogRows.map(item => item.id)).size !== catalogRows.length) throw new Error("Danh sách sở thích bị trùng. Vui lòng thử lại.");
   const rawSelected = mine && typeof mine === "object" && "preferenceIds" in mine ? record(mine).preferenceIds : rows(mine);
   if (!Array.isArray(rawSelected)) throw new Error("Không thể đọc sở thích đã lưu.");
-  const selected = [...new Set(rawSelected.map(value => {
+  const derived: CustomerPreferences["derived"] = [];
+  const selected = [...new Set(rawSelected.flatMap(value => {
     const id = typeof value === "number" ? value : record(value).id;
     if (!validId(id)) throw new Error("Sở thích đã lưu không hợp lệ.");
-    return id;
+    const item = typeof value === "number" ? {} : record(value);
+    if (item.source === "Survey" || item.source === 1) {
+      derived.push({ id, label: typeof item.name === "string" ? item.name : catalogRows.find(row => row.id === id)?.name ?? `Sở thích #${id}` });
+      return [];
+    }
+    if (item.source !== undefined && item.source !== "Declared" && item.source !== 0) throw new Error("Nguồn sở thích chưa được hỗ trợ.");
+    return [id];
   }))];
   const options: PreferenceOption[] = catalogRows.map(item => ({ id: item.id, label: item.name, group: "other", inactive: !item.isActive }));
   // Reuse registration's name matching: never invent IDs for the fixed labels.
@@ -99,7 +106,7 @@ export async function loadPreferences(signal?: AbortSignal): Promise<CustomerPre
     } catch { /* Unknown/inactive choices stay visible in the additional group. */ }
   }
   for (const id of selected) if (!options.some(item => item.id === id)) options.push({ id, label: `Sở thích đã lưu #${id}`, group: "other", inactive: true });
-  return { selected, options: options.filter(item => !item.inactive || selected.includes(item.id)) };
+  return { selected, options: options.filter(item => (!item.inactive || selected.includes(item.id)) && !derived.some(source => source.id === item.id)), derived };
 }
 
 export async function savePreferences(ids: number[], signal?: AbortSignal): Promise<void> {

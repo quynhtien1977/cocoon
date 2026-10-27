@@ -20,6 +20,13 @@ let registrationStatus = 501;
 let loginStatus = 501;
 let profileStatus = 401;
 let profile = { role: 'Customer' };
+let catalogStatus = 501;
+let productStatus = 501;
+const preferenceWrites = [];
+let feedbackDetailStatus = 501;
+let notifications = [];
+let feedbackDetailReads = 0;
+const notificationReadIds = [];
 let ordersStatus = 501;
 let ordersResponse = { items: [], totalCount: 0 };
 let reviewableStatus = 501;
@@ -48,6 +55,33 @@ try {
     const m = JSON.parse(e.data), p = pending.get(m.id);
     if (p) { clearTimeout(p.timer); pending.delete(m.id); if (m.error) p.reject(Error(JSON.stringify(m.error))); else p.resolve(m.result); }
     if (m.method === 'Fetch.requestPaused') {
+      if (m.params.request.url.includes('/api/v1/me/notifications')) {
+        if (m.params.request.method === 'POST') {
+          const notificationId = Number(new URL(m.params.request.url).pathname.split('/').at(-2));
+          notificationReadIds.push(notificationId);
+          notifications = notifications.map(item => item.id === notificationId ? { ...item, isRead: true } : item);
+        }
+        void send('Fetch.fulfillRequest', { requestId: m.params.requestId, responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }], body: Buffer.from(JSON.stringify(notifications)).toString('base64') });
+        return;
+      }
+      if (m.params.request.url.includes('/api/v1/me/feedback/')) {
+        feedbackDetailReads++;
+        void send('Fetch.fulfillRequest', { requestId: m.params.requestId, responseCode: feedbackDetailStatus, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }], body: Buffer.from(JSON.stringify({ id: 41, rating: 5, content: 'Customer feedback from API', status: 'Replied', createdAt: '2026-10-25T09:00:00Z', orderCode: 'TEST-81', product: { name: 'Test product', variant: '140ml', imageUrl: null }, replies: [{ id: 1, staffName: 'Cocoon staff', content: 'Staff reply from API', createdAt: '2026-10-26T09:00:00Z' }] })).toString('base64') });
+        return;
+      }
+      if (m.params.request.url.endsWith('/api/v1/products/1')) {
+        void send('Fetch.fulfillRequest', { requestId: m.params.requestId, responseCode: productStatus, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }], body: Buffer.from(JSON.stringify({ id: 1, name: 'Sản phẩm từ API', description: 'Thông tin từ API', variants: [{ name: '100ml', price: 120000, imageUrl: null }] })).toString('base64') });
+        return;
+      }
+      if (m.params.request.url.endsWith('/api/v1/me/preferences')) {
+        if (m.params.request.method === 'PUT') preferenceWrites.push(JSON.parse(m.params.request.postData));
+        void send('Fetch.fulfillRequest', { requestId: m.params.requestId, responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }], body: Buffer.from('[]').toString('base64') });
+        return;
+      }
+      if (m.params.request.url.endsWith('/api/v1/preferences')) {
+        void send('Fetch.fulfillRequest', { requestId: m.params.requestId, responseCode: catalogStatus, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }], body: Buffer.from(JSON.stringify([{ id: 42, name: 'Da khô' }])).toString('base64') });
+        return;
+      }
       if (m.params.request.url.endsWith('/api/v1/me/reviewable-items')) {
         void send('Fetch.fulfillRequest', { requestId: m.params.requestId, responseCode: reviewableStatus, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }], body: Buffer.from(JSON.stringify(reviewableItems)).toString('base64') });
         return;
@@ -80,7 +114,7 @@ try {
     }
   };
   await send('Page.enable');
-  await send('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/auth/login*' }, { urlPattern: '*/api/v1/auth/register*' }, { urlPattern: '*/api/v1/preferences*' }, { urlPattern: '*/api/v1/me' }, { urlPattern: '*/api/v1/me/orders*' }, { urlPattern: '*/api/v1/me/reviewable-items' }, { urlPattern: '*/api/v1/me/feedback' }, { urlPattern: 'https://cocoonvietnam.com/san-pham/*', resourceType: 'Document' }] });
+  await send('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/me/notifications*' }, { urlPattern: '*/api/v1/me/feedback/*' }, { urlPattern: '*/api/v1/auth/login*' }, { urlPattern: '*/api/v1/auth/register*' }, { urlPattern: '*/api/v1/preferences*' }, { urlPattern: '*/api/v1/me/preferences' }, { urlPattern: '*/api/v1/products/1' }, { urlPattern: '*/api/v1/me' }, { urlPattern: '*/api/v1/me/orders*' }, { urlPattern: '*/api/v1/me/reviewable-items' }, { urlPattern: '*/api/v1/me/feedback' }, { urlPattern: 'https://cocoonvietnam.com/san-pham/*', resourceType: 'Document' }] });
   await mkdir('.next/login-previews', { recursive: true });
   await send('Emulation.setDeviceMetricsOverride', { width: 1366, height: 768, deviceScaleFactor: 1, mobile: false });
   await navigate('/');
@@ -197,8 +231,8 @@ try {
   await until(() => evaluate(() => !!document.querySelector('[aria-labelledby="preference-skin"]')));
   assert.equal(await evaluate(() => document.querySelector('[aria-labelledby="preference-skin"]').textContent.includes('1')), true, 'Preferences survive back/next');
   await evaluate(() => document.querySelector('[role="dialog"] form').requestSubmit());
-  await until(() => evaluate(() => document.querySelector('[role="alert"]')?.textContent.includes('chưa thể lưu')));
-  assert.equal(registrations.length, 0, 'Unavailable catalog does not silently omit selected preferences');
+  await until(() => evaluate(() => document.querySelector('[role="alert"]')?.textContent.includes('chưa được kích hoạt')));
+  assert.equal(registrations.length, 1, 'Registration must establish the session before catalog access');
   await evaluate(() => [...document.querySelectorAll('button')].find(b => b.textContent === 'Bỏ tất cả lựa chọn').click());
   await evaluate(() => document.querySelector('[role="dialog"] form').requestSubmit());
   await until(() => evaluate(() => document.querySelector('[role="alert"]')?.textContent.includes('chưa được kích hoạt')));
@@ -206,6 +240,7 @@ try {
   assert.equal('role' in registrations[0], false, 'No client role escalation');
   assert.equal('confirmation' in registrations[0], false);
   registrationStatus = 201;
+  profileStatus = 401; // Account created but session verification unavailable.
   await evaluate(() => document.querySelector('[role="dialog"] form').requestSubmit());
   await until(() => evaluate(() => document.querySelector('[role="status"]')?.textContent.includes('đã được tạo')));
   await evaluate(() => document.querySelector('[role="dialog"] a[href="/login"]').click());
@@ -348,6 +383,17 @@ try {
     await evaluate(() => [...document.querySelectorAll('[aria-label="Lọc đơn hàng"] button')].find(b => b.textContent === 'Đã đánh giá').click());
     assert.equal(await evaluate(() => document.querySelectorAll('main article').length), 2);
     assert.equal(await evaluate(() => document.querySelectorAll('main article h3').length), 3);
+    const beforeDetail = feedbackDetailReads;
+    assert.equal(await evaluate(() => document.querySelectorAll('main a a').length), 0, 'Reviewed rows never nest anchors');
+    await evaluate(() => document.querySelector('main a[href="/account/feedback/2?preview=1"]').focus());
+    await key('Enter', 'Enter', 13);
+    await until(() => evaluate(() => location.pathname === '/account/feedback/2' && !!document.querySelector('[aria-label="Phản hồi của nhân viên"]')));
+    assert.equal(feedbackDetailReads, beforeDetail, 'Sample feedback never requests a real feedback ID');
+    assert.equal(await evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Feedback detail fits viewport');
+    await screenshot(`feedback-detail-${width}`);
+    await evaluate(() => document.querySelector('main a[href="/account/orders?tab=reviewed&preview=1"]').click());
+    await until(() => evaluate(() => !!document.querySelector('main a[href="/account/feedback/2?preview=1"]')));
+    assert.equal(await evaluate(() => document.querySelector('[aria-label="Lọc đơn hàng"] [aria-pressed="true"]').textContent), 'Đã đánh giá');
     await evaluate(() => [...document.querySelectorAll('[aria-label="Lọc đơn hàng"] button')].find(b => b.textContent === 'Chờ đánh giá').click());
     assert.equal(await evaluate(() => document.querySelectorAll('main article h3').length), 2);
     await evaluate(() => document.querySelector('main input[type="search"]').focus());
@@ -432,6 +478,64 @@ try {
   assert.equal(await evaluate(() => document.querySelector('main form')), null);
   console.log('PASS product review: order link, eligibility, validation, preview without writes, responsive, preserved draft, API success, duplicate protection');
   console.log('PASS review photos: select, preview, remove, limits, invalid files, responsive and no silent attachment loss');
+  await navigate('/account/products/1');
+  await until(() => evaluate(() => document.querySelector('[role="alert"]')?.textContent.includes('chưa khả dụng')));
+  assert.equal(await evaluate(() => document.body.textContent.includes('Giá tham khảo')), false, 'API errors do not substitute marketing content');
+  productStatus = 200;
+  await evaluate(() => [...document.querySelectorAll('main button')].find(button => button.textContent === 'Thử lại').click());
+  await until(() => evaluate(() => document.querySelector('main h1')?.textContent === 'Sản phẩm từ API'));
+  assert.ok((await evaluate(() => document.querySelector('main').textContent)).includes('120.000'));
+  await navigate('/register');
+  await until(() => evaluate(() => !!document.querySelector('#register-fullName')));
+  await fillRegistration();
+  await key('Enter', 'Enter', 13);
+  await until(() => evaluate(() => !!document.querySelector('[aria-labelledby="preference-skin"]')));
+  await evaluate(() => document.querySelector('[aria-labelledby="preference-skin"]').click());
+  await until(() => evaluate(() => !!document.querySelector('[role="option"]')));
+  await evaluate(() => document.querySelector('[role="option"]').click());
+  await key('Escape');
+  await until(() => evaluate(() => [...document.querySelectorAll('[role="listbox"]')].every(e => e.getBoundingClientRect().height === 0)));
+  const beforeCreate = registrations.length;
+  await evaluate(() => document.querySelector('[role="dialog"] form').requestSubmit());
+  await until(() => evaluate(() => document.querySelector('[role="alert"]')?.textContent.includes('chưa lưu được sở thích')));
+  assert.equal(registrations.length, beforeCreate + 1);
+  assert.equal(await evaluate(() => !!document.querySelector('[role="dialog"] form')), false, 'Partial success cannot recreate the account');
+  catalogStatus = 200;
+  await evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent === 'Lưu lại sở thích').click());
+  await until(() => evaluate(() => location.pathname === '/account/profile'));
+  assert.equal(registrations.length, beforeCreate + 1, 'Preference retry never repeats registration');
+  assert.deepEqual(preferenceWrites.at(-1), { preferenceIds: [42] });
+  console.log('PASS API integration: numeric product detail/retry and registration partial success/preference-only retry');
+  await send('Emulation.setDeviceMetricsOverride', { width: 1366, height: 900, deviceScaleFactor: 1, mobile: false });
+  await navigate('/account/feedback/41');
+  await until(() => evaluate(() => !!document.querySelector('main [role="alert"]')));
+  assert.equal(await evaluate(() => !!document.querySelector('[aria-label="Phản hồi của nhân viên"]')), false);
+  feedbackDetailStatus = 200;
+  await evaluate(() => [...document.querySelectorAll('main button')].find(button => button.textContent === 'Thử lại').click());
+  await until(() => evaluate(() => document.querySelector('main').textContent.includes('Staff reply from API')));
+  assert.ok(await evaluate(() => document.querySelector('main').textContent.includes('Customer feedback from API')));
+  await evaluate(() => document.querySelector('header button[aria-label="Thông báo"]').click());
+  await until(() => evaluate(() => document.body.textContent.includes('Bạn chưa có thông báo nào.')));
+  await key('Escape');
+  notifications = [{ id: 51, type: 'FeedbackReplied', title: 'Cocoon vừa trả lời đánh giá của bạn', refType: 'Feedback', refId: 41, isRead: false, createdAt: '2026-10-27T10:00:00Z' }];
+  await evaluate(() => window.dispatchEvent(new Event('focus')));
+  await until(() => evaluate(() => !!document.querySelector('[data-feedback-toast]')));
+  assert.equal(await evaluate(() => document.querySelectorAll('[data-feedback-toast]').length), 1);
+  await screenshot('notification-toast-desktop');
+  await evaluate(() => document.querySelector('[data-feedback-toast] button').click());
+  await until(() => notificationReadIds.includes(51));
+  await until(() => evaluate(() => !document.querySelector('[data-feedback-toast]')));
+  for (const width of [390, 320]) {
+    await send('Emulation.setDeviceMetricsOverride', { width, height: 844, deviceScaleFactor: 1, mobile: false });
+    await evaluate(() => window.scrollTo(0, 0));
+    await evaluate(() => document.querySelector('header button[aria-label="Thông báo"]').click());
+    await until(() => evaluate(() => !!document.querySelector('[role="dialog"]')));
+    assert.equal(await evaluate(() => { const r = document.querySelector('[role="dialog"]').getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; }), true, 'Notification dropdown fits mobile');
+    assert.equal(await evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Navbar with bell fits mobile');
+    await screenshot(`notifications-${width}`);
+    await key('Escape');
+  }
+  console.log('PASS feedback detail and notifications: reviewed-row keyboard link, sample/real API isolation, retry, replies, toast, read receipt and mobile dropdown');
 } catch (error) {
   console.log(await evaluate(() => ({
     path: location.pathname,

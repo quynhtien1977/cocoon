@@ -1,7 +1,10 @@
-import { ScreenPlaceholder, screenMetadata } from "@/components/brand/screen-placeholder";
+import { FeedbackDetailPage } from "@/features/customer/feedback-detail-page";
 
-export const metadata = screenMetadata("C5");
+export const metadata = { title: "Chi tiết phản hồi | Cocoon" };
 
-export default function Page() {
-  return <ScreenPlaceholder code="C5" />;
+export default async function Page({ params, searchParams }: PageProps<"/account/feedback/[id]">) {
+  const { id } = await params;
+  const query = await searchParams;
+  const preview = query.preview === "1";
+  return <FeedbackDetailPage key={`${id}:${preview}`} id={id} preview={preview} />;
 }

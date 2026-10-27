@@ -8,6 +8,7 @@ import { ArrowRight, Menu, Search, UserRound } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import styles from "./landing.module.css";
 import { CartDrawer } from "@/features/customer/cart-drawer";
+import { CustomerNotifications } from "@/features/customer/customer-notifications";
 
 export function LandingFrame({ customer = false, children, onSearch, searchValue, pendingSurveyCount }: {
   customer?: boolean;
@@ -61,6 +62,7 @@ export function LandingFrame({ customer = false, children, onSearch, searchValue
       <div className={styles.headerRight}>
         <nav aria-label="Khám phá" className={styles.desktopNav}>{right.map(navLink)}</nav>
         <button type="button" className={styles.iconButton} aria-label={searchOpen ? "Đóng tìm kiếm" : "Tìm sản phẩm"} aria-expanded={searchOpen} onClick={() => setSearchOpen(!searchOpen)}><Search size={20} /></button>
+        {customer && <CustomerNotifications />}
         <Link href={customer ? "/account/profile" : "/login"} scroll={customer} className={styles.iconButton} aria-label={customer ? "Hồ sơ khách hàng" : "Đăng nhập tài khoản"}><UserRound size={20} /></Link>
       </div>
     </header>

@@ -24,11 +24,22 @@ test("profile validation rejects invalid dates, phones and blank names before wr
   assert.ok(validateProfile({ ...values, dateOfBirth: "2999-01-01" }).dateOfBirth);
   assert.ok(validateProfile({ ...values, phone: "abc" }).phone);
   assert.ok(validateProfile({ ...values, fullName: " " }).fullName);
+  assert.ok(validateProfile({ ...values, fullName: "a".repeat(151) }).fullName);
   assert.ok(validateProfile({ ...values, address: "a".repeat(1001) }).address);
   let writes = 0;
   globalThis.fetch = async () => { writes++; return new Response(null, { status: 204 }); };
   await assert.rejects(saveProfile({ ...values, fullName: " " }));
   assert.equal(writes, 0);
+});
+
+test("survey-derived preferences remain separate from editable declared preferences", async () => {
+  globalThis.fetch = async (url) => Response.json(url === "/api/v1/preferences"
+    ? [{ id: 42, name: "Da khô" }, { id: 50, name: "Thuần chay" }]
+    : [{ id: 42, name: "Da khô", source: "Declared" }, { id: 50, name: "Thuần chay", source: "Survey" }]);
+  const result = await loadPreferences();
+  assert.deepEqual(result.selected, [42]);
+  assert.deepEqual(result.derived.map(item => item.id), [50]);
+  assert.equal(result.options.some(item => item.id === 50), false, "Survey-derived IDs cannot be accidentally re-declared then deleted by this form");
 });
 
 test("profile updates only the supported fields, preserving explicit consent", async () => {

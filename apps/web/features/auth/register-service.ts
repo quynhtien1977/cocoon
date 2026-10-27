@@ -30,13 +30,22 @@ export type RegistrationErrors = Partial<Record<keyof Registration, string>>;
 export function validateRegistration(values: Registration): RegistrationErrors {
   const errors: RegistrationErrors = {};
   if (!values.fullName.trim()) errors.fullName = "Vui lòng nhập tên của bạn.";
+  else if (values.fullName.trim().length > 150) errors.fullName = "Họ tên tối đa 150 ký tự.";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) errors.email = "Vui lòng nhập địa chỉ email hợp lệ.";
+  else if (values.email.trim().length > 256) errors.email = "Email tối đa 256 ký tự.";
   if (values.password.length < 8 || !/\p{Lu}/u.test(values.password) || !/\p{Ll}/u.test(values.password) || !/\d/.test(values.password)) errors.password = "Mật khẩu cần ít nhất 8 ký tự, gồm chữ hoa, chữ thường và số.";
+  if (values.password.length > 128) errors.password = "Mật khẩu tối đa 128 ký tự.";
   if (!values.confirmation || values.confirmation !== values.password) errors.confirmation = "Mật khẩu xác nhận chưa khớp.";
   return errors;
 }
 
 const normalize = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replaceAll("đ", "d").replace(/[^a-z0-9]/g, "");
+// Explicit equivalents from the existing seed catalog; never map by substring
+// or use seed ordering as a database ID.
+const catalogAliases: Record<string, string[]> = {
+  dry: ["Da khô"], oily: ["Da dầu"], acne: ["Mụn"], sensitive: ["Da nhạy cảm"],
+  uneven: ["Thâm nám"], lip: ["Chăm sóc môi"], vegan: ["Thuần chay"],
+};
 
 export function resolvePreferenceIds(keys: string[], response: unknown): number[] {
   const rows = Array.isArray(response) ? response : response && typeof response === "object" && "items" in response && Array.isArray(response.items) ? response.items : [];
@@ -44,28 +53,33 @@ export function resolvePreferenceIds(keys: string[], response: unknown): number[
   return [...new Set(keys.map((key) => {
     const option = options.find((item) => item.key === key);
     if (!option) throw new Error("Lựa chọn sở thích không hợp lệ. Vui lòng chọn lại.");
-    const aliases = [option.label, option.english, `${option.label} (${option.english})`].map(normalize);
+    const aliases = [option.label, option.english, `${option.label} (${option.english})`, ...(catalogAliases[key] ?? [])].map(normalize);
     const matches = rows.filter((row) => row && typeof row === "object" && Number.isInteger(row.id) && row.id > 0 && row.isActive !== false && typeof row.name === "string" && aliases.includes(normalize(row.name)));
     if (matches.length !== 1) throw new Error("Sở thích đã chọn hiện chưa thể lưu. Bạn có thể thử lại sau hoặc bỏ các lựa chọn để tiếp tục.");
     return matches[0].id as number;
   }))];
 }
 
-export async function registerCustomer(values: Registration, preferences: string[]): Promise<void> {
+export async function saveRegistrationPreferences(preferences: string[]): Promise<void> {
+  const catalog = await apiRequest<unknown>("/preferences", { refresh: false, signal: AbortSignal.timeout(12000) });
+  const preferenceIds = resolvePreferenceIds(preferences, catalog);
+  await apiRequest<unknown>("/me/preferences", { method: "PUT", refresh: false, json: { preferenceIds }, signal: AbortSignal.timeout(12000) });
+}
+
+export async function registerCustomer(values: Registration, preferences: string[]): Promise<{ preferencesError: string | null }> {
   const errors = validateRegistration(values);
   if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
-  let preferenceIds: number[] = [];
-  if (preferences.length) {
-    let catalog: unknown;
-    try { catalog = await apiRequest<unknown>("/preferences", { refresh: false }); }
-    catch { throw new Error("Sở thích hiện chưa thể lưu. Vui lòng thử lại sau hoặc bỏ các lựa chọn để đăng ký không kèm sở thích."); }
-    preferenceIds = resolvePreferenceIds(preferences, catalog);
-  }
-  // This public endpoint creates customers; never send a caller-selected role.
+  // Register creates the customer and sets session cookies. The catalog is
+  // authenticated, so preferences must be resolved and saved AFTER this step.
   await apiRequest<unknown>("/auth/register", {
     method: "POST", refresh: false,
-    json: { fullName: values.fullName.trim(), email: values.email.trim(), password: values.password, phone: null, dateOfBirth: null, gender: null, preferenceIds },
+    json: { fullName: values.fullName.trim(), email: values.email.trim(), password: values.password, phone: null, dateOfBirth: null, gender: null, preferenceIds: [] },
   });
+  if (preferences.length) {
+    try { await saveRegistrationPreferences(preferences); }
+    catch { return { preferencesError: "Tài khoản đã tạo, nhưng chưa lưu được sở thích. Bạn có thể thử lưu lại hoặc chọn sở thích hiện có trong trang hồ sơ." }; }
+  }
+  return { preferencesError: null };
 }
 
 export function registrationErrorMessage(error: unknown): string {
