@@ -26,6 +26,7 @@ interface ApiRequestOptions {
   headers?: HeadersInit;
   signal?: AbortSignal;
   refresh?: boolean;
+  redirectOnUnauthorized?: boolean;
 }
 
 let refreshRequest: Promise<boolean> | undefined;
@@ -79,7 +80,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     response = await fetch(url, request);
   if (!response.ok) {
     const problem = await readProblem(response);
-    if (response.status === 401 && canRefresh && typeof window !== "undefined")
+    if (response.status === 401 && canRefresh && options.redirectOnUnauthorized !== false && typeof window !== "undefined")
       window.location.assign(new URL("/login", window.location.origin).href);
     throw new ApiError(response.status, problem);
   }

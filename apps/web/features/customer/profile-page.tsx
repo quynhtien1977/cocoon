@@ -75,7 +75,7 @@ function PersonalInformation() {
   const [errors, setErrors] = useState<ProfileErrors>({});
   const values = state.draft;
   const fields = [
-    { key: "fullName", label: "Họ và tên", type: "text", autoComplete: "name", max: 256 },
+    { key: "fullName", label: "Họ và tên", type: "text", autoComplete: "name", max: 150 },
     { key: "phone", label: "Số điện thoại", type: "tel", autoComplete: "tel", max: 32 },
     { key: "dateOfBirth", label: "Ngày sinh", type: "date", autoComplete: "bday" },
   ] as const;
@@ -127,6 +127,7 @@ function Preferences() {
   return <Section id="customer-preferences" title="Sở thích của bạn" description="Để Cocoon hiểu làn da và những điều bạn yêu thích." icon={<Leaf size={22} strokeWidth={1.5} />}>
     {state.loading ? <Loading /> : !values ? <Unavailable error={state.error} retry={state.retry} /> : <form aria-label="Chỉnh sửa sở thích" onSubmit={event => { event.preventDefault(); void state.save(); }} aria-busy={state.pending}>
       <p className="mb-6 text-sm leading-6 text-[#756b5e]">Các lựa chọn từ khi đăng ký được hiển thị tại đây. Bạn có thể chọn nhiều mục hoặc để trống.</p>
+      {values.derived.length > 0 && <div className="mb-6 rounded bg-[#f4f1ea] p-4 text-sm text-[#756b5e]"><p className="font-semibold">Sở thích từ khảo sát</p><p className="mt-2">Được cập nhật theo câu trả lời khảo sát, không thay đổi khi lưu các lựa chọn bên dưới.</p><ul className="mt-2 flex flex-wrap gap-2">{values.derived.map(item => <li key={item.id} className="rounded border border-[#d8ccba] px-3 py-1">{item.label}</li>)}</ul></div>}
       <div className="grid gap-6">{groups.map(group => {
         const options = values.options.filter(option => option.group === group.key);
         if (!options.length && group.key === "other") return null;

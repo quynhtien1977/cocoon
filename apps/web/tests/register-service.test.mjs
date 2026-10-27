@@ -38,23 +38,36 @@ test("register without preferences sends only the public customer contract", asy
   assert.deepEqual(calls, ["/api/v1/auth/register"]);
 });
 
-test("selected preferences load catalog before registration and never use invented IDs", async () => {
+test("registration establishes the session before reading and saving protected preferences", async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {
     calls.push(url);
-    if (url.endsWith("/preferences")) return Response.json([{ id: 42, name: "Da khô / Mất nước" }]);
-    assert.deepEqual(JSON.parse(options.body).preferenceIds, [42]);
+    if (url === "/api/v1/preferences") return Response.json([{ id: 42, name: "Da khô" }]);
+    assert.deepEqual(JSON.parse(options.body).preferenceIds, url.endsWith("/auth/register") ? [] : [42]);
     return new Response(null, { status: 204 });
   };
-  await registerCustomer(valid, ["dry"]);
-  assert.deepEqual(calls, ["/api/v1/preferences", "/api/v1/auth/register"]);
+  assert.deepEqual(await registerCustomer(valid, ["dry"]), { preferencesError: null });
+  assert.deepEqual(calls, ["/api/v1/auth/register", "/api/v1/preferences", "/api/v1/me/preferences"]);
 });
 
-test("unavailable preferences stop submission rather than silently drop selections", async () => {
+test("a preference failure after account creation is reported separately, never as registration failure", async () => {
   const calls = [];
-  globalThis.fetch = async (url) => { calls.push(url); return Response.json({}, { status: 501 }); };
-  await assert.rejects(registerCustomer(valid, ["dry"]), /chưa thể lưu/);
-  assert.deepEqual(calls, ["/api/v1/preferences"]);
+  globalThis.fetch = async (url) => { calls.push(url); return url.endsWith("/register") ? new Response(null, { status: 204 }) : Response.json({}, { status: 501 }); };
+  assert.ok((await registerCustomer(valid, ["dry"])).preferencesError);
+  assert.deepEqual(calls, ["/api/v1/auth/register", "/api/v1/preferences"]);
+});
+
+test("registration enforces API length limits before creating an account", async () => {
+  assert.ok(validateRegistration({ ...valid, fullName: "a".repeat(151) }).fullName);
+  assert.ok(validateRegistration({ ...valid, password: "Aa1".repeat(43) }).password);
+  assert.ok(validateRegistration({ ...valid, email: "a".repeat(250) + "@example.com" }).email);
+});
+
+test("unmapped preferences never become invented IDs or a silent partial save", async () => {
+  const calls = [];
+  globalThis.fetch = async (url) => { calls.push(url); return url.endsWith("/register") ? new Response(null, { status: 204 }) : Response.json([{ id: 42, name: "Da khô" }]); };
+  assert.ok((await registerCustomer(valid, ["dry", "gifts"])).preferencesError);
+  assert.deepEqual(calls, ["/api/v1/auth/register", "/api/v1/preferences"]);
 });
 
 test("stub registration never reports success", async () => {

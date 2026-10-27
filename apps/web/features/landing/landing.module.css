@@ -11,3 +11,4 @@
 
 @media(max-width:800px){.header{gap:8px}}
 @media(max-width:360px){.header{padding:0 12px}.logo img{width:124px}}
+@media(max-width:400px){.customerHeader{grid-template-columns:40px minmax(0,1fr) auto;gap:4px;padding-inline:12px}.customerHeader .logo img{width:96px}.customerHeader .headerRight{gap:0}}

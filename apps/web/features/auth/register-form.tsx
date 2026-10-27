@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Select } from "@base-ui/react/select";
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Eye, EyeOff, LockKeyhole, Mail, UserRound, X } from "lucide-react";
-import { preferenceGroups, registerCustomer, registrationErrorMessage, validateRegistration, type Registration, type RegistrationErrors } from "./register-service";
+import { preferenceGroups, registerCustomer, saveRegistrationPreferences, registrationErrorMessage, validateRegistration, type Registration, type RegistrationErrors } from "./register-service";
 import styles from "./login.module.css";
 import registration from "./register.module.css";
-import { loginErrorMessage, signIn } from "./login-service";
+import { getAccountRole, loginErrorMessage } from "./login-service";
+import { apiRequest } from "../../lib/api/client";
 
 const emptyValues: Registration = { fullName: "", email: "", password: "", confirmation: "" };
 const fields = [
@@ -28,6 +29,8 @@ export function RegisterForm({ onClose }: { onClose: () => void }) {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
+  const [preferencesError, setPreferencesError] = useState("");
+  const [sessionReady, setSessionReady] = useState(false);
   const busy = useRef(false);
   const active = useRef(true);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -60,13 +63,16 @@ export function RegisterForm({ onClose }: { onClose: () => void }) {
     setPending(true);
     setMessage("");
     try {
-      await registerCustomer(values, Object.values(selections).flat());
+      const result = await registerCustomer(values, Object.values(selections).flat());
       if (!active.current) return;
+      setPreferencesError(result.preferencesError ?? "");
       try {
-        const destination = await signIn(values.email, values.password, "customer");
+        // Registration already issues a session; do not log in a second time.
+        const profile = await apiRequest<unknown>("/me", { refresh: false, signal: AbortSignal.timeout(12000) });
+        if (getAccountRole(profile) !== "Customer") throw new Error("Vui lòng đăng nhập để tiếp tục với tài khoản vừa tạo.");
         if (!active.current) return;
-        router.replace(destination);
-        router.refresh();
+        setSessionReady(true);
+        if (!result.preferencesError) { router.replace("/account"); router.refresh(); }
       } catch (error) {
         if (!active.current) return;
         setMessage(loginErrorMessage(error));
@@ -77,11 +83,21 @@ export function RegisterForm({ onClose }: { onClose: () => void }) {
     finally { busy.current = false; if (active.current) setPending(false); }
   };
 
+  const retryPreferences = async () => {
+    if (busy.current) return;
+    busy.current = true; setPending(true);
+    try {
+      await saveRegistrationPreferences(Object.values(selections).flat());
+      if (active.current) { setPreferencesError(""); router.replace("/account/profile"); router.refresh(); }
+    } catch { if (active.current) setPreferencesError("Sở thích đã chọn vẫn chưa thể lưu. Bạn có thể chọn các mục hiện có trong trang hồ sơ."); }
+    finally { busy.current = false; if (active.current) setPending(false); }
+  };
+
   return (
     <div className={styles.modalPage} data-portal="public">
       <div className={`${styles.panel} ${registration.panel}`}>
         <div className={styles.topline}><span>Xin chào thành viên mới</span><button type="button" className={styles.close} onClick={onClose} aria-label="Đóng đăng ký"><X size={24} strokeWidth={1.5} /></button></div>
-        {success ? <div className={registration.success} role="status"><Check size={40} /><h1>Chào mừng bạn đến với Cocoon!</h1><p>Tài khoản khách hàng đã được tạo. Bạn có thể đăng nhập để tiếp tục.</p>{message && <p role="alert">{message}</p>}<Link href="/login" replace scroll={false} className={styles.submit}>ĐĂNG NHẬP <ArrowRight size={18} /></Link></div> : <>
+        {success ? <div className={registration.success} role="status"><Check size={40} /><h1>Chào mừng bạn đến với Cocoon!</h1><p>Tài khoản khách hàng đã được tạo.</p>{message && <p role="alert">{message}</p>}{preferencesError && <><p role="alert">{preferencesError}</p>{sessionReady && <button type="button" className={registration.clear} disabled={pending} onClick={retryPreferences}>{pending ? "Đang lưu…" : "Lưu lại sở thích"}</button>}</>}<Link href={sessionReady ? "/account/profile" : "/login"} replace scroll={false} className={styles.submit}>{sessionReady ? "ĐẾN HỒ SƠ" : "ĐĂNG NHẬP"} <ArrowRight size={18} /></Link></div> : <>
           <h1 ref={heading} tabIndex={-1} className={registration.heading}>{step === 1 ? "Tạo tài khoản cùng Cocoon." : "Cocoon hiểu bạn hơn."}</h1>
           <p className={registration.step} aria-live="polite"><span>Bước {step}/2</span> · {step === 1 ? "Thông tin tài khoản — bắt buộc" : "Sở thích của bạn — không bắt buộc"}</p>
           <form ref={form} onSubmit={submit} onKeyDown={(event) => {
