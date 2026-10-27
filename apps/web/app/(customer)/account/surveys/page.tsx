@@ -1,7 +1,7 @@
-import { ScreenPlaceholder, screenMetadata } from "@/components/brand/screen-placeholder";
+import { SurveysPage } from "@/features/customer/surveys-page";
 
-export const metadata = screenMetadata("C6");
+export const metadata = { title: "Khảo sát | Cocoon", description: "Chia sẻ trải nghiệm của bạn cùng Cocoon." };
 
 export default function Page() {
-  return <ScreenPlaceholder code="C6" />;
+  return <SurveysPage />;
 }
