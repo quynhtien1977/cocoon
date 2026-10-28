@@ -1,0 +1,32 @@
+{
+  "winter-melon": {
+    "src": "/images/manager-products/winter-melon.jpg",
+    "source": "https://cocoonvietnam.com/san-pham/gel-bi-dao-rua-mat-310ml",
+    "image": "https://image.cocoonvietnam.com/uploads/z3526520930085_8478409d6ac4058a7b77514ce71bdada_d14a16f231.jpg"
+  },
+  "lotus": {
+    "src": "/images/manager-products/lotus.jpg",
+    "source": "https://cocoonvietnam.com/san-pham/nuoc-sen-hau-giang-140ml",
+    "image": "https://image.cocoonvietnam.com/uploads/Web_Avatar_Nuoc_Sen_140ml_copy_100_14377247e3.jpg"
+  },
+  "coffee": {
+    "src": "/images/manager-products/coffee.jpg",
+    "source": "https://cocoonvietnam.com/san-pham/ca-phe-dak-lak-lam-sach-da-chet-mat-150ml",
+    "image": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Ca_phe_Dak_Lak_Lam_Sach_Da_Chet_Mat_150ml_ec5910e863.jpg"
+  },
+  "coffee-body": {
+    "src": "/images/manager-products/coffee-body.png",
+    "source": "https://cocoonvietnam.com/san-pham/bo-duong-the-ca-phe-dak-lak-200ml",
+    "image": "https://image.cocoonvietnam.com/uploads/Ecom_Body_CP_Bo_duong_the_200ml_4a14a2094c.png"
+  },
+  "coconut": {
+    "src": "/images/manager-products/coconut.jpg",
+    "source": "https://cocoonvietnam.com/san-pham/son-duong-dau-dua-ben-tre-5g",
+    "image": "https://image.cocoonvietnam.com/uploads/Son_duong_dau_dua_26498c9936.jpg"
+  },
+  "rose": {
+    "src": "/images/manager-products/rose.jpg",
+    "source": "https://cocoonvietnam.com/san-pham/thach-hoa-hong-duong-am-30ml",
+    "image": "https://image.cocoonvietnam.com/uploads/z3741705995135_9891ea4b14c3157d95cdd6a207307e05_1edc3960f6.jpg"
+  }
+}

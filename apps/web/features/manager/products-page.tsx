@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, Download, Leaf, Package, RefreshCw, Star, Tags } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowUpRight, Download, Leaf, RefreshCw, Star, Tags } from "lucide-react";
+import Link from "next/link";
+import { ProductPhoto } from "./product-photo";
+import { resolveProductImage } from "./product-media";
 import { PageHeader } from "@/components/brand/page-header";
-import { ColorSelect } from "@/components/brand/color-select";
+import { ProductStatusDropdown, statusColors } from "./product-status";
 import { StatTile } from "@/components/brand/stat-tile";
 
 import { DataTable, type DataColumn, type DataFilter } from "@/components/data/data-table";
 
 import { ApiError } from "@/lib/api/client";
-import { changeProductStatus, loadManagerProducts, previewProducts, productsCsv, productStatusLabels, type ManagerProduct } from "./products-service";
+import { loadManagerProducts, previewProducts, productsCsv, productStatusLabels, type ManagerProduct } from "./products-service";
 import styles from "./products.module.css";
 
-const statusColors = { Active: "bg-status-sage-bg text-status-sage-fg", Upcoming: "bg-status-lotus-bg text-status-lotus-fg", Inactive: "bg-status-gray-bg text-status-gray-fg" };
+
 const categoryColors = ["bg-[#eaf1e4] text-[#61774d]", "bg-[#e8eef5] text-[#627e98]", "bg-[#f8ebdf] text-[#a17d51]", "bg-[#f4e8ee] text-[#a16c83]", "bg-[#eee9f6] text-[#85739d]"];
 const categoryColor = (id: number) => categoryColors[(id - 1) % categoryColors.length];
 
@@ -20,28 +23,8 @@ function Preferences({ values }: { values: string[] }) {
   return values.length ? <div className={styles.tags}>{values.map(value => <span key={value}>{value}</span>)}</div> : <span className={styles.untagged}>Chưa gắn sở thích</span>;
 }
 
-function ProductStatusDropdown({ item, preview, onSaved }: { item: ManagerProduct; preview: boolean; onSaved: (id: number, status: ManagerProduct["status"]) => void }) {
-  const [draft, setDraft] = useState<ManagerProduct["status"] | null>(null);
-  const [error, setError] = useState("");
-  const busy = useRef(false);
-  async function save(status: ManagerProduct["status"]) {
-    if (preview || busy.current || status === item.status) return;
-    busy.current = true; setDraft(status); setError("");
-    try {
-      await changeProductStatus(item.id, status, AbortSignal.timeout(12000));
-      onSaved(item.id, status);
-    } catch (reason) {
-      setError(reason instanceof ApiError && reason.status === 501 ? "Chưa thể lưu: API chưa khả dụng." : "Chưa thể lưu. Vui lòng chọn lại để thử lại.");
-    } finally { busy.current = false; setDraft(null); }
-  }
-  return <div className="min-w-[130px] max-w-[190px]">
-    <ColorSelect badge label={`Trạng thái ${item.name}`} busy={draft !== null} title={preview ? "Dữ liệu mẫu không thay đổi sản phẩm thật" : "Chọn để lưu trạng thái"} value={draft ?? item.status} disabled={draft !== null || preview} onValueChange={value => void save(value as ManagerProduct["status"])} options={(["Active", "Upcoming", "Inactive"] as const).map(value => ({ value, label: productStatusLabels[value], colorClass: statusColors[value] }))} />
-    {draft !== null && <p role="status" className="mt-1 text-xs text-muted-foreground">Đang lưu…</p>}
-    {error && <p role="alert" className="mt-2 text-xs leading-5 text-red-800">{error}</p>}
-  </div>;
-}
 const columns: DataColumn<ManagerProduct>[] = [
-  { id: "name", header: "Sản phẩm", value: item => `${item.name} ${item.sku}`, sortable: true, cell: item => <div className={styles.product}><span className={styles.productIcon} aria-hidden="true"><Package size={22} strokeWidth={1.25} /></span><div><p>{item.name}</p><small>{item.sku || `SP-${item.id}`}</small></div></div> },
+  { id: "name", header: "Sản phẩm", value: item => `${item.name} ${item.sku}`, sortable: true },
   { id: "category", header: "Danh mục", value: item => item.categoryName, sortable: true, cell: item => <span className={styles.category}>{item.categoryName}</span> },
   { id: "status", header: "Trạng thái", value: item => productStatusLabels[item.status] },
   { id: "preferences", header: "Sở thích phù hợp", value: item => item.preferences.join(" "), cell: item => <Preferences values={item.preferences} /> },
@@ -68,7 +51,7 @@ export function ManagerProductsPage() {
   }, [attempt, preview]);
   const data = preview ? previewProducts : products;
   const ready = preview || !loading && !error;
-  const tableColumns: DataColumn<ManagerProduct>[] = columns.map(column => column.id !== "status" ? column : { ...column, cell: item => <ProductStatusDropdown item={item} preview={preview} onSaved={(id, status) => {
+  const tableColumns: DataColumn<ManagerProduct>[] = columns.map(column => column.id === "name" ? { ...column, cell: item => <Link href={`/manager/products/${item.id}${preview ? "?preview=1" : ""}`} className={`${styles.product} rounded focus-visible:outline-2 focus-visible:outline-[#81916c]`} aria-label={`Chi tiết ${item.name}`}><ProductPhoto src={resolveProductImage(item.name, item.imageUrl)} name={item.name} className="h-20 w-16" /><div><p className="hover:underline">{item.name}</p><small>{item.sku || `SP-${item.id}`}</small></div></Link> } : column.id !== "status" ? column : { ...column, cell: item => <ProductStatusDropdown item={item} preview={preview} onSaved={(id, status) => {
     setProducts(current => current.map(product => product.id === id ? { ...product, status } : product));
     setStatusMessage(`Đã đổi trạng thái ${item.name} thành ${status} · ${productStatusLabels[status]}.`);
   }} /> });
