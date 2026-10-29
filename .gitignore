@@ -9,6 +9,9 @@ TestResults/
 *.coverage
 *.coveragexml
 
+# VS Code settings
+.vscode/
+
 # Node / Next.js
 **/node_modules/
 **/.next/
