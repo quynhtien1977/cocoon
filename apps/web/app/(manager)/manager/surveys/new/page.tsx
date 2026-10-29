@@ -1,7 +1,8 @@
-import { ScreenPlaceholder, screenMetadata } from "@/components/brand/screen-placeholder";
+import { screenMetadata } from "@/components/brand/screen-placeholder";
+import { SurveyBuilder } from "@/features/surveys/components/survey-builder";
 
 export const metadata = screenMetadata("M8");
 
 export default function Page() {
-  return <ScreenPlaceholder code="M8" />;
+  return <SurveyBuilder />;
 }

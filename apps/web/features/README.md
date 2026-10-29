@@ -6,6 +6,7 @@ Một thư mục cho mỗi module (spec mục 8.4): `auth`, `profile`, `home`, `
 features/<module>/
   api.ts        React Query hooks gọi lib/api/client.ts; query key dạng ["customers", params]
   schemas.ts    zod schema cho form, suy từ types OpenAPI (lib/api/schema.d.ts)
+  types.ts      kiểu response tạm khi OpenAPI chưa có DTO; thay bằng lib/api/schema.d.ts khi P3 công bố
   components/   component riêng của module
   *.fixture.ts  dữ liệu mẫu cho giai đoạn UI tĩnh; xóa khi nối API thật
 ```
