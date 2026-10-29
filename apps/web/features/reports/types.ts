@@ -6,6 +6,9 @@ export interface ReportOverview {
   newFeedback: number;
   avgRating: number | null;
   openSurveys: number;
+  newCustomersThisMonth: number;
+  ratingCount: number;
+  completedResponses: number;
 }
 
 export interface WeeklyFeedback { week: string; total: number; lowRating: number }
@@ -27,5 +30,9 @@ export interface AttentionFeedback {
   rating: number;
   excerpt: string;
   status: "New" | "Accepted" | "Assigned";
+  orderCode: string;
   createdAt: string;
 }
+
+/** Editorial highlight under the overview; static copy until reports expose insights. */
+export interface ReportInsight { id: string; icon: "coffee" | "leaf" | "clock"; eyebrow: string; title: string; body: string }

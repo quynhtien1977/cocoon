@@ -40,7 +40,18 @@ export interface DataTableProps<T> {
   onRetry?: () => void;
   emptyTitle?: string;
   emptyDescription?: string;
+  /** Card for one row below cardsUntil; the table is kept from there up. Both stay in the DOM, CSS hides one per breakpoint. */
+  renderCard?: (row: T) => ReactNode;
+  /** Width where the table replaces the cards; wider for tables that need more than a tablet's width beside the sidebar. */
+  cardsUntil?: "md" | "lg" | "xl";
 }
+
+// Literal class names so Tailwind can see them.
+const cardBreakpoints = {
+  md: { cards: "md:hidden", table: "hidden md:block" },
+  lg: { cards: "lg:hidden", table: "hidden lg:block" },
+  xl: { cards: "xl:hidden", table: "hidden xl:block" },
+};
 
 function LoadingTable() {
   return <div role="status" className="space-y-3 p-6"><span className="sr-only">Đang tải bảng dữ liệu</span>{[0, 1, 2, 3].map((row) => <Skeleton key={row} className="h-12 w-full" />)}</div>;
@@ -75,13 +86,15 @@ function SearchField({ id, query, onQuery }: { id: string; query: string; onQuer
     placeholder="Nhập từ khóa…" />;
 }
 
-function TableContent<T>({ data, columns, getRowId, caption, filters = [], paramPrefix = "", loading = false, error, onRetry, emptyTitle = "Không có dữ liệu", emptyDescription = "Thử thay đổi từ khóa hoặc bộ lọc." }: DataTableProps<T>) {
+function TableContent<T>({ data, columns, getRowId, caption, filters = [], paramPrefix = "", loading = false, error, onRetry, emptyTitle = "Không có dữ liệu", emptyDescription = "Thử thay đổi từ khóa hoặc bộ lọc.", renderCard, cardsUntil = "md" }: DataTableProps<T>) {
+  const breakpoint = cardBreakpoints[cardsUntil];
   const searchParams = useSearchParams();
   const id = useId();
   const state = readTableState(new URLSearchParams(searchParams.toString()), paramPrefix, columns.filter((column) => column.sortable).map((column) => column.id), filters);
   const query = normalize(state.query.trim());
   const matching = data.filter((row) => (!query || columns.some((column) => column.searchable !== false && normalize(String(column.value(row) ?? "")).includes(query))) && filters.every((filter) => !state.filters[filter.id] || filter.matches(row, state.filters[filter.id])));
-  const sortColumn = columns.find((column) => column.id === state.sort);
+  const sortable = columns.filter((column) => column.sortable);
+  const sortColumn = sortable.find((column) => column.id === state.sort);
   if (sortColumn) matching.sort((a, b) => {
     const left = sortColumn.value(a), right = sortColumn.value(b);
     if (left == null) return right == null ? 0 : 1;
@@ -111,18 +124,26 @@ function TableContent<T>({ data, columns, getRowId, caption, filters = [], param
   return (
     <section aria-label={caption} className="min-w-0 space-y-4">
       <div className="flex flex-wrap items-end gap-3">
-        <label htmlFor={`${id}-search`} className="grid min-w-0 flex-1 gap-2 text-sm font-semibold">Tìm kiếm
+        <label htmlFor={`${id}-search`} className="grid min-w-0 basis-full gap-2 text-sm font-semibold sm:basis-64 sm:flex-1">Tìm kiếm
           <SearchField id={`${id}-search`} query={state.query} onQuery={value => update({ q: value, page: "1" }, true)} />
         </label>
-        {filters.map((filter) => <label key={filter.id} className="grid gap-2 text-sm font-semibold" htmlFor={`${id}-${filter.id}`}>{filter.label}
+        {filters.map((filter) => <label key={filter.id} className="grid min-w-36 flex-1 gap-2 text-sm font-semibold sm:flex-none" htmlFor={`${id}-${filter.id}`}>{filter.label}
           {filter.colored ? <ColorSelect id={`${id}-${filter.id}`} label={filter.label} value={state.filters[filter.id]} options={[{ value: "", label: "Tất cả" }, ...filter.options]} onValueChange={value => update({ [`filter.${filter.id}`]: value, page: "1" })} /> : <select id={`${id}-${filter.id}`} className={inputClass} value={state.filters[filter.id]} onChange={(event) => update({ [`filter.${filter.id}`]: event.target.value, page: "1" })}>
             <option value="">Tất cả</option>{filter.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>}
         </label>)}
-        <Button variant="outline" className="min-h-12 px-4" disabled={!state.query && !Object.values(state.filters).some(Boolean)} onClick={() => update({ q: "", page: "1", ...Object.fromEntries(filters.map((filter) => [`filter.${filter.id}`, ""])) })}>Đặt lại bộ lọc</Button>
+        {renderCard && sortable.length > 0 && <label htmlFor={`${id}-sort`} className={`grid min-w-36 flex-1 gap-2 text-sm font-semibold sm:flex-none ${breakpoint.cards}`}>Sắp xếp
+          <select id={`${id}-sort`} className={inputClass} value={state.sort ? `${state.sort}:${state.direction}` : ""} onChange={(event) => { const [sort = "", dir = ""] = event.target.value.split(":"); update({ sort, dir, page: "1" }); }}>
+            <option value="">Mặc định</option>
+            {sortable.flatMap((column) => [<option key={`${column.id}:asc`} value={`${column.id}:asc`}>{column.header} ↑</option>, <option key={`${column.id}:desc`} value={`${column.id}:desc`}>{column.header} ↓</option>])}
+          </select>
+        </label>}
+        <Button variant="outline" className="min-h-12 flex-1 px-4 sm:flex-none" disabled={!state.query && !Object.values(state.filters).some(Boolean)} onClick={() => update({ q: "", page: "1", ...Object.fromEntries(filters.map((filter) => [`filter.${filter.id}`, ""])) })}>Đặt lại bộ lọc</Button>
       </div>
       {loading ? <LoadingTable /> : error ? <div role="alert" className="rounded-lg border border-destructive p-6"><p>{error}</p>{onRetry && <Button type="button" variant="outline" className="mt-3" onClick={onRetry}>Thử lại</Button>}</div> : <>
-        <Table>
+        {renderCard && (rows.length ? <ul className={`grid gap-3 sm:grid-cols-2 ${breakpoint.cards}`}>{rows.map((row) => <li key={getRowId(row)} className="grid">{renderCard(row)}</li>)}</ul>
+          : <div className={breakpoint.cards}><EmptyState title={emptyTitle} description={emptyDescription} /></div>)}
+        <div className={renderCard ? breakpoint.table : undefined}><Table>
           <TableCaption className="sr-only">{caption}</TableCaption>
           <TableHeader><TableRow>{columns.map((column) => <TableHead key={column.id} scope="col" aria-sort={column.sortable ? state.sort === column.id ? state.direction === "asc" ? "ascending" : "descending" : "none" : undefined}>
             {column.sortable ? <button type="button" className="flex min-h-12 items-center gap-2 text-left focus-visible:outline-2 focus-visible:outline-ring" onClick={() => update({ sort: column.id, dir: state.sort === column.id && state.direction === "asc" ? "desc" : "asc", page: "1" })}>
@@ -130,7 +151,7 @@ function TableContent<T>({ data, columns, getRowId, caption, filters = [], param
             </button> : column.header}
           </TableHead>)}</TableRow></TableHeader>
           <TableBody>{rows.length ? rows.map((row) => <TableRow key={getRowId(row)} className="h-11">{columns.map((column) => <TableCell key={column.id}>{column.cell ? column.cell(row) : column.value(row) ?? "—"}</TableCell>)}</TableRow>) : <TableRow><TableCell colSpan={Math.max(1, columns.length)}><EmptyState title={emptyTitle} description={emptyDescription} /></TableCell></TableRow>}</TableBody>
-        </Table>
+        </Table></div>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p role="status" className="text-sm text-muted-foreground">{matching.length} kết quả · Trang {page}/{pages}</p>
           <label className="flex items-center gap-2 text-sm">Số dòng mỗi trang<select className={inputClass} value={state.pageSize} onChange={(event) => update({ size: event.target.value, page: "1" })}>{[10, 20, 50].map((size) => <option key={size} value={size}>{size}</option>)}</select></label>

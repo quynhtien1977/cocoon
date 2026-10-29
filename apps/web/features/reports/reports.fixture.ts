@@ -1,5 +1,5 @@
 // Static data for M1 until reports/* is wired up. Delete when api.ts lands.
-import type { AgeGroupCount, AttentionFeedback, CategoryAgeRevenue, CategoryRating, CoPurchasePair, GenderCount, MonthlyLowRating, PreferenceCount, ReportOverview, WeeklyFeedback } from "./types";
+import type { AgeGroupCount, AttentionFeedback, CategoryAgeRevenue, CategoryRating, CoPurchasePair, GenderCount, MonthlyLowRating, PreferenceCount, ReportInsight, ReportOverview, WeeklyFeedback } from "./types";
 
 export const overviewFixture: ReportOverview = {
   totalCustomers: 86,
@@ -7,7 +7,12 @@ export const overviewFixture: ReportOverview = {
   newFeedback: 9,
   avgRating: 4.3,
   openSurveys: 3,
+  newCustomersThisMonth: 4,
+  ratingCount: 142,
+  completedResponses: 128,
 };
+
+export const reportPeriodsFixture = ["Tháng 10/2026", "Tháng 09/2026", "Tháng 08/2026", "Quý 3/2026"];
 
 export const weeklyFeedbackFixture: WeeklyFeedback[] = [
   { week: "08/09", total: 18, lowRating: 2 },
@@ -21,10 +26,10 @@ export const weeklyFeedbackFixture: WeeklyFeedback[] = [
 ];
 
 export const attentionFeedbackFixture: AttentionFeedback[] = [
-  { id: 41, customerName: "Đặng Hoàng Lan", productName: "Nước sen Hậu Giang 310ml", rating: 2, excerpt: "Vòi xịt hơi mạnh, làm rất nhẹ khi xịt trực tiếp lên mặt.", status: "New", createdAt: "2026-10-28T09:15:00+07:00" },
-  { id: 40, customerName: "Trần Tuấn Anh", productName: "Gel bí đao rửa mặt 140ml", rating: 1, excerpt: "Da mình bị khô căng sau hai tuần dùng liên tục.", status: "New", createdAt: "2026-10-27T21:02:00+07:00" },
-  { id: 38, customerName: "Lê Minh Quân", productName: "Tẩy da chết cà phê Đắk Lắk", rating: 3, excerpt: "Mùi cà phê thơm nồng, nhưng hạt hơi to với da mặt.", status: "Accepted", createdAt: "2026-10-27T16:40:00+07:00" },
-  { id: 36, customerName: "Phạm Ngọc Mai", productName: "Sữa dưỡng hoa hồng Cao Bằng", rating: 2, excerpt: "Hộp giao tới bị móp, nắp bơm không lên.", status: "Assigned", createdAt: "2026-10-26T10:24:00+07:00" },
+  { id: 41, customerName: "Đặng Hoàng Lan", productName: "Nước sen Hậu Giang 310ml", rating: 2, excerpt: "Vòi xịt hơi mạnh, làm rất nhẹ khi xịt trực tiếp lên mặt.", status: "New", orderCode: "CC-8821", createdAt: "2026-10-28T09:15:00+07:00" },
+  { id: 40, customerName: "Trần Tuấn Anh", productName: "Gel bí đao rửa mặt 140ml", rating: 1, excerpt: "Da mình bị khô căng sau hai tuần dùng liên tục.", status: "New", orderCode: "CC-8790", createdAt: "2026-10-27T21:02:00+07:00" },
+  { id: 38, customerName: "Lê Minh Quân", productName: "Tẩy da chết cà phê Đắk Lắk", rating: 3, excerpt: "Mùi cà phê thơm nồng, nhưng hạt hơi to với da mặt.", status: "Accepted", orderCode: "CC-7390", createdAt: "2026-10-27T16:40:00+07:00" },
+  { id: 36, customerName: "Phạm Ngọc Mai", productName: "Sữa dưỡng hoa hồng Cao Bằng", rating: 2, excerpt: "Hộp giao tới bị móp, nắp bơm không lên.", status: "Assigned", orderCode: "CC-7012", createdAt: "2026-10-26T10:24:00+07:00" },
 ];
 
 export const ageGroupFixture: AgeGroupCount[] = [
@@ -84,4 +89,10 @@ export const coPurchaseFixture: CoPurchasePair[] = [
   { productA: "Nước sen Hậu Giang", productB: "Kem dưỡng sen", bothCount: 12, confidence: 0.41 },
   { productA: "Nước dưỡng tóc bưởi", productB: "Dầu gội bưởi", bothCount: 11, confidence: 0.39 },
   { productA: "Sữa dưỡng hoa hồng Cao Bằng", productB: "Toner hoa hồng", bothCount: 8, confidence: 0.33 },
+];
+
+export const insightsFixture: ReportInsight[] = [
+  { id: "coffee", icon: "coffee", eyebrow: "Vùng nguyên liệu Đắk Lắk", title: "Hạt cà phê thuần chay", body: "Chiếm 48% danh mục ưu tiên mua lặp lại của nhóm khách hàng thành thị 25–34 tuổi." },
+  { id: "winter-melon", icon: "leaf", eyebrow: "Bí đao tiên phong", title: "Làm sạch dịu nhẹ & giảm dầu", body: "Điểm đánh giá 4,6/5 với 68% khách hàng mua kèm toner bí đao." },
+  { id: "response", icon: "clock", eyebrow: "Chỉ số vận hành CRM", title: "Tỷ lệ giữ chân khách thuần chay", body: "Thời gian phản hồi bình quân còn 32 phút, tỷ lệ phản hồi ≤ 2 sao giảm còn 4,2% trong tháng." },
 ];
