@@ -1,12 +1,13 @@
 "use client";
 
-import { Suspense, useEffect, useId, type ReactNode } from "react";
+import { Suspense, useEffect, useId, useRef, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/brand/empty-state";
+import { ColorSelect, type ColorSelectOption } from "@/components/brand/color-select";
 import { readTableState, updateTableParams } from "./table-state";
 
 export interface DataColumn<T> {
@@ -21,7 +22,8 @@ export interface DataColumn<T> {
 export interface DataFilter<T> {
   id: string;
   label: string;
-  options: { value: string; label: string }[];
+  options: ColorSelectOption[];
+  colored?: boolean;
   matches: (row: T, value: string) => boolean;
 }
 
@@ -47,6 +49,31 @@ function LoadingTable() {
 const inputClass = "min-h-12 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50";
 const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLocaleLowerCase("vi");
 const collator = new Intl.Collator("vi", { numeric: true, sensitivity: "base" });
+
+// Keep the browser in charge of text/caret while an IME composes a character.
+// Router updates can be deferred, so they must not control each keystroke.
+function SearchField({ id, query, onQuery }: { id: string; query: string; onQuery: (value: string) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const composing = useRef(false);
+  const lastSent = useRef<string | null>(null);
+  useEffect(() => {
+    if (composing.current) return;
+    if (lastSent.current !== null && query !== lastSent.current) return;
+    lastSent.current = null;
+    if (input.current && input.current.value !== query) input.current.value = query;
+  }, [query]);
+  useEffect(() => {
+    const reset = () => { lastSent.current = null; composing.current = false; };
+    window.addEventListener("popstate", reset);
+    return () => window.removeEventListener("popstate", reset);
+  }, []);
+  function commit(value: string) { lastSent.current = value === query ? null : value; onQuery(value); }
+  return <input ref={input} id={id} type="search" className={inputClass} defaultValue={query}
+    onCompositionStart={() => { composing.current = true; }}
+    onCompositionEnd={event => { composing.current = false; commit(event.currentTarget.value); }}
+    onChange={event => { if (!composing.current) commit(event.currentTarget.value); }}
+    placeholder="Nhập từ khóa…" />;
+}
 
 function TableContent<T>({ data, columns, getRowId, caption, filters = [], paramPrefix = "", loading = false, error, onRetry, emptyTitle = "Không có dữ liệu", emptyDescription = "Thử thay đổi từ khóa hoặc bộ lọc." }: DataTableProps<T>) {
   const searchParams = useSearchParams();
@@ -85,12 +112,12 @@ function TableContent<T>({ data, columns, getRowId, caption, filters = [], param
     <section aria-label={caption} className="min-w-0 space-y-4">
       <div className="flex flex-wrap items-end gap-3">
         <label htmlFor={`${id}-search`} className="grid min-w-0 flex-1 gap-2 text-sm font-semibold">Tìm kiếm
-          <input id={`${id}-search`} type="search" className={inputClass} value={state.query} onChange={(event) => update({ q: event.target.value, page: "1" }, true)} placeholder="Nhập từ khóa…" />
+          <SearchField id={`${id}-search`} query={state.query} onQuery={value => update({ q: value, page: "1" }, true)} />
         </label>
         {filters.map((filter) => <label key={filter.id} className="grid gap-2 text-sm font-semibold" htmlFor={`${id}-${filter.id}`}>{filter.label}
-          <select id={`${id}-${filter.id}`} className={inputClass} value={state.filters[filter.id]} onChange={(event) => update({ [`filter.${filter.id}`]: event.target.value, page: "1" })}>
+          {filter.colored ? <ColorSelect id={`${id}-${filter.id}`} label={filter.label} value={state.filters[filter.id]} options={[{ value: "", label: "Tất cả" }, ...filter.options]} onValueChange={value => update({ [`filter.${filter.id}`]: value, page: "1" })} /> : <select id={`${id}-${filter.id}`} className={inputClass} value={state.filters[filter.id]} onChange={(event) => update({ [`filter.${filter.id}`]: event.target.value, page: "1" })}>
             <option value="">Tất cả</option>{filter.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
+          </select>}
         </label>)}
         <Button variant="outline" className="min-h-12 px-4" disabled={!state.query && !Object.values(state.filters).some(Boolean)} onClick={() => update({ q: "", page: "1", ...Object.fromEntries(filters.map((filter) => [`filter.${filter.id}`, ""])) })}>Đặt lại bộ lọc</Button>
       </div>
