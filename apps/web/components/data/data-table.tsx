@@ -132,8 +132,8 @@ function TableContent<T>({ data, columns, getRowId, caption, filters = [], param
             <option value="">Tất cả</option>{filter.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>}
         </label>)}
-        {renderCard && sortable.length > 0 && <label htmlFor={`${id}-sort`} className={`grid min-w-36 flex-1 gap-2 text-sm font-semibold sm:flex-none ${breakpoint.cards}`}>Sắp xếp
-          <select id={`${id}-sort`} className={inputClass} value={state.sort ? `${state.sort}:${state.direction}` : ""} onChange={(event) => { const [sort = "", dir = ""] = event.target.value.split(":"); update({ sort, dir, page: "1" }); }}>
+        {renderCard && sortable.length > 0 && <label htmlFor={`${id}-sort`} className={`grid min-w-36 flex-1 grid-cols-[minmax(0,1fr)] gap-2 text-sm font-semibold sm:flex-none ${breakpoint.cards}`}>Sắp xếp
+          <select id={`${id}-sort`} className={`${inputClass} w-full`} value={state.sort ? `${state.sort}:${state.direction}` : ""} onChange={(event) => { const [sort = "", dir = ""] = event.target.value.split(":"); update({ sort, dir, page: "1" }); }}>
             <option value="">Mặc định</option>
             {sortable.flatMap((column) => [<option key={`${column.id}:asc`} value={`${column.id}:asc`}>{column.header} ↑</option>, <option key={`${column.id}:desc`} value={`${column.id}:desc`}>{column.header} ↓</option>])}
           </select>
