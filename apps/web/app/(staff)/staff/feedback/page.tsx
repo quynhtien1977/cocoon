@@ -1,7 +1,8 @@
-import { ScreenPlaceholder, screenMetadata } from "@/components/brand/screen-placeholder";
+import { screenMetadata } from "@/components/brand/screen-placeholder";
+import { StaffFeedbackList } from "@/features/feedback/components/staff-feedback-list";
 
 export const metadata = screenMetadata("S1");
 
 export default function Page() {
-  return <ScreenPlaceholder code="S1" />;
+  return <StaffFeedbackList />;
 }
