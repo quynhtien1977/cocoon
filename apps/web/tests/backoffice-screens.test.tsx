@@ -7,12 +7,14 @@ import userEvent from "@testing-library/user-event";
 import { SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 import { CustomerList } from "../features/customers/components/customer-list";
 import { customersFixture } from "../features/customers/customers.fixture";
+import { customersToCsv } from "../features/customers/customers-csv";
 import { FeedbackInbox } from "../features/feedback/components/feedback-inbox";
 import { feedbackFixture } from "../features/feedback/feedback.fixture";
 import { ManagerDashboard } from "../features/reports/components/manager-dashboard";
 import { SurveyBuilder } from "../features/surveys/components/survey-builder";
+import { SurveyList } from "../features/surveys/components/survey-list";
 import { toSurveyUpsertRequest, validateSurveyDraft } from "../features/surveys/schemas";
-import { surveyDraftFixture } from "../features/surveys/surveys.fixture";
+import { surveyDraftFixture, surveysFixture } from "../features/surveys/surveys.fixture";
 
 beforeEach(() => window.history.replaceState(null, "", "/"));
 afterEach(cleanup);
@@ -27,6 +29,32 @@ test("M1 shows the five overview tiles and switches to customer report tab", asy
   await userEvent.setup().click(screen.getByRole("tab", { name: "Báo cáo khách hàng" }));
   assert.ok(screen.getByRole("table", { name: "Cơ cấu giới tính" }));
   assert.ok(screen.getByRole("table", { name: "Sở thích phổ biến" }));
+});
+
+test("M1 overview previews open the matching report tab", async () => {
+  const user = userEvent.setup();
+  render(<ManagerDashboard />);
+  assert.ok(screen.getByText("Hạt cà phê thuần chay"));
+  assert.equal(screen.getByRole("link", { name: "Xem tất cả (9)" }).getAttribute("href"), "/manager/feedback");
+  await user.click(screen.getByRole("button", { name: "Xem phân tích" }));
+  assert.equal(screen.getByRole("tab", { name: "Phân tích" }).getAttribute("aria-selected"), "true");
+  assert.ok(screen.getByRole("table", { name: "Cặp sản phẩm hay mua cùng" }));
+});
+
+test("M2 renders a mobile card per row with a link name distinct from the table", () => {
+  render(withParams("size=10", <CustomerList />));
+  const first = customersFixture[0];
+  assert.equal(screen.getByRole("link", { name: `Hồ sơ ${first.fullName}, ${first.code}` }).getAttribute("href"), `/manager/customers/${first.id}`);
+  assert.ok(screen.getByLabelText("Sắp xếp"));
+  assert.ok(screen.getByRole("button", { name: "Xuất file CSV" }));
+});
+
+test("customer CSV keeps diacritics and neutralises formula cells", () => {
+  const csv = customersToCsv([{ ...customersFixture[0], fullName: "=HYPERLINK(\"x\")", preferences: ["Da dầu mụn", "Dưỡng ẩm"] }]);
+  assert.ok(csv.startsWith("﻿\"Mã KH\""));
+  const [, row] = csv.slice(1).split("\r\n");
+  assert.ok(row.includes(`"'=HYPERLINK(""x"")"`));
+  assert.ok(row.includes('"Da dầu mụn; Dưỡng ẩm"'));
 });
 
 test("M2 lists customers with links to M4 and filters by gender from the URL", () => {
@@ -75,6 +103,38 @@ test("M8 edits questions: type change, add option, tag preference, reorder and s
   await user.selectOptions(within(screen.getAllByRole("group")[2]).getByLabelText("Gắn sở thích cho lựa chọn 1"), "6");
   await user.click(screen.getByRole("button", { name: "Lưu bản nháp" }));
   assert.ok(screen.getByText(/Đã lưu bản nháp/));
+});
+
+test("M8 collapses questions and previews the draft read-only", async () => {
+  const user = userEvent.setup();
+  render(<SurveyBuilder initial={surveyDraftFixture} />);
+  await user.click(screen.getByRole("button", { name: "Thu gọn tất cả" }));
+  assert.equal(screen.queryAllByLabelText("Nội dung câu hỏi").length, 0);
+  assert.ok(screen.getByText(surveyDraftFixture.questions[0].text));
+  await user.click(screen.getByRole("button", { name: "Mở rộng tất cả" }));
+  assert.equal(screen.getAllByLabelText("Nội dung câu hỏi").length, 4);
+  await user.click(screen.getByRole("button", { name: "Xem trước khảo sát" }));
+  const dialog = await screen.findByRole("dialog");
+  assert.ok(within(dialog).getByText(surveyDraftFixture.title));
+  assert.equal(within(dialog).getAllByRole("radio").every((input) => (input as HTMLInputElement).disabled), true);
+});
+
+test("M7 offers actions by status and deletes a draft after confirmation", async () => {
+  const user = userEvent.setup();
+  render(withParams("size=50", <SurveyList />));
+  const table = screen.getByRole("table", { name: /Khảo sát/ });
+  const [draft] = surveysFixture.filter((row) => row.status === "Draft");
+  const [closed] = surveysFixture.filter((row) => row.status === "Closed");
+  const draftRow = within(table).getByText(draft.title).closest("tr")!;
+  assert.equal(within(draftRow).getByRole("link", { name: `Chỉnh sửa ${draft.title}` }).getAttribute("href"), `/manager/surveys/${draft.id}/edit`);
+  assert.equal(within(draftRow).queryByRole("link", { name: /Xem kết quả/ }), null);
+  const closedRow = within(table).getByText(closed.title).closest("tr")!;
+  assert.equal(within(closedRow).getByRole("link", { name: `Xem kết quả ${closed.title}` }).getAttribute("href"), `/manager/surveys/${closed.id}/results`);
+  assert.equal(within(closedRow).queryByRole("link", { name: /Chỉnh sửa|Gửi khảo sát/ }), null);
+  await user.click(within(draftRow).getByRole("button", { name: `Xóa ${draft.title}` }));
+  await user.click(await screen.findByRole("button", { name: "Xóa bản nháp" }));
+  assert.equal(within(table).queryByText(draft.title), null);
+  assert.equal(within(table).getAllByRole("row").length - 1, surveysFixture.length - 1);
 });
 
 test("survey draft maps to SurveyUpsertRequest with API enum ordinals", () => {

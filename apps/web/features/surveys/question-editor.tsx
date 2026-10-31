@@ -19,14 +19,17 @@ export interface QuestionEditorProps {
   preferences: readonly PreferenceOption[];
   /** Errors relative to this question: "text", "options", "options.1.text". */
   errors?: Record<string, string>;
+  /** Shows only the header and a one-line summary; errors keep the block open. */
+  collapsed?: boolean;
   onChange: (question: QuestionDraft) => void;
   onRemove: () => void;
   onMove: (offset: -1 | 1) => void;
 }
 
 /** One block for the four QuestionType values (spec 4.5); choice options can tag a preference (spec 5.6 rule 4). */
-export function QuestionEditor({ index, total, question, preferences, errors = {}, onChange, onRemove, onMove }: QuestionEditorProps) {
+export function QuestionEditor({ index, total, question, preferences, errors = {}, collapsed = false, onChange, onRemove, onMove }: QuestionEditorProps) {
   const id = useId();
+  const compact = collapsed && Object.keys(errors).length === 0;
   const number = String(index + 1).padStart(2, "0");
   const update = (patch: Partial<QuestionDraft>) => onChange({ ...question, ...patch });
   const updateOption = (position: number, patch: Partial<OptionDraft>) => update({ options: question.options.map((option, i) => i === position ? { ...option, ...patch } : option) });
@@ -37,25 +40,33 @@ export function QuestionEditor({ index, total, question, preferences, errors = {
   });
 
   return (
-    <fieldset className="rounded-lg border border-border bg-card p-6" aria-describedby={errors.options ? `${id}-options-error` : undefined}>
+    <fieldset className="rounded-lg border border-border bg-card p-4 sm:p-6" aria-describedby={errors.options ? `${id}-options-error` : undefined}>
       <legend className="sr-only">Câu {index + 1}</legend>
-      <div className="flex flex-wrap items-center gap-3 border-b border-border pb-4">
+      <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2", !compact && "border-b border-border pb-4")}>
         <span className="rounded-sm border border-gold px-2 py-1 font-label text-sm uppercase tracking-wider text-gold-strong">Câu {number}</span>
         <label htmlFor={`${id}-type`} className="sr-only">Loại câu hỏi</label>
-        <select id={`${id}-type`} value={question.type} onChange={(event) => changeType(event.target.value as QuestionType)} className={cn(fieldClass, "w-auto")}>
+        <select id={`${id}-type`} value={question.type} onChange={(event) => changeType(event.target.value as QuestionType)} className={cn(fieldClass, "w-auto min-w-0 flex-1 sm:flex-none")}>
           {(Object.keys(questionTypeLabels) as QuestionType[]).map((type) => <option key={type} value={type}>{questionTypeLabels[type]}</option>)}
         </select>
-        <label className="ml-auto inline-flex min-h-12 items-center gap-2 font-label text-sm uppercase tracking-wider">
-          <input type="checkbox" checked={question.isRequired} onChange={(event) => update({ isRequired: event.target.checked })} className="size-5 accent-gold-strong" />
-          Bắt buộc
-        </label>
-        <span className="flex gap-1">
-          <Button type="button" variant="ghost" size="icon-lg" className="size-12" disabled={index === 0} onClick={() => onMove(-1)} aria-label={`Đưa câu ${index + 1} lên`}><ArrowUp aria-hidden="true" /></Button>
-          <Button type="button" variant="ghost" size="icon-lg" className="size-12" disabled={index === total - 1} onClick={() => onMove(1)} aria-label={`Đưa câu ${index + 1} xuống`}><ArrowDown aria-hidden="true" /></Button>
-          <Button type="button" variant="ghost" size="icon-lg" className="size-12 text-destructive" onClick={onRemove} aria-label={`Xóa câu ${index + 1}`}><Trash2 aria-hidden="true" /></Button>
-        </span>
+        <div className="flex w-full items-center justify-between gap-1 sm:ml-auto sm:w-auto">
+          <label className="inline-flex min-h-12 items-center gap-2 pr-2 font-label text-sm uppercase tracking-wider">
+            <input type="checkbox" checked={question.isRequired} onChange={(event) => update({ isRequired: event.target.checked })} className="size-5 accent-gold-strong" />
+            Bắt buộc
+          </label>
+          <span className="flex gap-1">
+            <Button type="button" variant="ghost" size="icon-lg" className="size-12" disabled={index === 0} onClick={() => onMove(-1)} aria-label={`Đưa câu ${index + 1} lên`}><ArrowUp aria-hidden="true" /></Button>
+            <Button type="button" variant="ghost" size="icon-lg" className="size-12" disabled={index === total - 1} onClick={() => onMove(1)} aria-label={`Đưa câu ${index + 1} xuống`}><ArrowDown aria-hidden="true" /></Button>
+            <Button type="button" variant="ghost" size="icon-lg" className="size-12 text-destructive" onClick={onRemove} aria-label={`Xóa câu ${index + 1}`}><Trash2 aria-hidden="true" /></Button>
+          </span>
+        </div>
       </div>
 
+      {compact ? (
+        <p className="mt-2 truncate font-heading text-base">
+          {question.text.trim() || <span className="text-muted-foreground">Chưa nhập nội dung câu hỏi</span>}
+          {isChoice(question.type) && <span className="font-sans text-sm text-muted-foreground"> · {question.options.length} lựa chọn</span>}
+        </p>
+      ) : <>
       <div className="mt-4 space-y-2">
         <label htmlFor={`${id}-text`} className={labelClass}>Nội dung câu hỏi</label>
         <input id={`${id}-text`} value={question.text} onChange={(event) => update({ text: event.target.value })} maxLength={500}
@@ -78,11 +89,11 @@ export function QuestionEditor({ index, total, question, preferences, errors = {
                       aria-invalid={!!optionError} aria-describedby={optionError ? `${id}-option-${position}-error` : undefined} className={fieldClass} />
                     <label htmlFor={`${id}-preference-${position}`} className="sr-only">Gắn sở thích cho lựa chọn {position + 1}</label>
                     <select id={`${id}-preference-${position}`} value={option.preferenceId ?? ""} onChange={(event) => updateOption(position, { preferenceId: event.target.value ? Number(event.target.value) : null })}
-                      className={cn(fieldClass, "col-start-2 sm:col-start-auto", option.preferenceId !== null && "border-gold bg-status-beige-bg text-status-beige-fg")}>
+                      className={cn(fieldClass, "col-start-2 sm:col-start-3 sm:row-start-1", option.preferenceId !== null && "border-gold bg-status-beige-bg text-status-beige-fg")}>
                       <option value="">Không gắn sở thích</option>
                       {preferences.map((preference) => <option key={preference.id} value={preference.id}># {preference.name}</option>)}
                     </select>
-                    <Button type="button" variant="ghost" size="icon-lg" className="col-start-3 row-start-1 size-12 sm:col-start-auto" onClick={() => update({ options: question.options.filter((_, i) => i !== position) })} aria-label={`Xóa lựa chọn ${position + 1}`}><X aria-hidden="true" /></Button>
+                    <Button type="button" variant="ghost" size="icon-lg" className="col-start-3 row-start-1 size-12 sm:col-start-4" onClick={() => update({ options: question.options.filter((_, i) => i !== position) })} aria-label={`Xóa lựa chọn ${position + 1}`}><X aria-hidden="true" /></Button>
                   </div>
                   {optionError && <p id={`${id}-option-${position}-error`} className="pl-6 text-sm text-destructive">{optionError}</p>}
                 </li>
@@ -102,7 +113,9 @@ export function QuestionEditor({ index, total, question, preferences, errors = {
           <div aria-hidden="true" className="mt-3 flex justify-around text-gold-strong">
             {[1, 2, 3, 4, 5].map((value) => <span key={value} className="flex flex-col items-center gap-1 text-xs text-muted-foreground"><Star className="size-6 text-gold-strong" strokeWidth={1.5} />{value} sao</span>)}
           </div>
-          <p className="sr-only">Khách chọn từ 1 đến 5 sao.</p>
+          <p className="mt-3 flex justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
+            <span>1 sao = thấp nhất</span><span>5 sao = cao nhất</span>
+          </p>
         </div>
       )}
 
@@ -112,6 +125,7 @@ export function QuestionEditor({ index, total, question, preferences, errors = {
           <div aria-hidden="true" className="mt-3 min-h-16 rounded-md border border-border bg-background p-3 text-sm text-muted-foreground">Khách nhập câu trả lời ngắn…</div>
         </div>
       )}
+      </>}
     </fieldset>
   );
 }
