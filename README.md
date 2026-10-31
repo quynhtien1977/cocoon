@@ -58,14 +58,15 @@ rtk npx tsc --noEmit
 rtk npm run build
 ```
 
-Nếu API không chạy, dùng one-off container:
+Nếu API chưa chạy, khởi động hai service hiện có rồi dùng `exec`:
 
 ```powershell
-rtk docker compose run --rm --no-deps api sh scripts/ef.sh database update -p src/Cocoon.Infrastructure -s src/Cocoon.Api
-rtk docker compose run --rm --no-deps api dotnet test
+rtk docker compose up -d api db
+rtk docker compose exec api sh scripts/ef.sh database update -p src/Cocoon.Infrastructure -s src/Cocoon.Api
+rtk docker compose exec api dotnet test
 ```
 
-`scripts/ef.sh` restore local tool manifest trước khi chạy EF vì resolver state không được giữ giữa các one-off container. Container API cũng tự restore tool khi khởi động. Không chạy nhiều build/EF/test đồng thời trên cùng thư mục đầu ra. Dừng server bằng `rtk docker compose stop`; giữ volume dữ liệu.
+`scripts/ef.sh` restore local tool manifest trước khi chạy EF. Container API cũng tự restore tool khi khởi động. Các lệnh migration/test/seed dùng chung container `api`; không cần service hoặc container seed riêng. Không chạy nhiều build/EF/test đồng thời trên cùng thư mục đầu ra. Dừng server bằng `rtk docker compose stop`; giữ volume dữ liệu.
 
 `db/schema.sql` được xuất từ migration, dùng để dựng **database mới trống**, không chạy đè database đã migrate. Không sửa trực tiếp schema SQL để tạo lịch sử schema khác với EF.
 
@@ -74,12 +75,21 @@ rtk docker compose run --rm --no-deps api dotnet test
 Chạy [seed v1 — COC-50](db/SEED_V1.md) để tạo tài khoản demo và dữ liệu nền. Lệnh chỉ chạy trong Compose Development local, không tự chạy khi mở API và không reset dữ liệu:
 
 ```powershell
-rtk docker compose run --rm --no-deps api dotnet run --project src/Cocoon.Api --no-launch-profile -- seed
+rtk docker compose up -d api db
+rtk docker compose exec api dotnet build
+rtk docker compose exec api dotnet run --project src/Cocoon.Api --no-build --no-launch-profile -- seed
 ```
 
 Database phải chạy và đã áp dụng migration theo hướng dẫn local bên trên. Trên database trống, seed thêm 87 tài khoản (83 Customer), 12 sở thích, 24 sản phẩm/48 biến thể và 320 đơn/640 dòng. Chạy lặp giữ dữ liệu đã có. Tài khoản `admin@cocoon.demo`, `manager@cocoon.demo`, `staff1@cocoon.demo`, `staff2@cocoon.demo`, `customer01@cocoon.demo`… dùng mật khẩu demo `Demo@12345` khi mới tạo. Không sử dụng các giá trị demo ở production.
 
-Seed phản hồi/khảo sát/kế hoạch gợi ý và các tính năng CRM tương ứng được thực hiện ở task sau. Backend áp dụng authorization cho controller không public. Next.js 16 dùng convention `proxy.ts` theo tài liệu đi kèm package.
+[Seed v2 — COC-52](db/SEED_V2.md) bổ sung 60 phản hồi đủ 5 trạng thái, 36 lịch sử phân công và 24 câu trả lời. Chạy trong chính container API sau khi build:
+
+```powershell
+rtk docker compose exec api dotnet run --project src/Cocoon.Api --no-build --no-launch-profile -- seed-v2
+rtk docker compose exec -T db sh /workspace/db/verify-seed-v2.sh
+```
+
+`seed-v2` cũng thêm dữ liệu v1 còn thiếu và giữ các bản ghi đã có; `seed` vẫn chỉ chạy v1. Khảo sát/kế hoạch gợi ý thuộc COC-55. Backend áp dụng authorization cho controller không public. Next.js 16 dùng convention `proxy.ts` theo tài liệu đi kèm package.
 
 Audit dependency production không có cảnh báo tại lần kiểm tra 12/10/2026. Dependency ESLint còn advisory `GHSA-vfj7-8cjw-p6xm` ở `braces <=3.0.3`, chưa có bản stable mới hơn khi kiểm tra. Chuỗi này dùng cho glob file local của lint, không xử lý request/người dùng trong runtime web; không hạ Next.js để làm mất cảnh báo. Bàn giao có ghi việc theo dõi bản vá.
 

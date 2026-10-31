@@ -17,11 +17,11 @@ using Scalar.AspNetCore;
 using Serilog;
 using Serilog.Formatting.Compact;
 
-var seedRequested = args is ["seed"];
+var seedRequested = args is ["seed"] or ["seed-v2"];
 var builder = WebApplication.CreateBuilder(seedRequested ? [] : args);
 if (seedRequested)
 {
-    Environment.ExitCode = await LocalSeedCommand.RunAsync(builder.Environment, builder.Configuration);
+    Environment.ExitCode = await LocalSeedCommand.RunAsync(builder.Environment, builder.Configuration, args[0] == "seed-v2");
     return;
 }
 builder.Services.AddSerilog(config => config
