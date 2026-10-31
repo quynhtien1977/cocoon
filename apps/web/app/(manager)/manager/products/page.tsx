@@ -1,7 +1,7 @@
-import { ScreenPlaceholder, screenMetadata } from "@/components/brand/screen-placeholder";
+import { ManagerProductsPage } from "@/features/manager/products-page";
 
-export const metadata = screenMetadata("M11");
+export const metadata = { title: "Quản lý sản phẩm | Cocoon CRM" };
 
 export default function Page() {
-  return <ScreenPlaceholder code="M11" />;
+  return <ManagerProductsPage />;
 }

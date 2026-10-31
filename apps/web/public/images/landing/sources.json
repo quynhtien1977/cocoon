@@ -1,0 +1,114 @@
+{
+  "logo": {
+    "src": "/images/landing/logo.svg",
+    "source": "https://cocoonvietnam.com/_nuxt/img/logo.f502f17.svg"
+  },
+  "hero-0": {
+    "src": "/images/landing/hero-0.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/Website_banner_vuong_100_5fdfe9e510.jpg"
+  },
+  "hero-1": {
+    "src": "/images/landing/hero-1.png",
+    "source": "https://image.cocoonvietnam.com/uploads/Sua_tam_nghe_giua_re_nghe_tuoi_9096e84d83.png"
+  },
+  "hero-2": {
+    "src": "/images/landing/hero-2.png",
+    "source": "https://image.cocoonvietnam.com/uploads/Website_banner_vuong0_93083c9c7d.png"
+  },
+  "story": {
+    "src": "/images/landing/story.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/bg_brand_cf39014_2_9e67c4813e.jpg"
+  },
+  "product-0": {
+    "src": "/images/landing/product-0.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Sua_chong_nang_sen_Hau_Giang_50ml_Beige_284980728e.jpg"
+  },
+  "product-1": {
+    "src": "/images/landing/product-1.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Nuoc_duong_toc_tinh_dau_buoi_140ml_Cai_tien_moi_240629_7819f9ba98.jpg"
+  },
+  "product-2": {
+    "src": "/images/landing/product-2.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/Artboard_48_eb4d856178.jpg"
+  },
+  "product-3": {
+    "src": "/images/landing/product-3.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/Artboard_6_3ec256ca12.jpg"
+  },
+  "article-0": {
+    "src": "/images/landing/article-0.png",
+    "source": "https://image.cocoonvietnam.com/uploads/Artboard_1_copy_0c02d39df9.png"
+  },
+  "article-1": {
+    "src": "/images/landing/article-1.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/1622625389_193175946_363951725061172_3128601295950523286_n_12052c14ad_352ef57457.jpg"
+  },
+  "article-2": {
+    "src": "/images/landing/article-2.png",
+    "source": "https://image.cocoonvietnam.com/uploads/export_HINH_CHINH_vvuong_copy_251ff86bbf.png"
+  },
+  "cert-0": {
+    "src": "/images/landing/cert-0.svg",
+    "source": "https://image.cocoonvietnam.com/uploads/leaping_bunny_bdcbdfe9f1.svg"
+  },
+  "cert-1": {
+    "src": "/images/landing/cert-1.svg",
+    "source": "https://image.cocoonvietnam.com/uploads/vegan_society_41cc2b390a.svg"
+  },
+  "cert-2": {
+    "src": "/images/landing/cert-2.svg",
+    "source": "https://image.cocoonvietnam.com/uploads/e3084968637945bfc13699f3682f28a6_24f04f4362.svg"
+  },
+  "ingredient-0": {
+    "src": "/images/landing/ingredient-0.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/Artboard_10_303004049f.jpg"
+  },
+  "ingredient-1": {
+    "src": "/images/landing/ingredient-1.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/Website_448744049_486999170354190_4651515310287941209_240911_2f2521e90d.jpg"
+  },
+  "ingredient-2": {
+    "src": "/images/landing/ingredient-2.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/Artboard_7_2d844256a8.jpg"
+  },
+  "ingredient-3": {
+    "src": "/images/landing/ingredient-3.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/Artboard_5_8c28ccf387.jpg"
+  },
+  "spotlight-left": {
+    "src": "/images/landing/spotlight-left.png",
+    "source": "https://image.cocoonvietnam.com/uploads/1_bo_ket_trai_e34efa0f8b.png"
+  },
+  "spotlight-right": {
+    "src": "/images/landing/spotlight-right.png",
+    "source": "https://image.cocoonvietnam.com/uploads/2_bo_ket_phai_5b66efabcf.png"
+  },
+  "spotlight-product": {
+    "src": "/images/landing/spotlight-product.png",
+    "source": "https://image.cocoonvietnam.com/uploads/3_san_pham_b109478cc0.png"
+  },
+  "product-2-hover": {
+    "src": "/images/landing/product-2-hover.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/32262548_back_f887b9725b.jpg"
+  },
+  "product-3-hover": {
+    "src": "/images/landing/product-3-hover.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/29892150_back_4bcb783962.jpg"
+  },
+  "product-4-hover": {
+    "src": "/images/landing/product-4-hover.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/29892166_back_1fadce72bc.jpg"
+  },
+  "product-4": {
+    "src": "/images/landing/product-4.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/z4147355364575_e4b88c65711b8261d9c996e6797b60a1_83f203bec3.jpg"
+  },
+  "product-0-hover": {
+    "src": "/images/landing/product-0-hover.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/Website_Hinh_10_f8af5e7d04.jpg"
+  },
+  "product-1-hover": {
+    "src": "/images/landing/product-1-hover.jpg",
+    "source": "https://image.cocoonvietnam.com/uploads/Website_Avatar_Nuoc_duong_toc_tinh_dau_buoi_140ml_670a87b3c5.jpg"
+  }
+}

@@ -2,7 +2,7 @@ import "./dom-setup.mjs";
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import { useEffect, useState } from "react";
-import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 import { DataTable, type DataTableProps } from "../components/data/data-table";
@@ -40,6 +40,30 @@ test("search ignores Vietnamese accents, updates URL and retains unrelated query
   assert.equal(params.get("q"), "dang anh");
   assert.equal(params.get("tab"), "customers");
   assert.equal(window.location.hash, "#results");
+});
+
+test("Vietnamese composition does not rewrite the input or URL before the character is committed", async () => {
+  render(<Harness />);
+  const input = screen.getByRole("searchbox") as HTMLInputElement;
+  fireEvent.compositionStart(input);
+  fireEvent.change(input, { target: { value: "dda" } });
+  assert.equal(new URLSearchParams(window.location.search).get("q"), null);
+  fireEvent.change(input, { target: { value: "đặng" } });
+  fireEvent.compositionEnd(input, { data: "đặng" });
+  await waitFor(() => assert.equal(new URLSearchParams(window.location.search).get("q"), "đặng"));
+  assert.equal(input.value, "đặng");
+  assert.ok(screen.getByText("Đặng Ánh"));
+});
+
+test("colored filter selects, synchronizes URL and resets like a native filter", async () => {
+  render(<Harness tableProps={{ ...props, filters: props.filters!.map(filter => ({ ...filter, colored: true })) }} />);
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("combobox", { name: "Trạng thái" }));
+  await user.click(screen.getByRole("option", { name: "Hoạt động" }));
+  assert.equal(new URLSearchParams(window.location.search).get("filter.active"), "yes");
+  assert.equal(screen.getByRole("combobox", { name: "Trạng thái" }).textContent, "Hoạt động");
+  await user.click(screen.getByRole("button", { name: "Đặt lại bộ lọc" }));
+  assert.equal(screen.getByRole("combobox", { name: "Trạng thái" }).textContent, "Tất cả");
 });
 
 test("pagination, filter, numeric sort and page size update displayed rows and URL", async () => {
