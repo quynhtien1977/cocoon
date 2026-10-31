@@ -73,6 +73,18 @@ public sealed class FeedbackApiTests : IClassFixture<DatabaseFixture>, IDisposab
     }
 
     [Fact]
+    public async Task Staff_list_is_manager_only_and_holds_only_staff()
+    {
+        var shop = await Seed();
+        var staff = await Json(await Send(HttpMethod.Get, "/api/v1/staff", FoundationFactory.Token("Manager", shop.ManagerId)));
+        var ids = staff.EnumerateArray().Select(x => x.GetProperty("id").GetInt32()).ToList();
+        Assert.Contains(shop.StaffId, ids);
+        Assert.DoesNotContain(shop.ManagerId, ids);
+        using var denied = await Send(HttpMethod.Get, "/api/v1/staff", FoundationFactory.Token("Staff", shop.StaffId));
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+    }
+
+    [Fact]
     public async Task Feedback_moves_forward_through_accept_assign_reply_close()
     {
         var shop = await Seed();

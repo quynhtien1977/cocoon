@@ -9,7 +9,6 @@ import { CustomerList } from "../features/customers/components/customer-list";
 import { customersFixture } from "../features/customers/customers.fixture";
 import { customersToCsv } from "../features/customers/customers-csv";
 import { FeedbackInbox } from "../features/feedback/components/feedback-inbox";
-import { feedbackFixture } from "../features/feedback/feedback.fixture";
 import { ManagerDashboard } from "../features/reports/components/manager-dashboard";
 import { SurveyBuilder } from "../features/surveys/components/survey-builder";
 import { SurveyList } from "../features/surveys/components/survey-list";
@@ -67,11 +66,18 @@ test("M2 lists customers with links to M4 and filters by gender from the URL", (
   assert.equal(screen.getByRole("link", { name: "Thêm khách hàng" }).getAttribute("href"), "/manager/customers/new");
 });
 
-test("M5 filters low ratings and links each row to M6", () => {
-  render(withParams("feedback.filter.rating=low&feedback.size=50", <FeedbackInbox />));
-  const low = feedbackFixture.filter((row) => row.rating <= 2);
-  assert.equal(within(screen.getByRole("table", { name: /Phản hồi/ })).getAllByRole("row").length - 1, low.length);
-  assert.equal(screen.getByRole("link", { name: `Xử lý phản hồi #${low[0].id}` }).getAttribute("href"), `/manager/feedback/${low[0].id}`);
+test("M5 filters low ratings and links each row to M6", async () => {
+  const feedback = (id: number, rating: number) => ({ id, customerName: `Khách ${id}`, customerCode: `KH-${id}`, orderCode: null, productName: "Gel bí đao", categoryName: "Làm sạch", rating, content: "Nội dung", status: "New", assigneeId: null, assigneeName: null, verifiedPurchase: false, createdAt: "2026-10-20T03:00:00Z" });
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({ items: [feedback(41, 2), feedback(40, 5)], totalCount: 2, page: 1, pageSize: 100 }), { headers: { "content-type": "application/json" } })) as typeof fetch;
+  try {
+    render(withParams("feedback.filter.rating=low&feedback.size=50", <FeedbackInbox />));
+    const table = await screen.findByRole("table", { name: /Phản hồi/ });
+    assert.equal(within(table).getAllByRole("row").length - 1, 1);
+    assert.equal(screen.getByRole("link", { name: "Xử lý phản hồi #41" }).getAttribute("href"), "/manager/feedback/41");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 });
 
 test("M8 validation reports missing title, question text and product for NewProduct", async () => {

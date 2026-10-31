@@ -50,8 +50,8 @@ export function CustomerSummary({ feedback }: { feedback: FeedbackDetail }) {
         <Row label="Họ tên">{feedback.customerName}</Row>
         <Row label="Mã hồ sơ">{feedback.customerCode}</Row>
         <Row label="Điện thoại">{feedback.customerPhone ?? "—"}</Row>
-        <Row label="Email">{feedback.customerEmail}</Row>
-        <Row label="Số đơn hoàn tất">{feedback.customerOrderCount}</Row>
+        <Row label="Email">{feedback.customerEmail || "—"}</Row>
+        <Row label="Số đơn">{feedback.customerOrderCount}</Row>
       </dl>
       <ul aria-label="Sở thích" className="mt-3 flex flex-wrap gap-1">{feedback.customerPreferences.map((item) => <li key={item} className="rounded-sm bg-status-beige-bg px-2 py-0.5 font-label text-xs text-status-beige-fg">{item}</li>)}</ul>
     </section>
@@ -65,8 +65,8 @@ export function OrderProductSummary({ feedback }: { feedback: FeedbackDetail }) 
       <dl className="mt-2">
         <Row label="Sản phẩm">{feedback.productName}</Row>
         <Row label="Danh mục">{feedback.categoryName}</Row>
-        <Row label="Mã SKU">{feedback.sku}</Row>
-        <Row label="Giá niêm yết">{money.format(feedback.price)}</Row>
+        <Row label="Mã SKU">{feedback.sku || "—"}</Row>
+        <Row label="Giá">{feedback.price > 0 ? money.format(feedback.price) : "—"}</Row>
         <Row label="Mã đơn">{feedback.orderCode ? `#${feedback.orderCode}` : "Không gắn đơn"}</Row>
         {feedback.orderCompletedAt && <Row label="Hoàn tất"><span className="inline-flex items-center gap-1 text-status-sage-fg"><PackageCheck className="size-4" aria-hidden="true" />{fullDate.format(new Date(feedback.orderCompletedAt))}</span></Row>}
       </dl>
