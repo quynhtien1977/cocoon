@@ -1,24 +1,25 @@
 # COC-50 — Seed v1 local
 
-Theo [COC-50](https://nguyenquoccuong07122004.atlassian.net/browse/COC-50), spec §9.1: tài khoản, sở thích, sản phẩm, khách hàng và đơn mua mô phỏng. Feedback, khảo sát và kế hoạch gợi ý thuộc seed v2/v3 ở task sau.
+Theo [COC-50](https://nguyenquoccuong07122004.atlassian.net/browse/COC-50), spec §9.1: tài khoản, sở thích, sản phẩm, khách hàng và đơn mua mô phỏng. Feedback được bổ sung bằng [seed v2 — COC-52](SEED_V2.md); khảo sát và kế hoạch gợi ý thuộc COC-55.
 
 ## Chạy seed
 
 Từ repo root với `.env` local hiện có:
 
 ```powershell
-rtk docker compose up -d db
-rtk docker compose run --rm --no-deps api sh scripts/ef.sh database update -p src/Cocoon.Infrastructure -s src/Cocoon.Api
-rtk docker compose run --rm --no-deps api dotnet run --project src/Cocoon.Api --no-launch-profile -- seed
+rtk docker compose up -d api db
+rtk docker compose exec api sh scripts/ef.sh database update -p src/Cocoon.Infrastructure -s src/Cocoon.Api
+rtk docker compose exec api dotnet build
+rtk docker compose exec api dotnet run --project src/Cocoon.Api --no-build --no-launch-profile -- seed
 ```
 
-Nếu API đã chạy và build xong:
+Nếu API đã chạy và build xong, chỉ cần:
 
 ```powershell
 rtk docker compose exec api dotnet run --project src/Cocoon.Api --no-build --no-launch-profile -- seed
 ```
 
-Lệnh kết thúc sau khi seed, không mở thêm HTTP server và không yêu cầu JWT. Chỉ chấp nhận `Development`, host container `db`, port `5432`, database `cocoon`; kiểm tra trước kết nối/ghi. Không in connection string, mật khẩu hoặc token. Database còn migration chưa áp dụng thì seed dừng. Seed không tự chạy khi mở API; chạy từng lượt, không chạy đồng thời nhiều tiến trình seed.
+Lệnh dùng chính container `api` đang chạy và database trong `db`; không tạo service/container seed riêng. Tiến trình kết thúc sau khi seed, không mở thêm HTTP server và không yêu cầu JWT. Chỉ chấp nhận `Development`, host container `db`, port `5432`, database `cocoon`; kiểm tra trước kết nối/ghi. Không in connection string, mật khẩu hoặc token. Database còn migration chưa áp dụng thì seed dừng. Seed không tự chạy khi mở API; chạy từng lượt, không chạy đồng thời nhiều tiến trình seed.
 
 ## Dữ liệu ban đầu trên database trống
 

@@ -20,6 +20,7 @@ public sealed class AuthController(AppDbContext db, TokenService tokens, IPasswo
     private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
 
     [HttpPost("register")]
+    [ProducesResponseType<AuthUser>(StatusCodes.Status201Created)]
     public async Task<IActionResult> Register(RegisterRequest request, CancellationToken cancellationToken)
     {
         var email = request.Email.Trim().ToLowerInvariant();
@@ -51,6 +52,7 @@ public sealed class AuthController(AppDbContext db, TokenService tokens, IPasswo
     }
 
     [HttpPost("login")]
+    [ProducesResponseType<AuthUser>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken cancellationToken)
     {
         var email = request.Email.Trim().ToLowerInvariant();
@@ -74,7 +76,7 @@ public sealed class AuthController(AppDbContext db, TokenService tokens, IPasswo
         (account.FailedLoginCount, account.LockoutEnd, account.LastLoginAt) = (0, null, DateTime.UtcNow);
         tokens.SignIn(Response, account);
         await db.SaveChangesAsync(cancellationToken);
-        return Ok(new AuthUser(account.Id, account.Email, account.Role, await FullName(db, account, cancellationToken)));
+        return Ok(new AuthUser(account.Id, account.Email, account.Role, await FullName(db, account, cancellationToken), account.MustChangePassword));
     }
 
     [HttpPost("refresh")]
@@ -127,23 +129,25 @@ public sealed class AuthController(AppDbContext db, TokenService tokens, IPasswo
 public sealed class ProfileController(AppDbContext db) : ApiStubController
 {
     [HttpGet("me")]
+    [ProducesResponseType<MeResponse>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMe(CancellationToken cancellationToken)
     {
         var account = await db.Set<Account>().SingleAsync(a => a.Id == AccountId, cancellationToken);
         if (account.Role == AccountRole.Customer)
         {
             var p = await db.Set<CustomerProfile>().SingleAsync(x => x.AccountId == account.Id, cancellationToken);
-            return Ok(new MeResponse(account.Id, account.Email, account.Role, p.FullName, p.Phone, p.DateOfBirth, p.Gender, p.Address, p.ConsentPersonalData));
+            return Ok(new MeResponse(account.Id, account.Email, account.Role, p.FullName, p.Phone, p.DateOfBirth, p.Gender, p.Address, p.ConsentPersonalData, account.MustChangePassword));
         }
         var s = await db.Set<StaffProfile>().SingleOrDefaultAsync(x => x.AccountId == account.Id, cancellationToken);
-        return Ok(new MeResponse(account.Id, account.Email, account.Role, s?.FullName ?? "", s?.Phone, null, null, null, false));
+        return Ok(new MeResponse(account.Id, account.Email, account.Role, s?.FullName ?? "", s?.Phone, null, null, null, false, account.MustChangePassword));
     }
 
     [HttpPut("me")]
     public async Task<IActionResult> UpdateMe(UpdateProfileRequest request, CancellationToken cancellationToken)
     {
         var name = request.FullName.Trim();
-        var customer = await db.Set<CustomerProfile>().SingleOrDefaultAsync(x => x.AccountId == AccountId, cancellationToken);
+        var customer = User.IsInRole("Customer")
+            ? await db.Set<CustomerProfile>().SingleOrDefaultAsync(x => x.AccountId == AccountId, cancellationToken) : null;
         if (customer is not null)
         {
             (customer.FullName, customer.FullNameNormalized, customer.Phone, customer.DateOfBirth) =
@@ -207,9 +211,9 @@ public sealed record UpdateProfileRequest(
     [StringLength(1000)] string? Address,
     bool ConsentPersonalData);
 public sealed record PreferenceIdsRequest(int[] PreferenceIds);
-public sealed record AuthUser(int Id, string Email, AccountRole Role, string FullName);
+public sealed record AuthUser(int Id, string Email, AccountRole Role, string FullName, bool MustChangePassword = false);
 public sealed record MeResponse(int Id, string Email, AccountRole Role, string FullName, string? Phone, DateOnly? DateOfBirth,
-    string? Gender, string? Address, bool ConsentPersonalData);
+    string? Gender, string? Address, bool ConsentPersonalData, bool MustChangePassword = false);
 public sealed record PreferenceItem(int Id, string Name);
 public sealed record MyPreferenceItem(int Id, string Name, PreferenceSource Source);
 

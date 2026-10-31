@@ -6,12 +6,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Cocoon.Infrastructure.Seeding;
 
-public sealed class DemoDataSeeder(AppDbContext db, Func<Account, string> hashPassword, DateTime referenceUtc)
+public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string> hashPassword, DateTime referenceUtc)
 {
     private int _added;
 
-    /// <summary>Adds local demo v1 data. Existing rows, credentials and user edits are never reset.</summary>
-    public async Task<int> RunAsync(CancellationToken cancellationToken = default)
+    /// <summary>Adds local demo data. Existing rows, credentials and user edits are never reset.</summary>
+    public async Task<int> RunAsync(CancellationToken cancellationToken = default, bool includeFeedback = false)
     {
         if (referenceUtc.Kind != DateTimeKind.Utc)
             throw new ArgumentException("Mốc seed phải là UTC.", nameof(referenceUtc));
@@ -22,6 +22,7 @@ public sealed class DemoDataSeeder(AppDbContext db, Func<Account, string> hashPa
         var customers = await AddAccounts(preferences, cancellationToken);
         var products = await AddCatalog(preferences, cancellationToken);
         await AddOrders(customers, products, cancellationToken);
+        if (includeFeedback) await AddFeedback(cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return _added;
     }
