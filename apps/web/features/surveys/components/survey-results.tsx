@@ -44,7 +44,7 @@ function RatingBody({ question }: { question: RatingResult }) {
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-4 rounded-md bg-muted p-4">
-        <span className="font-heading text-4xl tabular-nums">{average.format(question.average)}<span className="text-base text-muted-foreground">/5</span></span>
+        <span className="font-heading text-4xl lining-nums tabular-nums">{average.format(question.average)}<span className="text-base text-muted-foreground">/5</span></span>
         <span className="text-sm text-muted-foreground">{percent.format(ratio(high, question.answerCount))} khách chấm 4–5 sao</span>
       </div>
       <ul className="space-y-2">

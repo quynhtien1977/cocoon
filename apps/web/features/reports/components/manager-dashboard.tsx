@@ -111,7 +111,7 @@ function AttentionList({ total }: { total: number }) {
       <ul className="divide-y divide-border">
         {attentionFeedbackFixture.map((item) => (
           <li key={item.id}>
-            <Link href={`/manager/feedback/${item.id}`} className="-mx-2 block space-y-1 rounded-md px-2 py-3 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring">
+            <Link href="/manager/feedback" aria-label={`Mở hộp phản hồi: ${item.customerName}, ${item.productName}`} className="-mx-2 block space-y-1 rounded-md px-2 py-3 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring">
               <span className="flex items-start justify-between gap-2">
                 <span className="min-w-0 text-sm"><span className="font-semibold">{item.customerName}</span><span className="text-muted-foreground"> · {item.productName}</span></span>
                 <span className="shrink-0"><StatusBadge kind="feedback" status={item.status} /></span>

@@ -7,13 +7,13 @@ import { ConfirmDialog } from "@/components/brand/confirm-dialog";
 import { EmptyState } from "@/components/brand/empty-state";
 import { PageHeader } from "@/components/brand/page-header";
 import { StatusBadge } from "@/components/brand/status-badge";
-import { emptySegmentFilter, SegmentFilterBuilder, segmentAgeError } from "@/components/data/segment-filter-builder";
+import { emptySegmentFilter, matchesSegment, SegmentFilterBuilder, segmentAgeError } from "@/components/data/segment-filter-builder";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
-import { matchesSegment, toRecipientsRequest } from "../schemas";
+import { toRecipientsRequest } from "../schemas";
 import { preferencesFixture, segmentCategoriesFixture, surveyCandidatesFixture } from "../surveys.fixture";
 import type { SurveyCandidate, SurveyListItem } from "../types";
 import { fieldClass } from "./form-styles";
@@ -153,7 +153,7 @@ export function SurveySend({ survey }: { survey: SurveyListItem }) {
             <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Hạn trả lời</dt><dd className="font-semibold">{survey.closeAt ? date.format(new Date(survey.closeAt)) : "Chưa đặt"}</dd></div>
             <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Kênh</dt><dd className="text-right font-semibold">Thông báo trong ứng dụng</dd></div>
             {survey.recipientCount > 0 && <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Đã gửi trước đó</dt><dd className="font-semibold tabular-nums">{survey.recipientCount} khách</dd></div>}
-            <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3"><dt className="text-muted-foreground">Số khách sẽ nhận</dt><dd className="font-heading text-2xl tabular-nums">{recipients}</dd></div>
+            <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3"><dt className="text-muted-foreground">Số khách sẽ nhận</dt><dd className="font-heading text-2xl lining-nums tabular-nums">{recipients}</dd></div>
           </dl>
           {survey.status === "Draft" && <p className="flex gap-2 rounded-md bg-muted p-3 text-sm text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Gửi sẽ mở khảo sát; từ đó câu hỏi bị khóa, không sửa được nữa.</p>}
           {problem && <p role="alert" className="text-sm text-destructive">{problem}</p>}

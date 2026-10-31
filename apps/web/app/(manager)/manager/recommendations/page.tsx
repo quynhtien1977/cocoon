@@ -1,7 +1,10 @@
-import { ScreenPlaceholder, screenMetadata } from "@/components/brand/screen-placeholder";
+import { screenMetadata } from "@/components/brand/screen-placeholder";
+import { RecommendationOverview } from "@/features/recommendations/components/recommendation-overview";
+import { plansFixture } from "@/features/recommendations/recommendations.fixture";
+import { preferencesFixture, segmentCategoriesFixture } from "@/features/surveys/surveys.fixture";
 
 export const metadata = screenMetadata("M13");
 
 export default function Page() {
-  return <ScreenPlaceholder code="M13" />;
+  return <RecommendationOverview initialPlans={plansFixture} preferences={preferencesFixture} categories={segmentCategoriesFixture} />;
 }
