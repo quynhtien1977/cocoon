@@ -47,7 +47,7 @@ const actionLink = "inline-flex min-h-12 items-center rounded-md px-3 font-label
 /** Edit and delete only while Draft (spec: questions lock once a survey opens); results exist once it has been sent. */
 function Actions({ row, onDelete }: { row: SurveyListItem; onDelete: (row: SurveyListItem) => void }) {
   return (
-    <span className="flex flex-wrap items-center justify-end gap-1 xl:flex-nowrap">
+    <span className="flex flex-wrap items-center justify-end gap-1 min-[1400px]:flex-nowrap">
       {row.status === "Draft" && <Link href={`/manager/surveys/${row.id}/edit`} aria-label={`Chỉnh sửa ${row.title}`} className={cn(actionLink, "hover:bg-muted")}>Chỉnh sửa</Link>}
       {row.status !== "Closed" && <Link href={`/manager/surveys/${row.id}/send`} aria-label={`Gửi khảo sát ${row.title}`} className={cn(actionLink, "hover:bg-muted")}>Gửi khảo sát</Link>}
       {row.status !== "Draft" && <Link href={`/manager/surveys/${row.id}/results`} aria-label={`Xem kết quả ${row.title}`} className={cn(actionLink, "bg-primary text-primary-foreground hover:bg-primary/80")}>Xem kết quả</Link>}
@@ -95,7 +95,7 @@ export function SurveyList() {
         <StatTile label="Đã đóng" value={count("Closed")} icon={<CircleCheck />} hint="Đã có kết quả cuối" />
         <StatTile label="Bản nháp" value={count("Draft")} icon={<FilePen />} hint="Còn sửa được câu hỏi" />
       </div>
-      <DataTable data={surveys} columns={columns} getRowId={(row) => row.id} caption="Khảo sát" filters={filters} cardsUntil="xl" renderCard={(row) => (
+      <DataTable data={surveys} columns={columns} getRowId={(row) => row.id} caption="Khảo sát" filters={filters} cardsUntil="wide" renderCard={(row) => (
         <article className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
           <header className="flex items-start justify-between gap-3">
             <span className="min-w-0">

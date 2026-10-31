@@ -1,5 +1,5 @@
-// Static data for M2 until GET customers is wired up. Delete when api.ts lands.
-import type { CustomerListItem } from "./types";
+// Static data for M2 and M4 until customers/* is wired up. Delete when api.ts lands.
+import type { CustomerDetail, CustomerListItem, OrderStatus } from "./types";
 
 export const preferencesFixture = ["Da dầu mụn", "Da nhạy cảm", "Da khô", "Da hỗn hợp", "Làm sạch dịu nhẹ", "Dưỡng ẩm", "Chăm sóc tóc", "Thuần chay"];
 
@@ -33,3 +33,50 @@ export const customersFixture: CustomerListItem[] = people.map(([fullName, gende
     status: index === 4 || index === 17 ? "Locked" : "Active",
   };
 });
+
+const products = ["Gel bí đao rửa mặt 140ml", "Tẩy da chết cà phê Đắk Lắk 150ml", "Nước sen Hậu Giang 310ml", "Sữa dưỡng hoa hồng Cao Bằng 100ml", "Nước dưỡng tóc bưởi 140ml"];
+const orderStatuses: OrderStatus[] = ["Completed", "Completed", "Completed", "Returned", "Completed", "Cancelled"];
+
+export function customerDetailFixture(id: number): CustomerDetail | null {
+  const row = customersFixture.find((item) => item.id === id);
+  if (!row) return null;
+  const orders = Array.from({ length: row.orderCount }, (_, index) => ({
+    id: id * 100 + index,
+    code: `CC-${id * 10 + index}`,
+    placedAt: `2026-${pad(10 - (index % 9))}-${pad(5 + index * 3)}T10:00:00+07:00`,
+    itemCount: 1 + (index % 3),
+    total: 195_000 + index * 85_000,
+    status: orderStatuses[index % orderStatuses.length],
+  }));
+  return {
+    ...row,
+    address: id % 4 === 0 ? null : `${id} Hai Bà Trưng, Phường Bến Nghé, TP. HCM`,
+    dateOfBirth: row.age === null ? null : `${2026 - row.age}-05-20`,
+    totalSpent: orders.filter((order) => order.status === "Completed").reduce((sum, order) => sum + order.total, 0),
+    orders,
+    feedback: row.orderCount === 0 ? [] : [
+      { id: 41, productName: products[0], rating: 5, content: "Bọt mịn, rửa xong da không khô căng. Mong có thêm bản dung tích lớn.", createdAt: "2026-10-20T09:15:00+07:00", status: "Replied" },
+      { id: 38, productName: products[1], rating: 3, content: "Mùi cà phê thơm, da mịn nhưng hạt hơi to với da mặt.", createdAt: "2026-09-12T16:40:00+07:00", status: "Closed" },
+    ],
+    surveys: [
+      { id: 82, title: "Khảo sát sản phẩm mới: Kem dưỡng ẩm hoa hồng", sentAt: "2026-10-20T08:00:00+07:00", status: "NotDone" },
+      { id: 75, title: "Thói quen chống nắng hằng ngày và kết cấu mong đợi", sentAt: "2026-09-01T08:00:00+07:00", status: "Done" },
+    ],
+    recommendations: [
+      { id: 1, productName: "Gel bí đao rửa mặt 310ml", reason: "Khớp sở thích, đã mua danh mục Làm sạch", score: 0.67, state: "Clicked" },
+      { id: 2, productName: products[1], reason: "Đã mua danh mục, khách tương tự mua cùng", score: 0.58, state: "None" },
+      { id: 3, productName: products[4], reason: "Khớp sở thích, đánh giá tốt", score: 0.49, state: "None" },
+      { id: 4, productName: products[3], reason: "Thuộc kế hoạch gợi ý đang chạy", score: 0.31, state: "Dismissed" },
+    ],
+  };
+}
+
+/** Worked example from spec 5.7: Pref 1, Survey 0, Category 0.6, CoPurchase 0.4, Rating 0.9, Plan 1 gives 0.67. */
+export const scoreComponentsFixture = [
+  { label: "Sở thích", weight: 0.3, value: 1, note: "Khớp toàn bộ sở thích của khách." },
+  { label: "Khảo sát đã làm", weight: 0.15, value: 0, note: "Chưa có câu trả lời khảo sát liên quan." },
+  { label: "Danh mục đã mua", weight: 0.2, value: 0.6, note: "Đã mua nhiều lần trong danh mục Làm sạch." },
+  { label: "Mua cùng phổ biến", weight: 0.15, value: 0.4, note: "Hay được mua cùng sản phẩm khách đã có." },
+  { label: "Điểm đánh giá", weight: 0.1, value: 0.9, note: "Sản phẩm có điểm đánh giá cao." },
+  { label: "Kế hoạch gợi ý", weight: 0.1, value: 1, note: "Thuộc kế hoạch đang kích hoạt." },
+];

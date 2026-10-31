@@ -110,7 +110,7 @@ export function CustomerList() {
         <StatTile label="Sở thích phổ biến" value={topPreference} icon={<Heart />} progress={topCount / total} hint={`${topCount} khách quan tâm`} />
         <StatTile label="Đơn trung bình mỗi khách" value={decimal.format(avgOrders)} unit="đơn" icon={<ShoppingBag />} progress={buyers / total} hint={`${buyers} khách đã mua ít nhất 1 đơn`} />
       </div>
-      <DataTable data={customers} columns={columns} getRowId={(row) => row.id} caption="Khách hàng" filters={filters} renderCard={(row) => <CustomerCard row={row} />} cardsUntil="xl"
+      <DataTable data={customers} columns={columns} getRowId={(row) => row.id} caption="Khách hàng" filters={filters} renderCard={(row) => <CustomerCard row={row} />} cardsUntil="wide"
         emptyTitle="Không tìm thấy khách hàng" emptyDescription="Thử từ khóa khác hoặc bỏ bớt bộ lọc." />
       <aside aria-labelledby="heritage-title" className="mt-8 flex flex-col gap-6 rounded-lg border border-border bg-card p-4 sm:p-6 md:flex-row md:items-center md:justify-between">
         <div className="flex gap-4">
