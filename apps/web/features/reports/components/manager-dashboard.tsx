@@ -68,7 +68,7 @@ export function ManagerDashboard() {
           <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
             <ChartCard title="Phản hồi theo tuần" description={`Tổng phản hồi và số phản hồi ≤ 2 sao, 8 tuần gần nhất. Tổng ${weeklyTotal} phản hồi, ${percent.format(weeklyLow / Math.max(weeklyTotal, 1))} ≤ 2 sao.`}
               type="bar" data={weeklyFeedbackFixture} categoryKey="week" categoryLabel="Tuần bắt đầu"
-              series={[{ key: "total", label: "Tổng phản hồi" }, { key: "lowRating", label: "≤ 2 sao" }]} />
+              series={[{ key: "total", label: "Tổng phản hồi" }, { key: "lowRating", label: "≤ 2 sao" }]} height={400} />
             <AttentionList total={overview.newFeedback} />
           </div>
           <InsightStrip />
@@ -87,7 +87,7 @@ export function ManagerDashboard() {
 
         <TabsContent value="analytics" className="grid gap-6 lg:grid-cols-2">
           <ChartCard title="Điểm trung bình theo danh mục" type="horizontal-bar" data={categoryRatingFixture} categoryKey="category" categoryLabel="Danh mục"
-            series={[{ key: "avgRating", label: "Điểm TB" }]} formatValue={(value) => rating.format(value)} />
+            series={[{ key: "avgRating", label: "Điểm TB" }]} formatValue={(value) => rating.format(value)} maxValue={5} />
           <ChartCard title="Tỷ lệ phản hồi ≤ 2 sao theo tháng" type="line" data={monthlyLowRatingFixture} categoryKey="month" categoryLabel="Tháng"
             series={[{ key: "lowRatingRate", label: "Tỷ lệ ≤ 2 sao" }]} formatValue={(value) => percent.format(value)} />
           <RevenueHeatmap data={categoryAgeRevenueFixture} />
@@ -109,7 +109,7 @@ function AttentionList({ total }: { total: number }) {
         <Link href="/manager/feedback" className={linkClass}>Xem tất cả ({total})<ArrowRight className="size-4" aria-hidden="true" /></Link>
       </header>
       <ul className="divide-y divide-border">
-        {attentionFeedbackFixture.map((item) => (
+        {attentionFeedbackFixture.slice(0, 3).map((item) => (
           <li key={item.id}>
             <Link href="/manager/feedback" aria-label={`Mở hộp phản hồi: ${item.customerName}, ${item.productName}`} className="-mx-2 block space-y-1 rounded-md px-2 py-3 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring">
               <span className="flex items-start justify-between gap-2">
