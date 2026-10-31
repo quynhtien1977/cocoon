@@ -21,12 +21,13 @@ public static class LocalSeedCommand
         catch (ArgumentException) { return false; }
     }
 
-    public static async Task<int> RunAsync(IHostEnvironment environment, IConfiguration configuration)
+    public static async Task<int> RunAsync(IHostEnvironment environment, IConfiguration configuration, bool includeFeedback = false)
     {
+        var version = includeFeedback ? "v2" : "v1";
         var connection = configuration.GetConnectionString("Default");
         if (!IsAllowedTarget(environment.EnvironmentName, connection))
         {
-            Console.Error.WriteLine("Seed v1 chỉ chạy ở Development với database cocoon trong Compose local (host db, port 5432). Không có dữ liệu nào được ghi.");
+            Console.Error.WriteLine($"Seed {version} chỉ chạy ở Development với database cocoon trong Compose local (host db, port 5432). Không có dữ liệu nào được ghi.");
             return 2;
         }
         try
@@ -39,14 +40,14 @@ public static class LocalSeedCommand
             }
             var hasher = new PasswordHasher<Account>();
             var added = await new DemoDataSeeder(db,
-                account => hasher.HashPassword(account, "Demo@12345"), DateTime.UtcNow.Date).RunAsync();
-            Console.WriteLine($"Seed v1 hoàn tất: thêm {added} bản ghi. Dữ liệu hiện có được giữ nguyên.");
+                account => hasher.HashPassword(account, "Demo@12345"), DateTime.UtcNow.Date).RunAsync(includeFeedback: includeFeedback);
+            Console.WriteLine($"Seed {version} hoàn tất: thêm {added} bản ghi. Dữ liệu hiện có được giữ nguyên.");
             return 0;
         }
         catch (Exception error)
         {
             // Exception messages can contain connection parameters or database values. Do not print them.
-            Console.Error.WriteLine($"Seed v1 không hoàn tất. Kiểm tra cấu hình local và dữ liệu demo. Loại lỗi: {error.GetType().Name}.");
+            Console.Error.WriteLine($"Seed {version} không hoàn tất. Kiểm tra cấu hình local và dữ liệu demo. Loại lỗi: {error.GetType().Name}.");
             return 1;
         }
     }
