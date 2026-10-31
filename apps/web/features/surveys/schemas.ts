@@ -1,8 +1,10 @@
 import { z } from "zod";
 import type { components } from "@/lib/api/schema";
-import type { QuestionType, SurveyDraft, SurveyPurpose } from "./types";
+import type { SegmentFilterValue } from "@/components/data/segment-filter-builder";
+import type { QuestionResult, QuestionType, SurveyCandidate, SurveyDraft, SurveyPurpose } from "./types";
 
 type SurveyUpsertRequest = components["schemas"]["SurveyUpsertRequest"];
+type RecipientsRequest = components["schemas"]["RecipientsRequest"];
 
 export const questionTypeLabels: Record<QuestionType, string> = {
   SingleChoice: "Chọn một",
@@ -79,4 +81,33 @@ export function toSurveyUpsertRequest(draft: SurveyDraft): SurveyUpsertRequest {
       options: isChoice(item.type) ? item.options.map((choice) => ({ text: choice.text.trim(), preferenceId: choice.preferenceId })) : [],
     })),
   };
+}
+
+/** Stand-in for POST segments/preview, applying the rules in spec 6.3. */
+export function matchesSegment(customer: SurveyCandidate, filter: SegmentFilterValue): boolean {
+  if (filter.ageMin !== null && (customer.age === null || customer.age < filter.ageMin)) return false;
+  if (filter.ageMax !== null && (customer.age === null || customer.age > filter.ageMax)) return false;
+  if (filter.genders.length && !filter.genders.includes(customer.gender ?? "")) return false;
+  if (filter.preferenceIds.length && !filter.preferenceIds.some((id) => customer.preferenceIds.includes(id))) return false;
+  if (filter.purchasedCategoryIds.length && !filter.purchasedCategoryIds.some((id) => customer.purchasedCategoryIds.includes(id))) return false;
+  if (filter.lastPurchaseWithinDays !== null && (customer.daysSinceLastOrder === null || customer.daysSinceLastOrder > filter.lastPurchaseWithinDays)) return false;
+  return !filter.excludeLowRatedCategoryIds.some((id) => customer.lowRatedCategoryIds.includes(id));
+}
+
+export function toRecipientsRequest(target: { segment: SegmentFilterValue } | { customerIds: number[] }): RecipientsRequest {
+  return "segment" in target ? { segment: target.segment, customerIds: null } : { segment: null, customerIds: target.customerIds };
+}
+
+const csvCell = (value: string | number) => `"${String(value).replace(/^[=+\-@]/, "'$&").replace(/"/g, '""')}"`;
+
+/** One row per answer choice, star level or free-text answer. UTF-8 BOM so Excel keeps Vietnamese diacritics. */
+export function surveyResultsToCsv(results: readonly QuestionResult[]): string {
+  const rows: (string | number)[][] = [["Câu hỏi", "Loại", "Phương án / Khách hàng", "Số lượt / Nội dung"]];
+  for (const question of results) {
+    const label = questionTypeLabels[question.kind];
+    if (question.kind === "Rating") for (const star of [5, 4, 3, 2, 1] as const) rows.push([question.text, label, `${star} sao`, question.distribution[star]]);
+    else if (question.kind === "ShortText") for (const answer of question.answers) rows.push([question.text, label, answer.customerName, answer.content]);
+    else for (const option of question.options) rows.push([question.text, label, option.text, option.count]);
+  }
+  return `﻿${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}`;
 }
