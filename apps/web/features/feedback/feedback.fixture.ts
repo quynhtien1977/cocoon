@@ -1,5 +1,5 @@
-// Static data for M5 until GET feedback is wired up. Delete when api.ts lands.
-import type { FeedbackListItem, FeedbackStatus } from "./types";
+// Static data for M5, M6, S1, S2 until feedback/* and staff/feedback are wired up. Delete when api.ts lands.
+import type { FeedbackDetail, FeedbackListItem, FeedbackStatus, StaffOption } from "./types";
 
 export const categoriesFixture = ["Làm sạch", "Tẩy da chết", "Toner", "Dưỡng da", "Chăm sóc tóc"];
 
@@ -28,7 +28,10 @@ const entries: [string, number, FeedbackStatus, string][] = [
   ["Võ Hải Yến", 4, "Assigned", "Tóc thơm lâu, chỉ có điều vòi xịt hay bị kẹt khi gần hết."],
 ];
 
-const staff = ["Ngô Thị Thu", "Lâm Quốc Bảo"];
+export const staffFixture: StaffOption[] = [{ id: 11, name: "Ngô Thị Thu" }, { id: 12, name: "Lâm Quốc Bảo" }];
+/** Signed-in staff for S1 and S2 until GET me is wired up. */
+export const currentStaffFixture = staffFixture[0];
+const staff = staffFixture.map((item) => item.name);
 const pad = (value: number) => String(value).padStart(2, "0");
 
 export const feedbackFixture: FeedbackListItem[] = entries.map(([customerName, rating, status, content], index) => {
@@ -36,6 +39,8 @@ export const feedbackFixture: FeedbackListItem[] = entries.map(([customerName, r
   return {
     id: 41 - index,
     customerName,
+    customerCode: `KH-${String(108 + index).padStart(4, "0")}`,
+    orderCode: index % 6 !== 5 ? `CC-${8821 - index * 37}` : null,
     productName,
     categoryName,
     rating,
@@ -46,3 +51,27 @@ export const feedbackFixture: FeedbackListItem[] = entries.map(([customerName, r
     createdAt: `2026-10-${pad(28 - Math.floor(index * 1.5))}T${pad(8 + ((index * 5) % 12))}:${pad((index * 17) % 60)}:00+07:00`,
   };
 });
+
+const sequence: FeedbackStatus[] = ["New", "Accepted", "Assigned", "Replied", "Closed"];
+const atOffset = (iso: string, hours: number) => new Date(new Date(iso).getTime() + hours * 3_600_000).toISOString();
+
+export function feedbackDetailFixture(id: number): FeedbackDetail | null {
+  const row = feedbackFixture.find((item) => item.id === id);
+  if (!row) return null;
+  const reached = sequence.slice(0, sequence.indexOf(row.status) + 1);
+  const index = 41 - id;
+  return {
+    ...row,
+    customerEmail: `${row.customerCode.toLowerCase()}@example.com`,
+    customerPhone: index % 5 === 4 ? null : `0900 000 ${100 + index}`,
+    customerOrderCount: 1 + (index % 7),
+    customerPreferences: ["Da dầu mụn", "Làm sạch dịu nhẹ"],
+    sku: `CO-${1000 + (index % 8)}`,
+    price: 145_000 + (index % 8) * 30_000,
+    orderCompletedAt: row.orderCode ? atOffset(row.createdAt, -96) : null,
+    statusTimes: Object.fromEntries(reached.map((status, step) => [status, atOffset(row.createdAt, step * 5)])),
+    replies: row.assigneeName && (row.status === "Replied" || row.status === "Closed")
+      ? [{ id: 1, staffName: row.assigneeName, content: "Cocoon cảm ơn góp ý của bạn. Chúng tôi đã ghi nhận và chuyển tới bộ phận phụ trách để cải thiện trải nghiệm.", createdAt: atOffset(row.createdAt, 15) }]
+      : [],
+  };
+}

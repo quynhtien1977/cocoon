@@ -2,7 +2,7 @@
 
 import { useId, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { CircleCheck, Info, Plus } from "lucide-react";
+import { ChevronsDownUp, ChevronsUpDown, CircleCheck, Info, ListChecks, Plus, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { StatusBadge } from "@/components/brand/status-badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { purposeLabels, toSurveyUpsertRequest, validateSurveyDraft } from "../sc
 import { preferencesFixture, upcomingProductsFixture } from "../surveys.fixture";
 import type { SurveyDraft, SurveyPurpose } from "../types";
 import { fieldClass, labelClass } from "./form-styles";
+import { SurveyPreview } from "./survey-preview";
 
 const time = new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit" });
 
@@ -29,6 +30,7 @@ export function SurveyBuilder({ initial }: SurveyBuilderProps) {
   const [draft, setDraft] = useState<SurveyDraft>(() => initial ?? emptyDraft());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
   const update = (patch: Partial<SurveyDraft>) => setDraft((current) => ({ ...current, ...patch }));
   const questionErrors = (index: number) => Object.fromEntries(Object.entries(errors)
     .filter(([path]) => path.startsWith(`questions.${index}.`))
@@ -60,8 +62,8 @@ export function SurveyBuilder({ initial }: SurveyBuilderProps) {
         actions={<StatusBadge kind="survey" status="Draft" />} />
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <section aria-labelledby={`${id}-config`} className="space-y-6 rounded-lg border border-border bg-card p-6 lg:sticky lg:top-6">
-          <h2 id={`${id}-config`} className="font-heading text-xl">Thông tin khảo sát</h2>
+        <section aria-labelledby={`${id}-config`} className="space-y-6 rounded-lg border border-border bg-card p-4 sm:p-6 lg:sticky lg:top-6">
+          <h2 id={`${id}-config`} className="flex items-center gap-2 border-b border-border pb-4 font-heading text-xl"><SlidersHorizontal className="size-5 text-gold-strong" aria-hidden="true" />Thông tin khảo sát</h2>
 
           <div className="space-y-2">
             <label htmlFor={`${id}-title`} className={labelClass}>Tên khảo sát <span aria-hidden="true" className="text-destructive">*</span></label>
@@ -119,18 +121,23 @@ export function SurveyBuilder({ initial }: SurveyBuilderProps) {
         </section>
 
         <section aria-labelledby={`${id}-questions`} className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id={`${id}-questions`} className="font-heading text-xl">Câu hỏi</h2>
-            <span className="font-label text-sm uppercase tracking-wider text-muted-foreground">{draft.questions.length} câu</span>
+          <div className="flex flex-wrap items-center justify-between gap-x-3 border-b border-border pb-2">
+            <h2 id={`${id}-questions`} className="flex items-center gap-2 font-heading text-xl">
+              <ListChecks className="size-5 text-gold-strong" aria-hidden="true" />Câu hỏi
+              <span className="rounded-sm bg-muted px-2 py-0.5 font-label text-xs uppercase tracking-wider text-muted-foreground">{draft.questions.length} câu</span>
+            </h2>
+            <Button type="button" variant="ghost" className="min-h-12 px-2 font-label uppercase tracking-wider text-muted-foreground" aria-pressed={collapsed} onClick={() => setCollapsed((value) => !value)}>
+              {collapsed ? <><ChevronsUpDown aria-hidden="true" />Mở rộng tất cả</> : <><ChevronsDownUp aria-hidden="true" />Thu gọn tất cả</>}
+            </Button>
           </div>
           {errors.questions && <p role="alert" className="text-sm text-destructive">{errors.questions}</p>}
           {draft.questions.map((question, index) => (
-            <QuestionEditor key={question.key} index={index} total={draft.questions.length} question={question} preferences={preferencesFixture} errors={questionErrors(index)}
+            <QuestionEditor key={question.key} index={index} total={draft.questions.length} question={question} preferences={preferencesFixture} errors={questionErrors(index)} collapsed={collapsed}
               onChange={(next) => setDraft((current) => ({ ...current, questions: current.questions.map((item, i) => i === index ? next : item) }))}
               onRemove={() => setDraft((current) => ({ ...current, questions: current.questions.filter((_, i) => i !== index) }))}
               onMove={(offset) => moveQuestion(index, offset)} />
           ))}
-          <Button type="button" variant="outline" className="min-h-16 w-full border-dashed font-label uppercase tracking-wider" onClick={() => update({ questions: [...draft.questions, newQuestion()] })}>
+          <Button type="button" variant="outline" className="min-h-16 w-full border-2 border-dashed border-input bg-transparent font-label uppercase tracking-wider hover:border-gold hover:bg-card" onClick={() => { setCollapsed(false); update({ questions: [...draft.questions, newQuestion()] }); }}>
             <Plus aria-hidden="true" />Thêm câu hỏi
           </Button>
         </section>
@@ -142,9 +149,10 @@ export function SurveyBuilder({ initial }: SurveyBuilderProps) {
             : savedAt ? <p className="flex items-center gap-2 text-status-sage-fg"><CircleCheck className="size-4" aria-hidden="true" />Đã lưu bản nháp lúc {time.format(savedAt)} (dữ liệu mẫu, chưa gửi máy chủ).</p>
             : null}
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex w-full flex-wrap gap-3 sm:w-auto">
           <Link href="/manager/surveys" className={cn(buttonVariants({ variant: "ghost" }), "h-12 px-4")}>Hủy</Link>
-          <Button type="submit" className="h-12 px-6">Lưu bản nháp</Button>
+          <Button type="submit" variant="outline" className="h-12 flex-1 px-6 sm:flex-none">Lưu bản nháp</Button>
+          <SurveyPreview draft={draft} products={upcomingProductsFixture} />
         </div>
       </footer>
     </form>

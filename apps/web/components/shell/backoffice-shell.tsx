@@ -17,7 +17,7 @@ export function BackofficeShell({ variant, nav, children }: { variant: keyof typ
   return (
     <div data-portal={variant} className="min-h-dvh bg-muted md:flex">
       <a href="#main-content" className="skip-link">Đến nội dung chính</a>
-      <aside aria-label={`Không gian ${labels[variant].toLowerCase()}`} className="sticky top-0 hidden h-dvh w-16 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex lg:w-[248px]">
+      <aside aria-label={`Không gian ${labels[variant].toLowerCase()}`} className="sticky top-0 hidden h-dvh w-16 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex lg:w-[248px] print:hidden">
         <div className="flex h-24 shrink-0 items-center justify-center border-b border-sidebar-border px-2 lg:justify-start lg:px-6">
           <Logo href={home} tone="ink" className="hidden lg:inline-flex" />
           <Link href={home} aria-label="Cocoon CRM — Trang chủ" title="Cocoon CRM" className="flex size-12 items-center justify-center text-gold lg:hidden"><Leaf className="size-6" aria-hidden="true" /></Link>
@@ -39,7 +39,7 @@ export function BackofficeShell({ variant, nav, children }: { variant: keyof typ
         </div>
       </aside>
       <div className="min-w-0 flex-1">
-        <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-background px-4 md:px-6">
+        <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-background px-4 md:px-6 print:hidden">
           <div className="flex min-w-0 items-center gap-3">
             <MobileNavigation items={nav} title={labels[variant]} home={home} tone="ink" />
             <p className="font-label text-sm uppercase tracking-wider">Cocoon <span className="text-muted-foreground">/ {labels[variant]}</span></p>

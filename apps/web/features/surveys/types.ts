@@ -31,3 +31,20 @@ export interface SurveyDraft {
 
 export interface PreferenceOption { id: number; name: string }
 export interface UpcomingProduct { id: number; name: string }
+
+/** Mirrors Cocoon.Domain.Enums.SurveyStatus. */
+export type SurveyStatus = "Draft" | "Open" | "Closed";
+
+/** Row shape for GET surveys (spec 6.2). Replace with lib/api/schema.d.ts types once P3 publishes the DTO. */
+export interface SurveyListItem {
+  id: number;
+  title: string;
+  purpose: SurveyPurpose;
+  status: SurveyStatus;
+  /** ISO dates; null while a draft is unscheduled. */
+  openAt: string | null;
+  closeAt: string | null;
+  questionCount: number;
+  recipientCount: number;
+  responseCount: number;
+}
