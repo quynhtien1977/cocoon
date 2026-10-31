@@ -126,8 +126,6 @@ public sealed class AuthController(AppDbContext db, TokenService tokens, IPasswo
 [Route("api/v1")]
 public sealed class ProfileController(AppDbContext db) : ApiStubController
 {
-    private int AccountId => int.Parse(User.FindFirst("sub")!.Value);
-
     [HttpGet("me")]
     public async Task<IActionResult> GetMe(CancellationToken cancellationToken)
     {
