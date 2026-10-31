@@ -117,10 +117,10 @@ public sealed class FoundationFactory : WebApplicationFactory<Program>
         public Task<bool> IsAllowedAsync(int accountId, string role, CancellationToken cancellationToken = default) => Task.FromResult(true);
     }
 
-    public static string Token(string role)
+    public static string Token(string role, int accountId = 1)
     {
         var token = new JwtSecurityToken("cocoon-tests", "cocoon-tests",
-            [new Claim("sub", "1"), new Claim("role", role)],
+            [new Claim("sub", accountId.ToString()), new Claim("role", role)],
             expires: DateTime.UtcNow.AddMinutes(5),
             signingCredentials: new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestKey)), SecurityAlgorithms.HmacSha256));
         return new JwtSecurityTokenHandler().WriteToken(token);
