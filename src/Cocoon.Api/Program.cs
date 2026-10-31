@@ -3,6 +3,8 @@ using System.Text.Json.Serialization;
 using Cocoon.Api.Auth;
 using Cocoon.Api.Configuration;
 using Cocoon.Api.Seeding;
+using Cocoon.Application.Accounts;
+using Cocoon.Infrastructure.Accounts;
 using Cocoon.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Cocoon.Infrastructure.Persistence;
@@ -29,7 +31,7 @@ builder.Services.AddSerilog(config => config
     .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
     .Enrich.FromLogContext()
     .WriteTo.Console(new RenderedCompactJsonFormatter()));
-builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilter()))
+builder.Services.AddControllers(options => { options.Filters.Add(new AuthorizeFilter()); options.Filters.Add<MustChangePasswordFilter>(); })
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
     .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = context =>
     {
@@ -38,6 +40,10 @@ builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilt
         return new BadRequestObjectResult(problem) { ContentTypes = { "application/problem+json" } };
     });
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+builder.Services.AddExceptionHandler<AccountExceptionHandler>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAccountPasswords, AccountPasswords>();
+builder.Services.AddScoped<AccountManagementService>();
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     // Controller Problem(statusCode: x) sets Status before the response status is written.
     ApiProblems.Customize(context.ProblemDetails, context.ProblemDetails.Status ?? context.HttpContext.Response.StatusCode));
