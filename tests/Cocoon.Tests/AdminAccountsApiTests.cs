@@ -9,6 +9,43 @@ namespace Cocoon.Tests;
 
 public sealed class AdminAccountsApiTests : AccountApiTestBase
 {
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task Unlock_clears_login_lockout_and_failure_count_even_when_account_is_already_active(bool active, bool temporaryLockout)
+    {
+        var admin = await Actor(AccountRole.Admin);
+        var customer = await Actor(AccountRole.Customer);
+        string email;
+        await using (var setup = Database.CreateContext())
+        {
+            var account = await setup.Set<Account>().SingleAsync(a => a.Id == customer);
+            email = account.Email;
+            account.IsActive = active;
+            account.LockoutEnd = temporaryLockout ? DateTime.UtcNow.AddMinutes(15) : null;
+            account.FailedLoginCount = 3;
+            setup.Add(new RefreshToken { AccountId = customer, TokenHash = "lockout-test-session", ExpiresAt = DateTime.UtcNow.AddDays(1) });
+            await setup.SaveChangesAsync();
+        }
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Patch, $"/api/v1/admin/accounts/{customer}/status", "Admin", admin,
+            new { isActive = true })).StatusCode);
+        await using (var verify = Database.CreateContext())
+        {
+            var saved = await verify.Set<Account>().SingleAsync(a => a.Id == customer);
+            Assert.True(saved.IsActive);
+            Assert.Null(saved.LockoutEnd);
+            Assert.Equal(0, saved.FailedLoginCount);
+            Assert.NotNull((await verify.Set<RefreshToken>().SingleAsync(t => t.AccountId == customer)).RevokedAt);
+            Assert.Single(await verify.Set<ActivityLog>().Where(l => l.EntityId == customer && l.Action == "AccountUnlocked").ToListAsync());
+        }
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Patch, $"/api/v1/admin/accounts/{customer}/status", "Admin", admin,
+            new { isActive = true })).StatusCode);
+        await using (var verify = Database.CreateContext())
+            Assert.Equal(1, await verify.Set<ActivityLog>().CountAsync(l => l.EntityId == customer && l.Action == "AccountUnlocked"));
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Post, "/api/v1/auth/login", body: new { email, password = Password })).StatusCode);
+    }
+
     [Fact]
     public async Task Profile_updates_use_current_role_even_when_old_customer_profile_remains()
     {
