@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using Cocoon.Api.Auth;
+using Cocoon.Api.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -69,7 +70,7 @@ public sealed class ApiFoundationTests : IClassFixture<FoundationFactory>
     [InlineData("Customer", HttpStatusCode.Forbidden)]
     public async Task Stub_endpoints_enforce_policy_then_report_not_implemented(string role, HttpStatusCode expected)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/customers");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/test-only/stub");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", FoundationFactory.Token(role));
         using var response = await _client.SendAsync(request);
         Assert.Equal(expected, response.StatusCode);
@@ -134,4 +135,14 @@ public sealed class PolicyProbeController : ControllerBase
     [HttpGet]
     [Authorize(Policy = "RequireAdmin")]
     public IActionResult Get() => Ok();
+}
+
+// Keep the foundation's stub contract independent of business routes as those routes are implemented.
+[ApiController]
+[Route("test-only/stub")]
+[Authorize(Policy = "RequireManager")]
+public sealed class StubProbeController : ApiStubController
+{
+    [HttpGet]
+    public IActionResult Get() => NotImplementedYet();
 }

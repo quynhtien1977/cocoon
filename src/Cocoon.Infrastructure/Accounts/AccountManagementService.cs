@@ -11,7 +11,7 @@ using Npgsql;
 
 namespace Cocoon.Infrastructure.Accounts;
 
-public sealed class AccountManagementService(AppDbContext db, IAccountPasswords passwords)
+public sealed partial class AccountManagementService(AppDbContext db, IAccountPasswords passwords)
 {
     public async Task<AccountPage> ListAsync(AccountQuery query, CancellationToken ct)
     {
@@ -53,25 +53,27 @@ public sealed class AccountManagementService(AppDbContext db, IAccountPasswords 
     }
 
     public Task<AccountCreated> CreateAsync(int actor, string email, string fullName, AccountRole role, CancellationToken ct) =>
-        Write(async () =>
-        {
-            email = email.Trim().ToLowerInvariant();
-            fullName = fullName.Trim();
-            if (email.Length > 256 || !new EmailAddressAttribute().IsValid(email)) Invalid("email", "Email không hợp lệ.");
-            if (fullName.Length is < 2 or > 200) Invalid("fullName", "Họ tên cần từ 2 đến 200 ký tự.");
-            if (!Enum.IsDefined(role)) Invalid("role", "Vai trò không hợp lệ.");
-            if (await db.Set<Account>().IgnoreQueryFilters().AnyAsync(a => a.Email.ToLower() == email, ct))
-                throw new AccountOperationException(409, "EMAIL_TAKEN", "Email này đã được sử dụng.", "email");
-            var temporary = "Coc!" + Convert.ToHexString(RandomNumberGenerator.GetBytes(16)) + "9a";
-            var account = new Account { Email = email, Role = role, MustChangePassword = true };
-            account.PasswordHash = passwords.Hash(account, temporary);
-            if (role == AccountRole.Customer)
-                db.Add(new CustomerProfile { Account = account, FullName = fullName, FullNameNormalized = SearchText.Normalize(fullName) });
-            else db.Add(new StaffProfile { Account = account, FullName = fullName, Position = role.ToString() });
-            await db.SaveChangesAsync(ct);
-            Audit(actor, account.Id, "AccountCreated");
-            return new AccountCreated(account.Id, email, role, temporary, true);
-        }, ct);
+        Write(() => CreateCoreAsync(actor, email, fullName, role, ct), ct);
+
+    private async Task<AccountCreated> CreateCoreAsync(int actor, string email, string fullName, AccountRole role, CancellationToken ct)
+    {
+        email = email.Trim().ToLowerInvariant();
+        fullName = fullName.Trim();
+        if (email.Length > 256 || !new EmailAddressAttribute().IsValid(email)) Invalid("email", "Email không hợp lệ.");
+        if (fullName.Length is < 2 or > 200) Invalid("fullName", "Họ tên cần từ 2 đến 200 ký tự.");
+        if (!Enum.IsDefined(role)) Invalid("role", "Vai trò không hợp lệ.");
+        if (await db.Set<Account>().IgnoreQueryFilters().AnyAsync(a => a.Email.ToLower() == email, ct))
+            throw new AccountOperationException(409, "EMAIL_TAKEN", "Email này đã được sử dụng.", "email");
+        var temporary = "Coc!" + Convert.ToHexString(RandomNumberGenerator.GetBytes(16)) + "9a";
+        var account = new Account { Email = email, Role = role, MustChangePassword = true };
+        account.PasswordHash = passwords.Hash(account, temporary);
+        if (role == AccountRole.Customer)
+            db.Add(new CustomerProfile { Account = account, FullName = fullName, FullNameNormalized = SearchText.Normalize(fullName) });
+        else db.Add(new StaffProfile { Account = account, FullName = fullName, Position = role.ToString() });
+        await db.SaveChangesAsync(ct);
+        Audit(actor, account.Id, "AccountCreated");
+        return new AccountCreated(account.Id, email, role, temporary, true);
+    }
 
     public Task<bool> ChangeRoleAsync(int actor, int id, AccountRole role, CancellationToken ct) => Write(async () =>
     {
@@ -94,11 +96,14 @@ public sealed class AccountManagementService(AppDbContext db, IAccountPasswords 
         return true;
     }, ct);
 
-    public Task<bool> ChangeStatusAsync(int actor, int id, bool active, CancellationToken ct) => Write(async () =>
+    public Task<bool> ChangeStatusAsync(int actor, int id, bool active, CancellationToken ct, bool customerOnly = false) => Write(async () =>
     {
-        if (actor == id && !active) throw new AccountOperationException(409, "SELF_MODIFICATION_FORBIDDEN", "Không thể tự khóa tài khoản.");
         var account = await Find(id, ct);
-        if (account.IsActive == active) return true;
+        if (customerOnly && account.Role != AccountRole.Customer)
+            throw new AccountOperationException(403, "FORBIDDEN", "Chỉ được quản lý tài khoản Customer.");
+        if (actor == id && !active) throw new AccountOperationException(409, "SELF_MODIFICATION_FORBIDDEN", "Không thể tự khóa tài khoản.");
+        var clearsLoginLockout = active && (account.LockoutEnd is not null || account.FailedLoginCount != 0);
+        if (account.IsActive == active && !clearsLoginLockout) return true;
         await KeepAdmin(account, active && account.Role == AccountRole.Admin, ct);
         account.IsActive = active;
         if (active) { account.LockoutEnd = null; account.FailedLoginCount = 0; }
@@ -107,10 +112,12 @@ public sealed class AccountManagementService(AppDbContext db, IAccountPasswords 
         return true;
     }, ct);
 
-    public Task<bool> DeleteAsync(int actor, int id, CancellationToken ct) => Write(async () =>
+    public Task<bool> DeleteAsync(int actor, int id, CancellationToken ct, bool customerOnly = false) => Write(async () =>
     {
-        if (actor == id) throw new AccountOperationException(409, "SELF_MODIFICATION_FORBIDDEN", "Không thể tự xóa tài khoản.");
         var account = await Find(id, ct);
+        if (customerOnly && account.Role != AccountRole.Customer)
+            throw new AccountOperationException(403, "FORBIDDEN", "Chỉ được quản lý tài khoản Customer.");
+        if (actor == id) throw new AccountOperationException(409, "SELF_MODIFICATION_FORBIDDEN", "Không thể tự xóa tài khoản.");
         await KeepAdmin(account, false, ct);
         account.IsDeleted = true;
         await Revoke(id, ct);
@@ -160,9 +167,9 @@ public sealed class AccountManagementService(AppDbContext db, IAccountPasswords 
             await transaction.CommitAsync(ct);
             return value;
         }
-        catch (Exception e) when (AsPostgres(e)?.SqlState == PostgresErrorCodes.UniqueViolation)
+        catch (Exception e) when (AsPostgres(e) is { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_Account_Email" })
         { throw new AccountOperationException(409, "EMAIL_TAKEN", "Email này đã được sử dụng.", "email"); }
-        catch (Exception e) when (e is DbUpdateConcurrencyException || AsPostgres(e)?.SqlState is PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected)
+        catch (Exception e) when (e is DbUpdateConcurrencyException || AsPostgres(e)?.SqlState is PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected or PostgresErrorCodes.UniqueViolation)
         { throw new AccountOperationException(409, "ACCOUNT_CONFLICT", "Tài khoản vừa thay đổi. Hãy tải lại và thử lại."); }
     }
 

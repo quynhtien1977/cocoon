@@ -70,6 +70,8 @@ rtk docker compose exec api dotnet test
 
 `db/schema.sql` được xuất từ migration, dùng để dựng **database mới trống**, không chạy đè database đã migrate. Không sửa trực tiếp schema SQL để tạo lịch sử schema khác với EF.
 
+COC-42 bổ sung [bốn view phân tích](db/ANALYTICS_VIEWS.md) qua migration `AddAnalyticsViews`. Sau khi thay đổi dữ liệu đơn/seed, COC-43 cần refresh `mv_product_copurchase` trước khi tính lại gợi ý. Dùng `rtk docker compose exec -T db sh /workspace/db/verify-analytics.sh` để đối chiếu các view với dữ liệu nguồn; không cần thêm service Docker.
+
 ## Tài khoản demo và giới hạn
 
 Chạy [seed v1 — COC-50](db/SEED_V1.md) để tạo tài khoản demo và dữ liệu nền. Lệnh chỉ chạy trong Compose Development local, không tự chạy khi mở API và không reset dữ liệu:
