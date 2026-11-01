@@ -20,6 +20,31 @@ export interface SegmentOption { id: number; name: string }
 
 export const emptySegmentFilter = (): SegmentFilterValue => ({ ageMin: null, ageMax: null, genders: [], preferenceIds: [], purchasedCategoryIds: [], lastPurchaseWithinDays: null, excludeLowRatedCategoryIds: [] });
 
+/** Customer fields a segment filters on. */
+export interface SegmentCustomer {
+  id: number;
+  code: string;
+  fullName: string;
+  email: string;
+  age: number | null;
+  gender: string | null;
+  preferenceIds: number[];
+  purchasedCategoryIds: number[];
+  lowRatedCategoryIds: number[];
+  daysSinceLastOrder: number | null;
+}
+
+/** Stand-in for POST segments/preview, applying the rules in spec 6.3. */
+export function matchesSegment(customer: SegmentCustomer, filter: SegmentFilterValue): boolean {
+  if (filter.ageMin !== null && (customer.age === null || customer.age < filter.ageMin)) return false;
+  if (filter.ageMax !== null && (customer.age === null || customer.age > filter.ageMax)) return false;
+  if (filter.genders.length && !filter.genders.includes(customer.gender ?? "")) return false;
+  if (filter.preferenceIds.length && !filter.preferenceIds.some((id) => customer.preferenceIds.includes(id))) return false;
+  if (filter.purchasedCategoryIds.length && !filter.purchasedCategoryIds.some((id) => customer.purchasedCategoryIds.includes(id))) return false;
+  if (filter.lastPurchaseWithinDays !== null && (customer.daysSinceLastOrder === null || customer.daysSinceLastOrder > filter.lastPurchaseWithinDays)) return false;
+  return !filter.excludeLowRatedCategoryIds.some((id) => customer.lowRatedCategoryIds.includes(id));
+}
+
 export const segmentAgeError = ({ ageMin, ageMax }: SegmentFilterValue) => ageMin !== null && ageMax !== null && ageMin > ageMax ? "Tuổi từ phải nhỏ hơn hoặc bằng tuổi đến." : null;
 
 const genders = ["Nữ", "Nam", "Khác"];
@@ -107,7 +132,7 @@ export function SegmentFilterBuilder({ value, onChange, preferences, categories,
         </ChipGroup>
       </div>
 
-      <p aria-live="polite" className="mt-6 rounded-md bg-status-sage-bg p-4 text-status-sage-fg">Tìm thấy <strong className="font-heading text-2xl font-semibold tabular-nums">{matchCount}</strong> khách hàng phù hợp.</p>
+      <p aria-live="polite" className="mt-6 rounded-md bg-status-sage-bg p-4 text-status-sage-fg">Tìm thấy <strong className="font-heading text-2xl font-semibold lining-nums tabular-nums">{matchCount}</strong> khách hàng phù hợp.</p>
     </section>
   );
 }

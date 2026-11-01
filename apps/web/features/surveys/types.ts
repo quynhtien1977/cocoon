@@ -1,3 +1,5 @@
+import type { SegmentCustomer } from "@/components/data/segment-filter-builder";
+
 // Form-side shapes for M8. Enum names match Cocoon.Domain.Enums; schemas.ts maps them to the API ordinals.
 
 export type QuestionType = "SingleChoice" | "MultiChoice" | "Rating" | "ShortText";
@@ -49,19 +51,8 @@ export interface SurveyListItem {
   responseCount: number;
 }
 
-/** Customer fields M9 filters on; stands in for POST segments/preview until it is wired up. */
-export interface SurveyCandidate {
-  id: number;
-  code: string;
-  fullName: string;
-  email: string;
-  age: number | null;
-  gender: string | null;
-  preferenceIds: number[];
-  purchasedCategoryIds: number[];
-  lowRatedCategoryIds: number[];
-  daysSinceLastOrder: number | null;
-}
+/** Customers M9 filters; stands in for POST segments/preview until it is wired up. */
+export type SurveyCandidate = SegmentCustomer;
 
 /** GET surveys/{id}/results has no published DTO yet; shapes follow spec 6.2 and the Stitch M10 mock. */
 export interface ChoiceResult { kind: "SingleChoice" | "MultiChoice"; text: string; answerCount: number; options: { text: string; count: number }[] }

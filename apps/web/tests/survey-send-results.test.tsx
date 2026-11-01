@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { emptySegmentFilter } from "../components/data/segment-filter-builder";
+import { emptySegmentFilter, matchesSegment } from "../components/data/segment-filter-builder";
 import { SurveyResults } from "../features/surveys/components/survey-results";
 import { SurveySend } from "../features/surveys/components/survey-send";
-import { matchesSegment, surveyResultsToCsv, toRecipientsRequest } from "../features/surveys/schemas";
+import { surveyResultsToCsv, toRecipientsRequest } from "../features/surveys/schemas";
 import { surveyCandidatesFixture, surveyDraftByIdFixture, surveyResultsFixture, surveysFixture } from "../features/surveys/surveys.fixture";
 import type { SurveyStatus } from "../features/surveys/types";
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { components } from "@/lib/api/schema";
 import type { SegmentFilterValue } from "@/components/data/segment-filter-builder";
-import type { QuestionResult, QuestionType, SurveyCandidate, SurveyDraft, SurveyPurpose } from "./types";
+import type { QuestionResult, QuestionType, SurveyDraft, SurveyPurpose } from "./types";
 
 type SurveyUpsertRequest = components["schemas"]["SurveyUpsertRequest"];
 type RecipientsRequest = components["schemas"]["RecipientsRequest"];
@@ -81,17 +81,6 @@ export function toSurveyUpsertRequest(draft: SurveyDraft): SurveyUpsertRequest {
       options: isChoice(item.type) ? item.options.map((choice) => ({ text: choice.text.trim(), preferenceId: choice.preferenceId })) : [],
     })),
   };
-}
-
-/** Stand-in for POST segments/preview, applying the rules in spec 6.3. */
-export function matchesSegment(customer: SurveyCandidate, filter: SegmentFilterValue): boolean {
-  if (filter.ageMin !== null && (customer.age === null || customer.age < filter.ageMin)) return false;
-  if (filter.ageMax !== null && (customer.age === null || customer.age > filter.ageMax)) return false;
-  if (filter.genders.length && !filter.genders.includes(customer.gender ?? "")) return false;
-  if (filter.preferenceIds.length && !filter.preferenceIds.some((id) => customer.preferenceIds.includes(id))) return false;
-  if (filter.purchasedCategoryIds.length && !filter.purchasedCategoryIds.some((id) => customer.purchasedCategoryIds.includes(id))) return false;
-  if (filter.lastPurchaseWithinDays !== null && (customer.daysSinceLastOrder === null || customer.daysSinceLastOrder > filter.lastPurchaseWithinDays)) return false;
-  return !filter.excludeLowRatedCategoryIds.some((id) => customer.lowRatedCategoryIds.includes(id));
 }
 
 export function toRecipientsRequest(target: { segment: SegmentFilterValue } | { customerIds: number[] }): RecipientsRequest {
