@@ -9,7 +9,8 @@ import { StatusBadge } from "@/components/brand/status-badge";
 import { DataTable, type DataColumn, type DataFilter } from "@/components/data/data-table";
 import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
-import { currentStaffFixture, feedbackFixture } from "../feedback.fixture";
+import { loadAssignedFeedback } from "../api";
+import { useApiData } from "../use-api-data";
 import type { FeedbackListItem } from "../types";
 
 const date = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" });
@@ -39,17 +40,18 @@ const filters: DataFilter<FeedbackListItem>[] = [
 
 export function StaffFeedbackList() {
   const s = screen("S1");
-  const assigned = feedbackFixture.filter((row) => row.assigneeName === currentStaffFixture.name);
+  const { data, loading, error, retry } = useApiData(loadAssignedFeedback);
+  const assigned = data ?? [];
   const waiting = assigned.filter(needsAction).length;
 
   return (
     <>
-      <PageHeader eyebrow={s.code} title="Phản hồi được giao xử lý" description={`Phản hồi quản lý giao cho ${currentStaffFixture.name}. Ưu tiên các phản hồi điểm thấp.`} />
+      <PageHeader eyebrow={s.code} title="Phản hồi được giao xử lý" description="Phản hồi quản lý giao cho bạn. Ưu tiên các phản hồi điểm thấp." />
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4">
-        <StatTile label="Chờ trả lời" value={waiting} />
-        <StatTile label="Đã hoàn thành" value={assigned.length - waiting} />
+        <StatTile label="Chờ trả lời" value={data ? waiting : "—"} />
+        <StatTile label="Đã hoàn thành" value={data ? assigned.length - waiting : "—"} />
       </div>
-      <DataTable data={assigned} columns={columns} getRowId={(row) => row.id} caption="Phản hồi được giao" filters={filters} cardsUntil="wide" renderCard={(row) => (
+      <DataTable data={assigned} columns={columns} getRowId={(row) => row.id} caption="Phản hồi được giao" filters={filters} loading={loading} error={error} onRetry={retry} cardsUntil="wide" renderCard={(row) => (
         <article className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
           <header className="flex items-start justify-between gap-3">
             <span className="min-w-0"><span className="block font-mono text-xs text-muted-foreground">#{row.id}{row.orderCode && ` · Đơn #${row.orderCode}`}</span><span className="block font-semibold">{row.customerName}</span><span className="block text-sm text-muted-foreground">{row.productName}</span></span>

@@ -206,8 +206,17 @@ public sealed class DatabaseFixture : IAsyncLifetime
 {
     private string _connectionString = string.Empty;
     public string ConnectionString => _connectionString;
+    // Test classes start in parallel and each gets its own fixture; create and migrate the shared database one at a time.
+    private static readonly SemaphoreSlim InitGate = new(1, 1);
 
     public async Task InitializeAsync()
+    {
+        await InitGate.WaitAsync();
+        try { await CreateAndMigrateAsync(); }
+        finally { InitGate.Release(); }
+    }
+
+    private async Task CreateAndMigrateAsync()
     {
         var source = Environment.GetEnvironmentVariable("ConnectionStrings__Default")
             ?? throw new InvalidOperationException("Chạy database test bên trong container API local.");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type FormEvent } from "react";
+import { useCallback, useId, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { ArrowLeft, CircleCheck, Info, Send } from "lucide-react";
 import { FeedbackThread } from "@/components/brand/feedback-thread";
@@ -8,10 +8,12 @@ import { PageHeader } from "@/components/brand/page-header";
 import { StatusBadge } from "@/components/brand/status-badge";
 import { Button } from "@/components/ui/button";
 import { screen } from "@/lib/screens";
-import { currentStaffFixture } from "../feedback.fixture";
-import { REPLY_MAX, toReplyRequest, validateReply } from "../schemas";
+import { loadFeedbackDetail, replyToFeedback } from "../api";
+import { REPLY_MAX, validateReply } from "../schemas";
 import type { FeedbackDetail } from "../types";
+import { useApiData } from "../use-api-data";
 import { caseCard, CustomerSummary, FeedbackTimeline, OrderProductSummary } from "./feedback-case";
+import { FeedbackLoadState } from "./feedback-load-state";
 
 export function StaffFeedbackReply({ initial }: { initial: FeedbackDetail }) {
   const s = screen("S2");
@@ -20,25 +22,31 @@ export function StaffFeedbackReply({ initial }: { initial: FeedbackDetail }) {
   const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [pending, setPending] = useState(false);
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
     const found = validateReply(content);
     setError(found);
-    if (found) return;
-    // Static phase: the request body is built to check the contract but not sent until api.ts lands.
-    const request = toReplyRequest(content);
-    const at = new Date().toISOString();
-    setFeedback((current) => ({ ...current, status: "Replied", statusTimes: { ...current.statusTimes, Replied: at }, replies: [...current.replies, { id: current.replies.length + 1, staffName: currentStaffFixture.name, content: request.content, createdAt: at }] }));
-    setContent("");
-    setSent(true);
+    if (found || pending) return;
+    setPending(true);
+    try {
+      const reply = await replyToFeedback(feedback.id, content);
+      setFeedback((current) => ({ ...current, status: "Replied", statusTimes: { ...current.statusTimes, Replied: reply.createdAt }, replies: [...current.replies, reply] }));
+      setContent("");
+      setSent(true);
+    } catch (reason) {
+      setError(reason instanceof Error && reason.message ? reason.message : "Chưa gửi được câu trả lời. Hãy thử lại.");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
     <>
       <Link href="/staff/feedback" className="mb-3 inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Phản hồi được giao</Link>
       <PageHeader eyebrow={s.code} title={`Xử lý phản hồi khách hàng #${feedback.id}`} description={`${feedback.customerName}${feedback.orderCode ? ` · Đơn #${feedback.orderCode}` : ""}`} actions={<StatusBadge kind="feedback" status={feedback.status} className="whitespace-nowrap" />} />
-      <div aria-live="polite">{sent && <p className="mb-6 flex items-center gap-2 rounded-md border border-border bg-status-sage-bg p-3 text-sm text-status-sage-fg"><CircleCheck className="size-4 shrink-0" aria-hidden="true" />Đã gửi câu trả lời, trạng thái chuyển thành Đã trả lời (dữ liệu mẫu, chưa gửi máy chủ).</p>}</div>
+      <div aria-live="polite">{sent && <p className="mb-6 flex items-center gap-2 rounded-md border border-border bg-status-sage-bg p-3 text-sm text-status-sage-fg"><CircleCheck className="size-4 shrink-0" aria-hidden="true" />Đã gửi câu trả lời, trạng thái chuyển thành Đã trả lời.</p>}</div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-6">
@@ -59,7 +67,7 @@ export function StaffFeedbackReply({ initial }: { initial: FeedbackDetail }) {
               <p className="mt-4 flex gap-2 rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Trả lời lịch sự, đúng trọng tâm. Không tự ý cam kết lịch ra mắt sản phẩm hoặc cung cấp thông tin kỹ thuật nội bộ.</p>
               <div className="mt-4 flex flex-wrap justify-end gap-3 border-t border-border pt-4">
                 <Button type="button" variant="outline" className="h-12 flex-1 px-6 sm:flex-none" onClick={() => { setContent(""); setError(null); }}>Xóa nội dung</Button>
-                <Button type="submit" className="h-12 flex-1 px-6 sm:flex-none"><Send aria-hidden="true" />Gửi trả lời</Button>
+                <Button type="submit" disabled={pending} className="h-12 flex-1 px-6 sm:flex-none"><Send aria-hidden="true" />{pending ? "Đang gửi…" : "Gửi trả lời"}</Button>
               </div>
             </form>
           )}
@@ -71,4 +79,11 @@ export function StaffFeedbackReply({ initial }: { initial: FeedbackDetail }) {
       </div>
     </>
   );
+}
+
+export function StaffFeedbackReplyPage({ id }: { id: number }) {
+  const load = useCallback((signal: AbortSignal) => loadFeedbackDetail(id, signal), [id]);
+  const { data, loading, error, missing, retry } = useApiData(load);
+  if (!data) return <FeedbackLoadState loading={loading} missing={missing} error={error} onRetry={retry} backHref="/staff/feedback" />;
+  return <StaffFeedbackReply initial={data} />;
 }
