@@ -34,6 +34,12 @@ public sealed class FeedbackController(AppDbContext db) : ApiStubController
         return await Page(rows, query, cancellationToken);
     }
 
+    /// <summary>Active staff a manager can assign feedback to (M6).</summary>
+    [HttpGet("staff"), Authorize(Policy = "RequireManager")]
+    public async Task<IActionResult> Staff(CancellationToken cancellationToken) =>
+        Ok(await db.Set<StaffProfile>().Where(s => s.Account.Role == AccountRole.Staff && s.Account.IsActive)
+            .OrderBy(s => s.FullName).Select(s => new StaffOption(s.AccountId, s.FullName)).ToListAsync(cancellationToken));
+
     [HttpGet("feedback/{id:int}"), Authorize(Roles = "Manager,Staff")]
     public async Task<IActionResult> Get(int id, CancellationToken cancellationToken)
     {
@@ -221,6 +227,7 @@ public sealed class FeedbackController(AppDbContext db) : ApiStubController
     }
 }
 
+public sealed record StaffOption(int Id, string Name);
 public sealed record AssignFeedbackRequest(int StaffId);
 public sealed record ReplyFeedbackRequest([Required] string Content);
 public sealed record FeedbackReplyItem(int Id, string StaffName, string Content, DateTime CreatedAt);
