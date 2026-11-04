@@ -6,9 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Cocoon.Tests;
 
-public sealed class ReportsApiTests : AccountApiTestBase
+public sealed partial class ReportsApiTests : AccountApiTestBase
 {
-    private static readonly string[] Routes = ["overview", "customers/age", "customers/gender", "customers/preferences", "feedback/ratings", "purchases/categories"];
+    private static readonly string[] Routes = ["overview", "customers/age", "customers/gender", "customers/preferences", "feedback/ratings", "purchases/categories", "recommendations"];
 
     [Theory]
     [InlineData("Admin")]
@@ -41,6 +41,7 @@ public sealed class ReportsApiTests : AccountApiTestBase
         Assert.Equal(5, ratings.GetProperty("distribution").GetArrayLength());
         Assert.Equal(JsonValueKind.Null, ratings.GetProperty("avgRating").ValueKind);
         Assert.Empty((await Get("purchases/categories", manager)).GetProperty("items").EnumerateArray());
+        await AssertReportSqlMatchesApi(manager);
     }
 
     [Fact]
@@ -66,6 +67,7 @@ public sealed class ReportsApiTests : AccountApiTestBase
         var genders = await Get("customers/gender", manager);
         Assert.Equal(6, genders.GetProperty("items").EnumerateArray().Sum(row => row.GetProperty("customers").GetInt32()));
         Assert.Equal(2, genders.GetProperty("items").EnumerateArray().Single(row => row.GetProperty("gender").GetString() == "Chưa cung cấp").GetProperty("customers").GetInt32());
+        await AssertReportSqlMatchesApi(manager);
     }
 
     [Fact]
@@ -94,6 +96,7 @@ public sealed class ReportsApiTests : AccountApiTestBase
             Assert.Equal(1, row.GetProperty("customers").GetInt32());
             Assert.Equal(100, row.GetProperty("percentage").GetDecimal());
         });
+        await AssertReportSqlMatchesApi(manager);
     }
 
     [Fact]
@@ -122,6 +125,7 @@ public sealed class ReportsApiTests : AccountApiTestBase
         Assert.Equal(2, report.GetProperty("totalCustomers").GetInt32());
         Assert.Equal(1, report.GetProperty("newCustomers30d").GetInt32());
         Assert.Equal(2, report.GetProperty("openSurveys").GetInt32());
+        await AssertReportSqlMatchesApi(manager);
     }
 
     [Fact]
@@ -173,6 +177,7 @@ public sealed class ReportsApiTests : AccountApiTestBase
         var sameUtcPeriod = await Get("feedback/ratings?from=2026-10-01T07:00:00%2B07:00&to=2026-11-01T07:00:00%2B07:00", manager);
         Assert.Equal(2, sameUtcPeriod.GetProperty("feedbackCount").GetInt32());
         Assert.Equal(3.5m, sameUtcPeriod.GetProperty("avgRating").GetDecimal());
+        await AssertReportSqlMatchesApi(manager, start, start.AddMonths(1));
     }
 
     [Theory]
@@ -182,7 +187,7 @@ public sealed class ReportsApiTests : AccountApiTestBase
     public async Task Invalid_period_returns_field_validation_problem(string query)
     {
         var manager = await Actor(AccountRole.Manager);
-        foreach (var route in new[] { "overview", "feedback/ratings", "purchases/categories" })
+        foreach (var route in new[] { "overview", "feedback/ratings", "purchases/categories", "recommendations" })
             await Problem(await Send(HttpMethod.Get, $"/api/v1/reports/{route}?{query}", "Manager", manager), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
     }
 
