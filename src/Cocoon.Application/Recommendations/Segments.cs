@@ -1,4 +1,13 @@
+using Cocoon.Domain.Enums;
+
 namespace Cocoon.Application.Recommendations;
+
+/// <summary>GET me/recommendations item (spec 6.3).</summary>
+public sealed record RecommendationItem(int Id, decimal Score, RecommendedProduct Product, IReadOnlyList<RecommendationReason> Reasons);
+public sealed record RecommendedProduct(int Id, string Name, decimal? MinPrice, string? ImageUrl, double? AvgRating);
+/// <summary>M4 tab row with the stored breakdown for ScoreBreakdown.</summary>
+public sealed record CustomerRecommendationRow(int Id, int ProductId, string ProductName, decimal Score, RecommendationStatus Status, int? PlanId,
+    IReadOnlyList<RecommendationReason> Reasons, IReadOnlyDictionary<string, decimal> Breakdown, DateTime GeneratedAt, DateTime? InteractedAt);
 
 /// <summary>Shared by survey recipients, segment preview and recommendation plans (spec 6.3).</summary>
 public sealed record SegmentFilter(int? AgeMin, int? AgeMax, string[]? Genders, int[]? PreferenceIds,

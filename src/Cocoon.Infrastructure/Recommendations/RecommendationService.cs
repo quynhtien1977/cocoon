@@ -97,6 +97,36 @@ public sealed class RecommendationService(AppDbContext db, CustomerFactsService 
         return new RebuildResult(customers.Count, rows.Count, now);
     }
 
+    /// <summary>C0/C8: the customer's Active recommendations, best first, as in spec 6.3. Deleted products drop out.</summary>
+    public async Task<List<RecommendationItem>> ActiveItemsAsync(int customerId, int? take, CancellationToken ct)
+    {
+        var query = db.Set<Recommendation>().Where(r => r.CustomerId == customerId && r.Status == RecommendationStatus.Active)
+            .Join(db.Set<Product>(), r => r.ProductId, p => p.Id, (r, p) => new { RecommendationId = r.Id, r.Score, r.Reasons, ProductId = p.Id, p.Name })
+            .OrderByDescending(x => x.Score).ThenBy(x => x.ProductId);
+        var rows = await (take is null ? query : query.Take(take.Value)).ToListAsync(ct);
+        var productIds = rows.Select(x => x.ProductId).ToArray();
+        var variants = (await db.Set<ProductVariant>().Where(v => productIds.Contains(v.ProductId)).OrderBy(v => v.Price).ThenBy(v => v.Id)
+            .ToListAsync(ct)).ToLookup(v => v.ProductId);
+        var ratings = await db.Set<Feedback>().Where(f => productIds.Contains(f.ProductId)).GroupBy(f => f.ProductId)
+            .Select(g => new { ProductId = g.Key, Average = g.Average(f => (double)f.Rating) }).ToDictionaryAsync(x => x.ProductId, x => x.Average, ct);
+        return rows.Select(x => new RecommendationItem(x.RecommendationId, x.Score,
+            new RecommendedProduct(x.ProductId, x.Name, variants[x.ProductId].FirstOrDefault()?.Price,
+                variants[x.ProductId].FirstOrDefault(v => v.ImageUrl != null)?.ImageUrl,
+                ratings.TryGetValue(x.ProductId, out var avg) ? Math.Round(avg, 1) : null),
+            ReadReasons(x.Reasons))).ToList();
+    }
+
+    /// <summary>M4 tab: the customer's current recommendations, including ones they clicked or dismissed.</summary>
+    public async Task<List<CustomerRecommendationRow>> CustomerRowsAsync(int customerId, CancellationToken ct) =>
+        (await db.Set<Recommendation>().Where(r => r.CustomerId == customerId && r.Status != RecommendationStatus.Expired)
+            .Join(db.Set<Product>().IgnoreQueryFilters(), r => r.ProductId, p => p.Id, (r, p) => new { r, p.Name })
+            .OrderByDescending(x => x.r.Score).ThenBy(x => x.r.ProductId).ToListAsync(ct))
+        .Select(x => new CustomerRecommendationRow(x.r.Id, x.r.ProductId, x.Name, x.r.Score, x.r.Status, x.r.PlanId,
+            ReadReasons(x.r.Reasons), JsonSerializer.Deserialize<Dictionary<string, decimal>>(x.r.Breakdown, Json) ?? [], x.r.GeneratedAt, x.r.InteractedAt))
+        .ToList();
+
+    private static List<RecommendationReason> ReadReasons(string json) => JsonSerializer.Deserialize<List<RecommendationReason>>(json, Json) ?? [];
+
     /// <summary>Customers matching a plan's segment, for activation notices and targeted rebuilds.</summary>
     public async Task<List<int>> PlanAudienceAsync(RecommendationPlan plan, CancellationToken ct) =>
         (await facts.MatchAsync(ReadSegment(plan.Segment), ct)).Select(c => c.Id).ToList();

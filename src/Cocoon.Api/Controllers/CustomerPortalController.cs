@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using Cocoon.Application.Recommendations;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
 using Cocoon.Infrastructure.Persistence;
+using Cocoon.Infrastructure.Recommendations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +14,7 @@ namespace Cocoon.Api.Controllers;
 /// <summary>Customer self-service. Customer id always comes from the token, never from the URL.</summary>
 [Route("api/v1/me")]
 [Authorize(Policy = "RequireCustomer")]
-public sealed class CustomerPortalController(AppDbContext db) : ApiStubController
+public sealed class CustomerPortalController(AppDbContext db, RecommendationService recommendations) : ApiStubController
 {
     [HttpGet("home")]
     public async Task<IActionResult> Home(CancellationToken cancellationToken)
@@ -28,8 +30,7 @@ public sealed class CustomerPortalController(AppDbContext db) : ApiStubControlle
             .Take(3).ToListAsync(cancellationToken);
         var reviewable = await Reviewable(me).Take(4).ToListAsync(cancellationToken);
         var unread = await db.Set<Notification>().CountAsync(n => n.AccountId == me && !n.IsRead, cancellationToken);
-        // Recommendations land in sprint 3; the section stays empty until then.
-        return Ok(new CustomerHome(surveys, reviewable, [], unread));
+        return Ok(new CustomerHome(surveys, reviewable, await recommendations.ActiveItemsAsync(me, 4, cancellationToken), unread));
     }
 
     [HttpGet("orders")]
@@ -110,6 +111,8 @@ public sealed class CustomerPortalController(AppDbContext db) : ApiStubControlle
         {
             return AlreadyReviewed(); // Lost a race with another tab reviewing the same line.
         }
+        // Spec 7.3: a low rating can rule out the product or its category, so refresh this customer's suggestions now.
+        await recommendations.RebuildAsync([me], cancellationToken);
         return StatusCode(StatusCodes.Status201Created, new CreatedFeedback(feedback.Id));
     }
 
@@ -118,12 +121,34 @@ public sealed class CustomerPortalController(AppDbContext db) : ApiStubControlle
     [HttpPost("surveys/{id:int}/responses")]
     public IActionResult SubmitSurvey(int id, SubmitSurveyRequest request) => NotImplementedYet();
 
-    [HttpGet("recommendations")] public IActionResult Recommendations() => NotImplementedYet();
-    [HttpPost("recommendations/{id:int}/click")] public IActionResult Click(int id) => NotImplementedYet();
-    [HttpPost("recommendations/{id:int}/dismiss")] public IActionResult Dismiss(int id) => NotImplementedYet();
+    [HttpGet("recommendations")]
+    public async Task<IActionResult> Recommendations(CancellationToken cancellationToken) =>
+        Ok(await recommendations.ActiveItemsAsync(AccountId, null, cancellationToken));
+
+    /// <summary>Records that the customer opened the product. Clicking again is a no-op.</summary>
+    [HttpPost("recommendations/{id:int}/click")]
+    public Task<IActionResult> Click(int id, CancellationToken cancellationToken) =>
+        Interact(id, [RecommendationStatus.Active], RecommendationStatus.Clicked, cancellationToken);
+
+    /// <summary>"Không quan tâm": the product is not suggested again for 90 days (spec 5.3).</summary>
+    [HttpPost("recommendations/{id:int}/dismiss")]
+    public Task<IActionResult> Dismiss(int id, CancellationToken cancellationToken) =>
+        Interact(id, [RecommendationStatus.Active, RecommendationStatus.Clicked], RecommendationStatus.Dismissed, cancellationToken);
 
     [HttpGet("notifications")] public IActionResult Notifications() => NotImplementedYet();
     [HttpPost("notifications/{id:int}/read")] public IActionResult MarkRead(int id) => NotImplementedYet();
+
+    private async Task<IActionResult> Interact(int id, RecommendationStatus[] from, RecommendationStatus to, CancellationToken cancellationToken)
+    {
+        var (me, now) = (AccountId, DateTime.UtcNow);
+        var updated = await db.Set<Recommendation>().Where(r => r.Id == id && r.CustomerId == me && from.Contains(r.Status))
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, to).SetProperty(r => r.InteractedAt, now), cancellationToken);
+        if (updated == 1) return NoContent();
+        var status = await db.Set<Recommendation>().Where(r => r.Id == id && r.CustomerId == me).Select(r => (RecommendationStatus?)r.Status)
+            .SingleOrDefaultAsync(cancellationToken);
+        return status is null ? NotFound() : status == to ? NoContent()
+            : Fail(StatusCodes.Status409Conflict, "RECOMMENDATION_NOT_ACTIVE", "Gợi ý này không còn hiệu lực. Hãy tải lại trang.");
+    }
 
     private ObjectResult AlreadyReviewed() =>
         Fail(StatusCodes.Status409Conflict, "FEEDBACK_ALREADY_EXISTS", "Sản phẩm này đã được đánh giá.");
@@ -184,7 +209,7 @@ public sealed record SubmitSurveyRequest(SurveyAnswerInput[] Answers);
 public sealed record SurveyAnswerInput(int QuestionId, int[]? OptionIds, decimal? NumericValue, string? TextValue);
 
 public sealed record CustomerHome(IReadOnlyList<PendingSurvey> PendingSurveys, IReadOnlyList<ReviewableItem> ReviewableItems,
-    IReadOnlyList<object> Recommendations, int UnreadNotifications);
+    IReadOnlyList<RecommendationItem> Recommendations, int UnreadNotifications);
 public sealed record PendingSurvey(int Id, string Title, DateTime? CloseAt, int QuestionCount);
 public sealed record ReviewableItem(int OrderItemId, int ProductId, string Name, string Variant, string? ImageUrl, string OrderCode, DateTime OrderedAt);
 public sealed record CustomerOrder(int Id, string Code, DateTime OrderedAt, OrderStatus Status, decimal TotalAmount, IReadOnlyList<CustomerOrderItem> Items);
