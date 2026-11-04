@@ -1,4 +1,4 @@
-// Row shape for GET feedback (spec 6.2). Replace with lib/api/schema.d.ts types once P3 publishes the DTO.
+// Matches FeedbackListItem and FeedbackDetail in FeedbackController.cs; the API declares no response types, so schema.d.ts has none.
 
 export type FeedbackStatus = "New" | "Accepted" | "Assigned" | "Replied" | "Closed";
 
@@ -14,6 +14,7 @@ export interface FeedbackListItem {
   content: string;
   status: FeedbackStatus;
   /** Staff the feedback is assigned to; null before Assigned. */
+  assigneeId: number | null;
   assigneeName: string | null;
   /** True when written after a purchase (has OrderItemId), shown as "Đã mua". */
   verifiedPurchase: boolean;
@@ -26,10 +27,12 @@ export interface FeedbackReply { id: number; staffName: string; content: string;
 
 /** GET feedback/{id} for M6 and S2. */
 export interface FeedbackDetail extends FeedbackListItem {
+  /** Empty once the customer is deleted. */
   customerEmail: string;
   customerPhone: string | null;
   customerOrderCount: number;
   customerPreferences: string[];
+  /** Empty and 0 when the feedback has no order line. */
   sku: string;
   price: number;
   orderCompletedAt: string | null;

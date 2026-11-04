@@ -4,6 +4,7 @@ using Cocoon.Domain;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
 using Cocoon.Infrastructure.Persistence;
+using Cocoon.Infrastructure.Recommendations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -126,7 +127,7 @@ public sealed class AuthController(AppDbContext db, TokenService tokens, IPasswo
 }
 
 [Route("api/v1")]
-public sealed class ProfileController(AppDbContext db) : ApiStubController
+public sealed class ProfileController(AppDbContext db, RecommendationService recommendations) : ApiStubController
 {
     [HttpGet("me")]
     [ProducesResponseType<MeResponse>(StatusCodes.Status200OK)]
@@ -190,6 +191,7 @@ public sealed class ProfileController(AppDbContext db) : ApiStubController
         db.AddRange(ids.Except(current.Select(c => c.PreferenceId))
             .Select(id => new CustomerPreference { CustomerId = AccountId, PreferenceId = id }));
         await db.SaveChangesAsync(cancellationToken);
+        await recommendations.RebuildAsync([AccountId], cancellationToken); // Spec 7.3: suggestions follow saved preferences.
         return NoContent();
     }
 }

@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using Cocoon.Application.Accounts;
+using Cocoon.Application.Recommendations;
 using Cocoon.Infrastructure.Accounts;
+using Cocoon.Infrastructure.Recommendations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,7 +15,7 @@ namespace Cocoon.Api.Controllers;
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-public sealed class CustomersController(AccountManagementService accounts) : ApiStubController
+public sealed class CustomersController(AccountManagementService accounts, RecommendationService recommendations) : ApiStubController
 {
     [HttpGet, ProducesResponseType<CustomerPage<CustomerRow>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<CustomerPage<CustomerRow>>> List([FromQuery] CustomerQuery query, CancellationToken ct) =>
@@ -59,7 +61,13 @@ public sealed class CustomersController(AccountManagementService accounts) : Api
     public async Task<ActionResult<CustomerPage<CustomerSurveyRow>>> Surveys(int id, CancellationToken ct, int page = 1, int pageSize = 20) =>
         Ok(await accounts.CustomerSurveysAsync(id, page, pageSize, ct));
 
-    [HttpGet("{id:int}/recommendations")] public IActionResult Recommendations(int id) => NotImplementedYet();
+    /// <summary>M4 tab: current suggestions with reasons and the weighted breakdown for ScoreBreakdown.</summary>
+    [HttpGet("{id:int}/recommendations"), ProducesResponseType<List<CustomerRecommendationRow>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<CustomerRecommendationRow>>> Recommendations(int id, CancellationToken ct)
+    {
+        await accounts.CustomerAsync(id, ct); // 404 for unknown or deleted customers.
+        return Ok(await recommendations.CustomerRowsAsync(id, ct));
+    }
 }
 
 public sealed record CreateCustomerRequest([Required, EmailAddress, StringLength(256)] string Email,

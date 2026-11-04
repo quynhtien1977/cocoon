@@ -34,6 +34,12 @@ public sealed class FeedbackController(AppDbContext db) : ApiStubController
         return await Page(rows, query, cancellationToken);
     }
 
+    /// <summary>Active staff a manager can assign feedback to (M6).</summary>
+    [HttpGet("staff"), Authorize(Policy = "RequireManager")]
+    public async Task<IActionResult> Staff(CancellationToken cancellationToken) =>
+        Ok(await db.Set<StaffProfile>().Where(s => s.Account.Role == AccountRole.Staff && s.Account.IsActive)
+            .OrderBy(s => s.FullName).Select(s => new StaffOption(s.AccountId, s.FullName)).ToListAsync(cancellationToken));
+
     [HttpGet("feedback/{id:int}"), Authorize(Roles = "Manager,Staff")]
     public async Task<IActionResult> Get(int id, CancellationToken cancellationToken)
     {
@@ -194,11 +200,12 @@ public sealed class FeedbackController(AppDbContext db) : ApiStubController
         select new FeedbackRow { F = f, P = p, Category = category, C = c, A = a, I = i, O = o, V = v, S = s };
 
     /// <summary>Feedback columns reference StaffProfile; an internal account without one gets an empty profile.</summary>
-    private async Task EnsureStaffProfile(CancellationToken cancellationToken)
+    private Task EnsureStaffProfile(CancellationToken cancellationToken) => EnsureStaffProfile(db, AccountId, cancellationToken);
+
+    internal static async Task EnsureStaffProfile(AppDbContext db, int accountId, CancellationToken cancellationToken)
     {
-        var me = AccountId;
-        if (await db.Set<StaffProfile>().IgnoreQueryFilters().AnyAsync(s => s.AccountId == me, cancellationToken)) return;
-        db.Add(new StaffProfile { AccountId = me });
+        if (await db.Set<StaffProfile>().IgnoreQueryFilters().AnyAsync(s => s.AccountId == accountId, cancellationToken)) return;
+        db.Add(new StaffProfile { AccountId = accountId });
         await db.SaveChangesAsync(cancellationToken);
     }
 
@@ -221,6 +228,7 @@ public sealed class FeedbackController(AppDbContext db) : ApiStubController
     }
 }
 
+public sealed record StaffOption(int Id, string Name);
 public sealed record AssignFeedbackRequest(int StaffId);
 public sealed record ReplyFeedbackRequest([Required] string Content);
 public sealed record FeedbackReplyItem(int Id, string StaffName, string Content, DateTime CreatedAt);

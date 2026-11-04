@@ -26,6 +26,8 @@ export interface ChartCardProps<T> {
   /** Up to five series, colored --chart-1…5 in order. Pie uses only the first series. */
   series: ChartSeries<T>[];
   formatValue?: (value: number) => string;
+  /** Fixed top of the value axis, for scales with a known limit such as a 5-point rating. */
+  maxValue?: number;
   height?: number;
   action?: ReactNode;
   loading?: boolean;
@@ -44,7 +46,8 @@ export const chartColor = (index: number) => `var(--chart-${(index % 5) + 1})`;
 const tick = { fill: "var(--muted-foreground)", fontSize: 12 };
 const tooltipStyle = { background: "var(--popover)", color: "var(--popover-foreground)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 13 };
 
-function ChartBody<T>({ type, data, categoryKey, series, formatValue, height }: Required<Pick<ChartCardProps<T>, "type" | "data" | "categoryKey" | "series" | "formatValue" | "height">>) {
+function ChartBody<T>({ type, data, categoryKey, series, formatValue, height, maxValue }: Required<Pick<ChartCardProps<T>, "type" | "data" | "categoryKey" | "series" | "formatValue" | "height">> & Pick<ChartCardProps<T>, "maxValue">) {
+  const domain = maxValue === undefined ? undefined : [0, maxValue];
   // Recharts infers dataKey from row type; keys are already checked by ChartCardProps<T>.
   const rows = data as unknown as Record<string, unknown>[];
   const category = categoryKey as string;
@@ -81,11 +84,11 @@ function ChartBody<T>({ type, data, categoryKey, series, formatValue, height }: 
     <BarChart {...chartProps} data={rows} layout={horizontal ? "vertical" : "horizontal"}>
       <CartesianGrid stroke="var(--border)" vertical={horizontal} horizontal={!horizontal} />
       {horizontal ? <>
-        <XAxis type="number" tick={tick} tickLine={false} axisLine={false} tickFormatter={formatValue} />
+        <XAxis type="number" domain={domain} tick={tick} tickLine={false} axisLine={false} tickFormatter={formatValue} />
         <YAxis type="category" dataKey={category} tick={tick} tickLine={false} axisLine={{ stroke: "var(--border)" }} width={112} />
       </> : <>
         <XAxis dataKey={category} tick={tick} tickLine={false} axisLine={{ stroke: "var(--border)" }} />
-        <YAxis tick={tick} tickLine={false} axisLine={false} tickFormatter={formatValue} width={48} />
+        <YAxis domain={domain} tick={tick} tickLine={false} axisLine={false} tickFormatter={formatValue} width={48} />
       </>}
       {tooltip}
       {legend}
@@ -94,7 +97,7 @@ function ChartBody<T>({ type, data, categoryKey, series, formatValue, height }: 
   );
 }
 
-export function ChartCard<T>({ title, description, type, data, categoryKey, categoryLabel, series, formatValue = defaultFormat, height = 280, action, loading = false, error, onRetry, emptyTitle = "Chưa có dữ liệu", emptyDescription = "Biểu đồ sẽ hiển thị khi có số liệu.", className }: ChartCardProps<T>) {
+export function ChartCard<T>({ title, description, type, data, categoryKey, categoryLabel, series, formatValue = defaultFormat, maxValue, height = 280, action, loading = false, error, onRetry, emptyTitle = "Chưa có dữ liệu", emptyDescription = "Biểu đồ sẽ hiển thị khi có số liệu.", className }: ChartCardProps<T>) {
   const id = useId();
   const tableSeries = type === "pie" ? series.slice(0, 1) : series;
   return (
@@ -110,7 +113,7 @@ export function ChartCard<T>({ title, description, type, data, categoryKey, cate
         : error ? <div role="alert" className="rounded-lg border border-destructive p-6"><p>{error}</p>{onRetry && <Button type="button" variant="outline" className="mt-3" onClick={onRetry}>Thử lại</Button>}</div>
         : data.length === 0 ? <EmptyState title={emptyTitle} description={emptyDescription} className="border-0 py-8" />
         : <>
-          <div aria-hidden="true"><ChartBody type={type} data={data} categoryKey={categoryKey} series={series} formatValue={formatValue} height={height} /></div>
+          <div aria-hidden="true"><ChartBody type={type} data={data} categoryKey={categoryKey} series={series} formatValue={formatValue} maxValue={maxValue} height={height} /></div>
           <table className="sr-only">
             <caption>{title}</caption>
             <thead><tr><th scope="col">{categoryLabel}</th>{tableSeries.map((item) => <th key={item.key} scope="col">{item.label}</th>)}</tr></thead>
