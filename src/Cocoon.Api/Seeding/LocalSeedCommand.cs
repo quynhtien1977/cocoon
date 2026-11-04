@@ -21,9 +21,10 @@ public static class LocalSeedCommand
         catch (ArgumentException) { return false; }
     }
 
-    public static async Task<int> RunAsync(IHostEnvironment environment, IConfiguration configuration, bool includeFeedback = false)
+    public static async Task<int> RunAsync(IHostEnvironment environment, IConfiguration configuration, bool includeFeedback = false,
+        bool includeSurveysAndPlans = false)
     {
-        var version = includeFeedback ? "v2" : "v1";
+        var version = includeSurveysAndPlans ? "v3" : includeFeedback ? "v2" : "v1";
         var connection = configuration.GetConnectionString("Default");
         if (!IsAllowedTarget(environment.EnvironmentName, connection))
         {
@@ -40,7 +41,8 @@ public static class LocalSeedCommand
             }
             var hasher = new PasswordHasher<Account>();
             var added = await new DemoDataSeeder(db,
-                account => hasher.HashPassword(account, "Demo@12345"), DateTime.UtcNow.Date).RunAsync(includeFeedback: includeFeedback);
+                account => hasher.HashPassword(account, "Demo@12345"), DateTime.UtcNow.Date)
+                .RunAsync(includeFeedback: includeFeedback, includeSurveysAndPlans: includeSurveysAndPlans);
             Console.WriteLine($"Seed {version} hoàn tất: thêm {added} bản ghi. Dữ liệu hiện có được giữ nguyên.");
             return 0;
         }
