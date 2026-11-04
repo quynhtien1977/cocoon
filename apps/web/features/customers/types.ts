@@ -17,7 +17,9 @@ export interface CustomerListItem {
   status: CustomerStatus;
 }
 
-/** Form side of CreateCustomerRequest plus the preferences chosen on M3. */
+export interface Preference { id: number; name: string }
+
+/** Form side of CreateCustomerRequest; preferences holds preference ids. */
 export interface CustomerDraft {
   fullName: string;
   email: string;
@@ -26,7 +28,7 @@ export interface CustomerDraft {
   dateOfBirth: string;
   gender: string;
   address: string;
-  preferences: string[];
+  preferences: number[];
 }
 
 export type OrderStatus = "Completed" | "Cancelled" | "Returned";

@@ -2,7 +2,8 @@ import { z } from "zod";
 import type { components } from "@/lib/api/schema";
 import type { CustomerDraft } from "./types";
 
-type CreateCustomerRequest = components["schemas"]["CreateCustomerRequest"];
+// lib/api/schema.d.ts predates preferenceIds on CreateCustomerRequest; regenerate it to drop this extension.
+export type CreateCustomerBody = components["schemas"]["CreateCustomerRequest"] & { preferenceIds: number[] };
 
 export const genderOptions = ["Nữ", "Nam", "Khác"];
 
@@ -15,7 +16,7 @@ export const customerDraftSchema = z.object({
   dateOfBirth: z.string(),
   gender: z.string(),
   address: z.string().trim().max(500, "Địa chỉ tối đa 500 ký tự."),
-  preferences: z.array(z.string()),
+  preferences: z.array(z.number()),
 });
 
 /** Flattens zod issues to field → message; today is passed in so the rule stays testable. */
@@ -27,8 +28,7 @@ export function validateCustomerDraft(draft: CustomerDraft, today: string): Reco
   return errors;
 }
 
-/** Preferences are not part of this request; they go to a separate call once the API offers one for a customer. */
-export function toCreateCustomerRequest(draft: CustomerDraft): CreateCustomerRequest {
+export function toCreateCustomerRequest(draft: CustomerDraft): CreateCustomerBody {
   return {
     email: draft.email.trim(),
     fullName: draft.fullName.trim(),
@@ -36,5 +36,6 @@ export function toCreateCustomerRequest(draft: CustomerDraft): CreateCustomerReq
     dateOfBirth: draft.dateOfBirth || null,
     gender: draft.gender || null,
     address: draft.address.trim() || null,
+    preferenceIds: draft.preferences,
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, Archive, BadgeInfo, CircleCheck, ClipboardCheck, Lock, LockOpen, ReceiptText, Star, UserRound } from "lucide-react";
 import { ConfirmDialog } from "@/components/brand/confirm-dialog";
@@ -10,10 +10,13 @@ import { RatingStars } from "@/components/brand/rating-stars";
 import { StatTile } from "@/components/brand/stat-tile";
 import { StatusBadge } from "@/components/brand/status-badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useApiData } from "@/lib/api/use-api-data";
 import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
+import { deleteCustomer, loadCustomerDetail, lockCustomer, unlockCustomer } from "../api";
 import type { CustomerDetail as Customer, RecommendationState } from "../types";
 
 const date = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" });
@@ -32,6 +35,16 @@ function Info({ label, children }: { label: string; children: ReactNode }) {
   return <div className="border-b border-border py-3 last:border-0 sm:grid sm:grid-cols-[12rem_minmax(0,1fr)] sm:gap-4"><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-1 text-sm font-semibold break-words sm:mt-0">{children}</dd></div>;
 }
 
+/** M4 route body: loads the profile and its tabs, then hands them to CustomerDetail. */
+export function CustomerDetailPage({ id }: { id: number }) {
+  const load = useCallback((signal: AbortSignal) => loadCustomerDetail(id, signal), [id]);
+  const { data, loading, error, missing, retry } = useApiData(load, "Chưa tải được hồ sơ khách hàng. Kiểm tra kết nối rồi thử lại.");
+  if (data) return <CustomerDetail initial={data} />;
+  if (loading) return <div role="status" className="space-y-4"><span className="sr-only">Đang tải hồ sơ khách hàng</span><Skeleton className="h-24 w-full" /><Skeleton className="h-64 w-full" /></div>;
+  if (missing) return <EmptyState title="Không tìm thấy khách hàng" description="Khách hàng không tồn tại hoặc đã bị xóa." action={<Link href="/manager/customers" className={cn(buttonVariants(), "h-12 px-4")}>Về danh sách khách hàng</Link>} />;
+  return <div role="alert"><EmptyState title="Chưa tải được hồ sơ" description={error ?? "Hãy thử lại."} action={<Button type="button" className="h-12 px-4" onClick={retry}>Thử lại</Button>} /></div>;
+}
+
 /** scoreBreakdown is passed in by the route: features/customers must not import features/recommendations. */
 export function CustomerDetail({ initial, scoreBreakdown }: { initial: Customer; scoreBreakdown?: ReactNode }) {
   const s = screen("M4");
@@ -43,16 +56,21 @@ export function CustomerDetail({ initial, scoreBreakdown }: { initial: Customer;
   const doneSurveys = customer.surveys.filter((item) => item.status === "Done").length;
   const lastOrder = customer.orders[0];
 
-  // Static phase: changes live in this page's state only, until customers/{id}/lock, unlock and DELETE are wired up.
-  function toggleLock() {
+  async function toggleLock() {
+    await (locked ? unlockCustomer : lockCustomer)(customer.id);
     setCustomer((current) => ({ ...current, status: locked ? "Active" : "Locked" }));
-    setNotice(`${locked ? "Đã mở khóa" : "Đã khóa"} tài khoản ${customer.fullName} (dữ liệu mẫu, chưa gửi máy chủ).`);
+    setNotice(`${locked ? "Đã mở khóa" : "Đã khóa"} tài khoản ${customer.fullName}.`);
+  }
+
+  async function remove() {
+    await deleteCustomer(customer.id);
+    setDeleted(true);
   }
 
   if (deleted) {
     return (
       <>
-        <PageHeader eyebrow={s.code} title="Đã xóa khách hàng" description={`Hồ sơ ${customer.fullName} (${customer.code}) đã được xóa mềm (dữ liệu mẫu, chưa gửi máy chủ).`} />
+        <PageHeader eyebrow={s.code} title="Đã xóa khách hàng" description={`Hồ sơ ${customer.fullName} (${customer.code}) đã được xóa mềm.`} />
         <Link href="/manager/customers" className={cn(buttonVariants(), "h-12 px-4")}>Về danh sách khách hàng</Link>
       </>
     );
@@ -67,7 +85,7 @@ export function CustomerDetail({ initial, scoreBreakdown }: { initial: Customer;
           description={locked ? `${customer.fullName} sẽ đăng nhập lại được.` : `${customer.fullName} sẽ không đăng nhập được cho đến khi được mở khóa. Dữ liệu vẫn được giữ.`}
           trigger={<Button type="button" variant="outline" className="h-12 px-4">{locked ? <LockOpen aria-hidden="true" /> : <Lock aria-hidden="true" />}{locked ? "Mở khóa" : "Khóa tài khoản"}</Button>} onConfirm={toggleLock} />
         <ConfirmDialog portal="manager" title="Xóa khách hàng?" description={`Hồ sơ ${customer.fullName} chuyển sang không hoạt động và không đăng nhập được nữa. Lịch sử đơn hàng và phản hồi vẫn được giữ lại.`} confirmLabel="Xóa khách hàng"
-          trigger={<Button type="button" variant="outline" className="h-12 px-4 text-destructive"><Archive aria-hidden="true" />Xóa khách hàng</Button>} onConfirm={() => setDeleted(true)} />
+          trigger={<Button type="button" variant="outline" className="h-12 px-4 text-destructive"><Archive aria-hidden="true" />Xóa khách hàng</Button>} onConfirm={remove} />
       </>} />
       <p className="mb-6 flex gap-2 rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground"><BadgeInfo className="mt-0.5 size-4 shrink-0 text-gold-strong" aria-hidden="true" /><span><strong className="font-semibold text-foreground">Xóa mềm:</strong> giữ nguyên lịch sử đơn hàng và phản hồi, chỉ chuyển tài khoản sang không hoạt động.</span></p>
       <div aria-live="polite">{notice && <p className="mb-6 flex items-center gap-2 rounded-md border border-border bg-status-sage-bg p-3 text-sm text-status-sage-fg"><CircleCheck className="size-4 shrink-0" aria-hidden="true" />{notice}</p>}</div>
@@ -135,15 +153,16 @@ export function CustomerDetail({ initial, scoreBreakdown }: { initial: Customer;
         </TabsContent>
 
         <TabsContent value="surveys">
-          <ul className={cn(panel, "divide-y divide-border py-2 sm:py-2")}>{customer.surveys.map((item) => (
+          {customer.surveys.length ? <ul className={cn(panel, "divide-y divide-border py-2 sm:py-2")}>{customer.surveys.map((item) => (
             <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
               <span className="min-w-0"><span className="block font-semibold">{item.title}</span><span className="block text-xs text-muted-foreground">Gửi ngày {date.format(new Date(item.sentAt))}</span></span>
               <StatusBadge kind="recipient" status={item.status} className="whitespace-nowrap" />
             </li>
-          ))}</ul>
+          ))}</ul> : <EmptyState title="Chưa có khảo sát" description="Khách hàng này chưa được gửi khảo sát nào." />}
         </TabsContent>
 
         <TabsContent value="recommendations" className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+          {!customer.recommendations.length ? <EmptyState className="lg:col-span-2" title="Chưa có gợi ý" description="Gợi ý sản phẩm cho khách hàng này sẽ hiện khi hệ thống gợi ý được bật." /> : <>
           {scoreBreakdown}
           <section aria-labelledby="suggested-title" className={panel}>
             <h2 id="suggested-title" className="font-heading text-xl">Sản phẩm đang gợi ý</h2>
@@ -155,6 +174,7 @@ export function CustomerDetail({ initial, scoreBreakdown }: { initial: Customer;
               </li>
             ))}</ul>
           </section>
+          </>}
         </TabsContent>
       </Tabs>
     </>

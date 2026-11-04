@@ -6,8 +6,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 import { CustomerCreateForm } from "../features/customers/components/customer-create-form";
-import { CustomerDetail } from "../features/customers/components/customer-detail";
-import { customerDetailFixture, customersFixture, scoreComponentsFixture } from "../features/customers/customers.fixture";
+import { CustomerDetail, CustomerDetailPage } from "../features/customers/components/customer-detail";
 import { toCreateCustomerRequest, validateCustomerDraft } from "../features/customers/schemas";
 import { FeedbackInbox } from "../features/feedback/components/feedback-inbox";
 import { FeedbackProcessing, FeedbackProcessingPage } from "../features/feedback/components/feedback-processing";
@@ -15,7 +14,6 @@ import { StaffFeedbackList } from "../features/feedback/components/staff-feedbac
 import { StaffFeedbackReply } from "../features/feedback/components/staff-feedback-reply";
 import type { FeedbackDetail, FeedbackListItem, FeedbackStatus } from "../features/feedback/types";
 import { toReplyRequest, validateReply } from "../features/feedback/schemas";
-import { ScoreBreakdown } from "../features/recommendations/score-breakdown";
 
 beforeEach(() => window.history.replaceState(null, "", "/"));
 afterEach(cleanup);
@@ -162,8 +160,10 @@ test("reply validation and request trim the content", () => {
   assert.deepEqual(toReplyRequest("  Nội dung đủ dài.  "), { content: "Nội dung đủ dài." });
 });
 
-test("M3 reports invalid fields, toggles preferences and confirms saving", async () => {
+test("M3 reports invalid fields, toggles preferences and posts the customer", async () => {
   const user = userEvent.setup();
+  stubFetch((url) => url.endsWith("/preferences") ? json([{ id: 2, name: "Da nhạy cảm" }, { id: 3, name: "Da khô" }])
+    : json({ id: 120, email: "ha@example.com", role: "Customer", temporaryPassword: "Tam!1234", mustChangePassword: true }, 201));
   render(<CustomerCreateForm />);
   await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }));
   assert.ok(screen.getByText("Nhập họ và tên."));
@@ -171,34 +171,66 @@ test("M3 reports invalid fields, toggles preferences and confirms saving", async
   await user.type(screen.getByLabelText(/Họ và tên/), "Nguyễn Thu Hà");
   await user.type(screen.getByLabelText(/^Email/), "ha@example.com");
   await user.type(screen.getByLabelText(/Số điện thoại/), "0912 345 678");
-  const chip = screen.getByRole("button", { name: "Da khô" });
+  const chip = await screen.findByRole("button", { name: "Da khô" });
   await user.click(chip);
   assert.equal(chip.getAttribute("aria-pressed"), "true");
   assert.ok(screen.getByText("1 mục đã chọn"));
   await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }));
-  assert.ok(screen.getByText(/Đã lưu hồ sơ Nguyễn Thu Hà/));
+  assert.ok(await screen.findByText(/Đã lưu hồ sơ Nguyễn Thu Hà/));
+  assert.ok(screen.getByText("Tam!1234"));
+  const post = requests.find((request) => request.method === "POST")!;
+  assert.equal(post.url, "/api/v1/customers");
+  assert.deepEqual((post.body as { preferenceIds: number[] }).preferenceIds, [3]);
+});
+
+test("M3 shows the API conflict on the email field", async () => {
+  const user = userEvent.setup();
+  stubFetch((url) => url.endsWith("/preferences") ? json([]) : json({ status: 409, code: "EMAIL_TAKEN", detail: "Email này đã được dùng." }, 409));
+  render(<CustomerCreateForm />);
+  await user.type(screen.getByLabelText(/Họ và tên/), "Nguyễn Thu Hà");
+  await user.type(screen.getByLabelText(/^Email/), "ha@example.com");
+  await user.type(screen.getByLabelText(/Số điện thoại/), "0912 345 678");
+  await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }));
+  assert.ok(await screen.findByText("Email này đã được dùng."));
+  assert.equal(screen.getByLabelText(/^Email/).getAttribute("aria-invalid"), "true");
 });
 
 test("customer draft maps to CreateCustomerRequest and rejects a future birth date", () => {
-  const draft = { fullName: " Hà ", email: " ha@example.com ", phone: "0912 345 678", dateOfBirth: "", gender: "", address: "  ", preferences: ["Da khô"] };
-  assert.deepEqual(toCreateCustomerRequest(draft), { email: "ha@example.com", fullName: "Hà", phone: "0912345678", dateOfBirth: null, gender: null, address: null });
+  const draft = { fullName: " Hà ", email: " ha@example.com ", phone: "0912 345 678", dateOfBirth: "", gender: "", address: "  ", preferences: [3] };
+  assert.deepEqual(toCreateCustomerRequest(draft), { email: "ha@example.com", fullName: "Hà", phone: "0912345678", dateOfBirth: null, gender: null, address: null, preferenceIds: [3] });
   assert.deepEqual(validateCustomerDraft(draft, "2026-10-30"), {});
   assert.equal(validateCustomerDraft({ ...draft, dateOfBirth: "2026-10-31" }, "2026-10-30").dateOfBirth, "Ngày sinh không thể ở tương lai.");
 });
 
-test("M4 switches tabs, locks after confirmation and soft-deletes", async () => {
+const profile = { id: 9, code: "KH-0009", fullName: "Trúc Nguyễn", email: "truc@example.com", phone: null, age: 26, gender: "Nữ", preferences: ["Da khô"], orderCount: 2, lastOrderAt: "2026-10-20T03:00:00Z", joinedAt: "2025-01-10T02:00:00Z", status: "Active" as const, address: null, dateOfBirth: null, totalSpent: 390000 };
+const orders = [{ id: 1, code: "CO-1", placedAt: "2026-10-20T03:00:00Z", itemCount: 1, total: 195000, status: "Completed" }, { id: 2, code: "CO-2", placedAt: "2026-09-20T03:00:00Z", itemCount: 1, total: 195000, status: "Completed" }];
+
+test("M4 loads the profile and tabs from the API, locks and soft-deletes", async () => {
   const user = userEvent.setup();
-  const row = customersFixture.find((item) => item.status === "Active" && item.orderCount > 0)!;
-  const customer = customerDetailFixture(row.id)!;
-  render(<CustomerDetail initial={customer} scoreBreakdown={<ScoreBreakdown components={scoreComponentsFixture} productName="Gel bí đao" />} />);
-  await user.click(screen.getByRole("tab", { name: new RegExp(`Đơn hàng \\(${customer.orders.length}\\)`) }));
-  assert.equal(within(screen.getByRole("table")).getAllByRole("row").length - 1, customer.orders.length);
+  stubFetch((url, init) => init?.method && init.method !== "GET" ? new Response(null, { status: 204 })
+    : url.includes("/orders") ? page(orders) : url.includes("/feedback") || url.includes("/surveys") ? page([]) : json(profile));
+  render(<CustomerDetailPage id={9} />);
+  await user.click(await screen.findByRole("tab", { name: "Đơn hàng (2)" }));
+  assert.equal(within(screen.getByRole("table")).getAllByRole("row").length - 1, 2);
   await user.click(screen.getByRole("tab", { name: "Gợi ý" }));
-  assert.ok(within(screen.getByRole("region", { name: "Gel bí đao" })).getByText("0,67"), "spec 5.7 worked example totals 0.67");
+  assert.ok(screen.getByText("Chưa có gợi ý"));
   await user.click(screen.getByRole("button", { name: "Khóa tài khoản" }));
   await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Khóa tài khoản" }));
-  assert.ok(screen.getByRole("button", { name: "Mở khóa" }));
+  assert.ok(await screen.findByRole("button", { name: "Mở khóa" }));
   await user.click(screen.getByRole("button", { name: "Xóa khách hàng" }));
   await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Xóa khách hàng" }));
-  assert.ok(screen.getByRole("heading", { name: "Đã xóa khách hàng" }));
+  assert.ok(await screen.findByRole("heading", { name: "Đã xóa khách hàng" }));
+  assert.deepEqual(requests.filter((request) => request.method !== "GET").map((request) => `${request.method} ${request.url}`),
+    ["POST /api/v1/customers/9/lock", "DELETE /api/v1/customers/9"]);
+});
+
+test("M4 keeps the account unlocked when the lock call fails", async () => {
+  const user = userEvent.setup();
+  stubFetch(() => json({ status: 409, detail: "Không thể khóa tài khoản này." }, 409));
+  render(<CustomerDetail initial={{ ...profile, orders: [], feedback: [], surveys: [], recommendations: [] }} />);
+  await user.click(screen.getByRole("button", { name: "Khóa tài khoản" }));
+  const dialog = await screen.findByRole("alertdialog");
+  await user.click(within(dialog).getByRole("button", { name: "Khóa tài khoản" }));
+  assert.ok(await within(dialog).findByText("Không thể khóa tài khoản này."));
+  assert.equal(screen.queryByRole("button", { name: "Mở khóa", hidden: true }), null);
 });
