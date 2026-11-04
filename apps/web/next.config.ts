@@ -13,6 +13,15 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  webpack(config) {
+    // The Tailwind loader uses the standard loader API and also supports the Webpack build fallback.
+    config.module.rules.push({
+      test: /[\\/]app[\\/]globals\.css$/,
+      enforce: "pre",
+      use: ["@tailwindcss/turbopack"],
+    });
+    return config;
+  },
 };
 
 export default nextConfig;

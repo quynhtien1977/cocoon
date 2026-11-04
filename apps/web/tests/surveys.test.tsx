@@ -46,15 +46,23 @@ test("pending survey opens Google Forms without writing completion; completed ta
   assert.equal(screen.queryByRole("link", { name: /Làm khảo sát:/ }), null);
 });
 
-test("501 shows explicit preview, never fake real surveys; sample links remain disabled", async () => {
+test("501 shows explicit preview, with links isolated from actual survey responses", async () => {
   globalThis.fetch = async () => Response.json({}, { status: 501 });
   render(<SurveysPage />);
   await screen.findByRole("alert");
   assert.equal(screen.queryByText(previewSurveys[0].title), null);
   fireEvent.click(screen.getByRole("button", { name: "Xem giao diện mẫu" }));
   assert.ok(screen.getByText("Giao diện mẫu"));
-  assert.equal(screen.getAllByRole("button", { name: "Chưa có liên kết khảo sát" }).length, 2);
+  assert.deepEqual(screen.getAllByRole("link", { name: /Xem thử khảo sát:/ }).map(link => link.getAttribute("href")), ["/account/surveys/1?preview=1", "/account/surveys/2?preview=1"]);
   assert.equal(screen.queryByRole("link", { name: /Làm khảo sát:/ }), null);
+});
+
+test("an internal survey opens the customer response page without marking it complete", async () => {
+  globalThis.fetch = async () => Response.json([previewSurveys[0]]);
+  render(<SurveysPage />);
+  const link = await screen.findByRole("link", { name: /Làm khảo sát:/ });
+  assert.equal(link.getAttribute("href"), "/account/surveys/1");
+  assert.equal(link.getAttribute("target"), null);
 });
 
 test("empty and expired surveys cannot offer an active form", async () => {
