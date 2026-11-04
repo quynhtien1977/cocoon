@@ -1,0 +1,19 @@
+import type { CustomerSurveyDetail, SurveyQuestion } from "./survey-response-service";
+
+const choice = (id: number, text: string, description = "") => ({ id, text, description });
+const questions: SurveyQuestion[] = [
+  { id: 1, section: "Thói quen chăm sóc", text: "Bạn thường chăm sóc da vào thời điểm nào?", description: "Chọn câu trả lời phù hợp nhất với thói quen hiện tại của bạn.", type: "SingleChoice", isRequired: true, options: [choice(11, "Buổi sáng và buổi tối", "Mình có một chu trình đều đặn mỗi ngày."), choice(12, "Chủ yếu vào buổi tối", "Sau một ngày dài, mình dành thời gian cho làn da."), choice(13, "Khi có thời gian", "Mình vẫn đang tìm một chu trình phù hợp.")] },
+  { id: 2, section: "Chu trình hằng ngày", text: "Chu trình chăm sóc da của bạn có những bước nào?", description: "Bạn có thể chọn nhiều đáp án.", type: "MultiChoice", isRequired: true, options: [choice(21, "Làm sạch"), choice(22, "Toner / Nước cân bằng"), choice(23, "Serum / Tinh chất"), choice(24, "Dưỡng ẩm"), choice(25, "Chống nắng")] },
+  { id: 3, section: "Tình trạng da", text: "Loại da hiện tại của bạn là gì?", description: "Chọn tình trạng phản ánh chính xác nhất làn da vào buổi sáng, trước khi skincare.", type: "SingleChoice", isRequired: true, options: [choice(31, "Da dầu", "Tiết nhiều dầu trên toàn bộ khuôn mặt, lỗ chân lông to."), choice(32, "Da hỗn hợp thiên dầu", "Đổ dầu nhiều ở vùng chữ T, hai má bình thường hoặc khô nhẹ."), choice(33, "Da thường", "Cân bằng, không quá khô hay quá dầu."), choice(34, "Da khô", "Thiếu ẩm, có cảm giác căng rát hoặc bong tróc nhẹ."), choice(35, "Da nhạy cảm", "Dễ ửng đỏ, châm chích khi thay đổi môi trường hoặc sản phẩm.")] },
+  { id: 4, section: "Lắng nghe nhu cầu", text: "Bạn muốn làn da được chăm sóc tốt hơn ở điểm nào?", description: "Hãy chọn những điều bạn đang quan tâm.", type: "MultiChoice", isRequired: true, options: [choice(41, "Làm sạch dịu nhẹ"), choice(42, "Kiểm soát dầu thừa"), choice(43, "Cấp ẩm và làm dịu"), choice(44, "Cải thiện bề mặt da")] },
+  { id: 5, section: "Trải nghiệm của bạn", text: "Bạn hài lòng với chu trình hiện tại ở mức nào?", description: "1 sao là chưa hài lòng, 5 sao là rất hài lòng.", type: "Rating", isRequired: true, options: [] },
+  { id: 6, section: "Kết cấu yêu thích", text: "Bạn thích kết cấu nào cho sản phẩm dưỡng da?", description: "Chọn cảm giác bạn muốn có trên làn da.", type: "SingleChoice", isRequired: true, options: [choice(61, "Gel mỏng nhẹ", "Thấm nhanh, thoáng da."), choice(62, "Sữa / Lotion", "Mềm mại, dễ tán."), choice(63, "Kem dưỡng", "Êm da, giữ ẩm lâu."), choice(64, "Mình chưa có lựa chọn cụ thể")] },
+  { id: 7, section: "Hương thơm & cảm nhận", text: "Bạn ưu tiên điều gì khi chọn một sản phẩm mới?", description: "Bạn có thể chọn nhiều đáp án.", type: "MultiChoice", isRequired: false, options: [choice(71, "Thành phần thuần chay"), choice(72, "Chiết xuất từ thực vật Việt Nam"), choice(73, "Hương thơm nhẹ nhàng"), choice(74, "Bao bì thân thiện với môi trường")] },
+  { id: 8, section: "Một lời nhắn nhỏ", text: "Bạn muốn nhắn thêm điều gì với Cocoon?", description: "Điều bạn mong đợi, một trải nghiệm đáng nhớ hay một ý tưởng nhỏ — Cocoon đều muốn lắng nghe.", type: "ShortText", isRequired: false, options: [] },
+];
+
+/** Explicit preview only. These IDs are illustrative and must never be sent to the API. */
+export function previewCustomerSurvey(id: string): CustomerSurveyDetail | null {
+  if (id !== "1" && id !== "2") return null;
+  return { id: Number(id), title: id === "1" ? "Khảo sát nhu cầu chăm sóc da dầu mụn & Công thức mới 2026" : "Cùng Cocoon nuôi dưỡng một ý tưởng mới", description: "Một chút chia sẻ để Cocoon thấu hiểu làn da và chăm chút hơn cho những công thức thuần chay.", status: "Open", openAt: null, closeAt: null, completedAt: null, questions: id === "1" ? questions : [questions[2], questions[3], questions[4], questions[5], questions[7]] };
+}

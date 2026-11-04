@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Barlow_Condensed, Nunito, Vollkorn } from "next/font/google";
 import "./globals.css";
 
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
   description: "Hệ thống quản lý quan hệ khách hàng của Cocoon",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="vi"
