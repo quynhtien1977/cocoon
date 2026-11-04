@@ -1,9 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using Cocoon.Application.Recommendations;
+using Cocoon.Application.Surveys;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
 using Cocoon.Infrastructure.Persistence;
 using Cocoon.Infrastructure.Recommendations;
+using Cocoon.Infrastructure.Surveys;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +16,7 @@ namespace Cocoon.Api.Controllers;
 /// <summary>Customer self-service. Customer id always comes from the token, never from the URL.</summary>
 [Route("api/v1/me")]
 [Authorize(Policy = "RequireCustomer")]
-public sealed class CustomerPortalController(AppDbContext db, RecommendationService recommendations) : ApiStubController
+public sealed class CustomerPortalController(AppDbContext db, RecommendationService recommendations, CustomerSurveyService surveys) : ApiStubController
 {
     [HttpGet("home")]
     public async Task<IActionResult> Home(CancellationToken cancellationToken)
@@ -116,10 +118,40 @@ public sealed class CustomerPortalController(AppDbContext db, RecommendationServ
         return StatusCode(StatusCodes.Status201Created, new CreatedFeedback(feedback.Id));
     }
 
-    [HttpGet("surveys")] public IActionResult Surveys([FromQuery] ListQuery query) => NotImplementedYet();
-    [HttpGet("surveys/{id:int}")] public IActionResult Survey(int id) => NotImplementedYet();
-    [HttpPost("surveys/{id:int}/responses")]
-    public IActionResult SubmitSurvey(int id, SubmitSurveyRequest request) => NotImplementedYet();
+    [HttpGet("surveys"), ProducesResponseType<CustomerSurveyPage>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public Task<ActionResult<CustomerSurveyPage>> Surveys([FromQuery] CustomerSurveyQuery query, CancellationToken ct) =>
+        SurveyResult(() => surveys.ListAsync(AccountId, query, ct));
+
+    [HttpGet("surveys/{id:int}"), ProducesResponseType<CustomerSurveyDetails>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<ActionResult<CustomerSurveyDetails>> Survey(int id, CancellationToken ct) =>
+        SurveyResult(() => surveys.DetailAsync(AccountId, id, ct));
+
+    [HttpPost("surveys/{id:int}/responses"), RequestSizeLimit(131072)]
+    [ProducesResponseType<CustomerSurveySubmitted>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<ActionResult<CustomerSurveySubmitted>> SubmitSurvey(int id, SubmitSurveyRequest request, CancellationToken ct) =>
+        SurveyResult(() => surveys.SubmitAsync(AccountId, id, request.Answers?.Select(a => a is null ? null :
+            new CustomerSurveyAnswerValue(a.QuestionId, a.OptionIds, a.NumericValue, a.TextValue)).ToArray(), ct), StatusCodes.Status201Created);
+
+    private async Task<ActionResult<T>> SurveyResult<T>(Func<Task<T>> action, int status = StatusCodes.Status200OK)
+    {
+        try { return StatusCode(status, await action()); }
+        catch (CustomerSurveyException error)
+        {
+            if (error.Status != StatusCodes.Status400BadRequest) return Fail(error.Status, error.Code, error.Message);
+            ModelState.AddModelError(error.Field ?? "answers", error.Message);
+            var problem = ProblemDetailsFactory.CreateValidationProblemDetails(HttpContext, ModelState);
+            problem.Extensions["code"] = error.Code;
+            return BadRequest(problem);
+        }
+    }
 
     [HttpGet("recommendations")]
     public async Task<IActionResult> Recommendations(CancellationToken cancellationToken) =>
@@ -205,7 +237,7 @@ public sealed class CustomerPortalController(AppDbContext db, RecommendationServ
 }
 
 public sealed record CreateFeedbackRequest(int OrderItemId, [Range(1, 5)] int Rating, [Required] string Content);
-public sealed record SubmitSurveyRequest(SurveyAnswerInput[] Answers);
+public sealed record SubmitSurveyRequest([Required, MaxLength(100)] SurveyAnswerInput[] Answers);
 public sealed record SurveyAnswerInput(int QuestionId, int[]? OptionIds, decimal? NumericValue, string? TextValue);
 
 public sealed record CustomerHome(IReadOnlyList<PendingSurvey> PendingSurveys, IReadOnlyList<ReviewableItem> ReviewableItems,
