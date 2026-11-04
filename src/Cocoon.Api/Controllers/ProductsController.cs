@@ -1,3 +1,4 @@
+using Cocoon.Application.Recommendations;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
 using Cocoon.Infrastructure.Persistence;

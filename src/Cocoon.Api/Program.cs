@@ -3,6 +3,8 @@ using System.Text.Json.Serialization;
 using Cocoon.Api.Auth;
 using Cocoon.Api.Configuration;
 using Cocoon.Api.Seeding;
+using Cocoon.Application.Recommendations;
+using Cocoon.Infrastructure.Recommendations;
 using Cocoon.Application.Accounts;
 using Cocoon.Infrastructure.Accounts;
 using Cocoon.Domain.Entities;
@@ -44,6 +46,9 @@ builder.Services.AddExceptionHandler<AccountExceptionHandler>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAccountPasswords, AccountPasswords>();
 builder.Services.AddScoped<AccountManagementService>();
+builder.Services.AddOptions<RecommendationWeights>().BindConfiguration("Recommendation:Weights");
+builder.Services.AddScoped<CustomerFactsService>();
+builder.Services.AddScoped<RecommendationService>();
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     // Controller Problem(statusCode: x) sets Status before the response status is written.
     ApiProblems.Customize(context.ProblemDetails, context.ProblemDetails.Status ?? context.HttpContext.Response.StatusCode));

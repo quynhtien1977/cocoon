@@ -1,3 +1,4 @@
+using Cocoon.Application.Recommendations;
 using Cocoon.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +27,3 @@ public sealed record SurveyUpsertRequest(string Title, string? Description, Surv
 public sealed record QuestionInput(string Text, QuestionType Type, bool IsRequired, OptionInput[] Options);
 public sealed record OptionInput(string Text, int? PreferenceId);
 public sealed record RecipientsRequest(SegmentFilter? Segment, int[]? CustomerIds);
-
-/// <summary>Shared by survey recipients, segment preview and recommendation plans (spec 6.3).</summary>
-public sealed record SegmentFilter(int? AgeMin, int? AgeMax, string[]? Genders, int[]? PreferenceIds,
-    int[]? PurchasedCategoryIds, int? LastPurchaseWithinDays, int[]? ExcludeLowRatedCategoryIds);
