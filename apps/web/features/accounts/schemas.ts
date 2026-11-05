@@ -5,12 +5,7 @@ import type { AccountDraft } from "./types";
 
 type CreateAccountRequest = components["schemas"]["CreateAccountRequest"];
 
-export const roleLabels: Record<AccountRole, string> = {
-  Admin: "Quản trị viên",
-  Manager: "Quản lý",
-  Staff: "Nhân viên",
-  Customer: "Khách hàng",
-};
+export { roleLabels } from "@/lib/auth/roles";
 
 /** Least privilege first, so the form's default is the narrowest role. */
 export const assignableRoles: AccountRole[] = ["Staff", "Manager", "Admin", "Customer"];

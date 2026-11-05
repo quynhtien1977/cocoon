@@ -142,7 +142,7 @@ public sealed class DemoSeedTests(DemoSeedDatabaseFixture database) : IClassFixt
         });
         Assert.All(variants, v =>
         {
-            Assert.StartsWith("data:image/svg+xml;base64,", v.ImageUrl);
+            Assert.True(Uri.TryCreate(v.ImageUrl, UriKind.Absolute, out var image) && image.Scheme == "https" && image.Host == "image.cocoonvietnam.com");
             Assert.InRange(v.ImageUrl!.Length, 1, 2048);
         });
         var matched = items.Count(i => tags.Any(t => t.ProductId == variants.Single(v => v.Id == i.ProductVariantId).ProductId
