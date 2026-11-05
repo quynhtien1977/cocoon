@@ -1,48 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, CircleCheck, Info, ListChecks, Search, Send, SlidersHorizontal } from "lucide-react";
 import { ConfirmDialog } from "@/components/brand/confirm-dialog";
 import { EmptyState } from "@/components/brand/empty-state";
 import { PageHeader } from "@/components/brand/page-header";
 import { StatusBadge } from "@/components/brand/status-badge";
-import { emptySegmentFilter, matchesSegment, SegmentFilterBuilder, segmentAgeError } from "@/components/data/segment-filter-builder";
+import { emptySegmentFilter, SegmentFilterBuilder, segmentAgeError, type SegmentFilterValue } from "@/components/data/segment-filter-builder";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { screen } from "@/lib/screens";
+import { ApiError } from "@/lib/api/client";
+import { useApiData } from "@/lib/api/use-api-data";
 import { cn } from "@/lib/utils";
-import { toRecipientsRequest } from "../schemas";
-import { preferencesFixture, segmentCategoriesFixture, surveyCandidatesFixture } from "../surveys.fixture";
-import type { SurveyCandidate, SurveyListItem } from "../types";
+import { addRecipients, loadSend, previewSegment, publishSurvey } from "../api";
+import type { PreferenceOption, RecipientCustomer, SegmentPreview, SurveyInfo } from "../types";
 import { fieldClass } from "./form-styles";
+import { LoadState } from "./load-state";
 
 const date = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" });
 const tabTrigger = "min-h-12 flex-none rounded-none px-4 font-label text-sm uppercase tracking-wider";
-const SAMPLE_SIZE = 5;
 
 const normalize = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/gi, "d").toLowerCase();
-const preferenceNames = (row: SurveyCandidate) => [...new Set(row.preferenceIds)].map((id) => preferencesFixture.find((item) => item.id === id)?.name).filter(Boolean).join(", ");
-const lastOrder = (row: SurveyCandidate) => row.daysSinceLastOrder === null ? "Chưa mua" : `${row.daysSinceLastOrder} ngày trước`;
-const demographic = (row: SurveyCandidate) => [row.age === null ? null : `${row.age} tuổi`, row.gender].filter(Boolean).join(" · ") || "—";
+const demographic = (row: RecipientCustomer) => [row.age === null ? null : `${row.age} tuổi`, row.gender].filter(Boolean).join(" · ") || "—";
 
-function SampleTable({ rows, total }: { rows: readonly SurveyCandidate[]; total: number }) {
+/** The API returns at most five sample customers per preview. */
+function SampleTable({ rows, total, loading, error }: { rows: readonly RecipientCustomer[]; total: number; loading: boolean; error: string | null }) {
   return (
     <section aria-labelledby="segment-sample" className="rounded-lg border border-border bg-card">
       <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border p-4 sm:p-6">
         <h2 id="segment-sample" className="font-heading text-xl">Khách hàng mẫu</h2>
         <span className="font-label text-xs uppercase tracking-wider text-muted-foreground">Hiển thị {rows.length} / {total} người nhận</span>
       </header>
-      {rows.length === 0 ? <EmptyState title="Không có khách phù hợp" description="Bỏ bớt tiêu chí để mở rộng phân khúc." className="border-0" /> : <>
+      {error ? <p role="alert" className="p-4 text-sm text-destructive sm:p-6">{error}</p>
+        : loading ? <p role="status" className="p-4 text-sm text-muted-foreground sm:p-6">Đang đếm khách phù hợp…</p>
+        : rows.length === 0 ? <EmptyState title="Không có khách phù hợp" description="Bỏ bớt tiêu chí để mở rộng phân khúc." className="border-0" /> : <>
         <ul className="divide-y divide-border md:hidden">
-          {rows.map((row) => <li key={row.id} className="p-4"><p className="font-semibold">{row.fullName}</p><p className="text-sm break-words text-muted-foreground">{row.email}</p><p className="mt-1 text-sm">{demographic(row)} · {lastOrder(row)}</p><p className="text-sm text-muted-foreground">{preferenceNames(row)}</p></li>)}
+          {rows.map((row) => <li key={row.id} className="p-4"><p className="font-semibold">{row.fullName} <span className="font-mono text-xs font-normal text-muted-foreground">{row.code}</span></p><p className="text-sm break-words text-muted-foreground">{row.email}</p><p className="mt-1 text-sm">{demographic(row)}</p></li>)}
         </ul>
         <div className="hidden md:block">
           <Table>
             <TableCaption className="sr-only">Khách hàng mẫu trong phân khúc</TableCaption>
-            <TableHeader><TableRow><TableHead>Khách hàng</TableHead><TableHead>Nhân khẩu</TableHead><TableHead>Sở thích</TableHead><TableHead>Mua gần nhất</TableHead></TableRow></TableHeader>
-            <TableBody>{rows.map((row) => <TableRow key={row.id}><TableCell><span className="block font-semibold">{row.fullName}</span><span className="block text-xs text-muted-foreground">{row.email}</span></TableCell><TableCell>{demographic(row)}</TableCell><TableCell><span className="block w-44 whitespace-normal">{preferenceNames(row)}</span></TableCell><TableCell>{lastOrder(row)}</TableCell></TableRow>)}</TableBody>
+            <TableHeader><TableRow><TableHead>Khách hàng</TableHead><TableHead>Mã khách</TableHead><TableHead>Nhân khẩu</TableHead></TableRow></TableHeader>
+            <TableBody>{rows.map((row) => <TableRow key={row.id}><TableCell><span className="block font-semibold">{row.fullName}</span><span className="block text-xs text-muted-foreground">{row.email}</span></TableCell><TableCell className="font-mono text-xs">{row.code}</TableCell><TableCell>{demographic(row)}</TableCell></TableRow>)}</TableBody>
           </Table>
         </div>
       </>}
@@ -50,10 +52,10 @@ function SampleTable({ rows, total }: { rows: readonly SurveyCandidate[]; total:
   );
 }
 
-function ManualPicker({ selected, onChange }: { selected: readonly number[]; onChange: (ids: number[]) => void }) {
+function ManualPicker({ customers, selected, onChange }: { customers: readonly RecipientCustomer[]; selected: readonly number[]; onChange: (ids: number[]) => void }) {
   const [query, setQuery] = useState("");
   const needle = normalize(query.trim());
-  const rows = surveyCandidatesFixture.filter((row) => normalize(`${row.fullName} ${row.code} ${row.email}`).includes(needle));
+  const rows = customers.filter((row) => normalize(`${row.fullName} ${row.code} ${row.email}`).includes(needle));
   const allShown = rows.length > 0 && rows.every((row) => selected.includes(row.id));
   const toggleShown = () => onChange(allShown ? selected.filter((id) => !rows.some((row) => row.id === id)) : [...new Set([...selected, ...rows.map((row) => row.id)])]);
   const toggle = (id: number) => onChange(selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id]);
@@ -71,21 +73,60 @@ function ManualPicker({ selected, onChange }: { selected: readonly number[]; onC
       {rows.length === 0 ? <EmptyState title="Không tìm thấy khách hàng" description="Thử từ khóa khác." className="border-0" /> : <>
         <label className="flex min-h-12 items-center gap-3 border-b border-border font-semibold"><input type="checkbox" checked={allShown} onChange={toggleShown} className="size-5 accent-primary" />Chọn tất cả {rows.length} khách đang hiển thị</label>
         <ul className="max-h-[32rem] divide-y divide-border overflow-y-auto">
-          {rows.map((row) => <li key={row.id}><label className="flex min-h-12 items-center gap-3 py-2"><input type="checkbox" checked={selected.includes(row.id)} onChange={() => toggle(row.id)} className="size-5 shrink-0 accent-primary" /><span className="min-w-0"><span className="block font-semibold">{row.fullName} <span className="font-mono text-xs font-normal text-muted-foreground">{row.code}</span></span><span className="block text-sm text-muted-foreground">{demographic(row)} · {lastOrder(row)}</span></span></label></li>)}
+          {rows.map((row) => <li key={row.id}><label className="flex min-h-12 items-center gap-3 py-2"><input type="checkbox" checked={selected.includes(row.id)} onChange={() => toggle(row.id)} className="size-5 shrink-0 accent-primary" /><span className="min-w-0"><span className="block font-semibold">{row.fullName} <span className="font-mono text-xs font-normal text-muted-foreground">{row.code}</span></span><span className="block text-sm text-muted-foreground">{demographic(row)} · {row.email}</span></span></label></li>)}
         </ul>
       </>}
     </section>
   );
 }
 
-export function SurveySend({ survey }: { survey: SurveyListItem }) {
+/** M9 route body. */
+export function SurveySendPage({ id }: { id: number }) {
+  const load = useCallback((signal: AbortSignal) => loadSend(id, signal), [id]);
+  const { data, loading, error, missing, retry } = useApiData(load, "Chưa tải được khảo sát. Kiểm tra kết nối rồi thử lại.");
+  if (!data) return <LoadState loading={loading} missing={missing} error={error} retry={retry} label="khảo sát" />;
+  return <SurveySend survey={data.survey} preferences={data.preferences} categories={data.categories} customers={data.customers} />;
+}
+
+/** Live POST segments/preview for the current filter, debounced so typing an age sends one request. */
+function useSegmentPreview(filter: SegmentFilterValue) {
+  // Remembers which filter the answer is for, so a newer filter reads as loading without a setState in the effect.
+  const [state, setState] = useState<{ filter: SegmentFilterValue | null; preview: SegmentPreview | null; error: string | null }>({ filter: null, preview: null, error: null });
+  const invalid = !!segmentAgeError(filter);
+  useEffect(() => {
+    if (invalid) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => previewSegment(filter, controller.signal)
+      .then((preview) => setState({ filter, preview, error: null }))
+      .catch((reason: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ filter, preview: null, error: reason instanceof ApiError ? reason.message : "Chưa đếm được khách phù hợp. Kiểm tra kết nối rồi thử lại." });
+      }), 300);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [filter, invalid]);
+  if (invalid) return { preview: null, loading: false, error: null };
+  return state.filter === filter ? { preview: state.preview, loading: false, error: state.error } : { preview: state.preview, loading: true, error: null };
+}
+
+export interface SurveySendProps {
+  survey: SurveyInfo;
+  preferences: readonly PreferenceOption[];
+  categories: readonly PreferenceOption[];
+  /** Active customers for manual selection. */
+  customers: readonly RecipientCustomer[];
+}
+
+export function SurveySend({ survey: loaded, preferences, categories, customers }: SurveySendProps) {
   const s = screen("M9");
+  // A published draft becomes Open here, so retrying a failed recipients call does not publish twice.
+  const [survey, setSurvey] = useState(loaded);
   const [mode, setMode] = useState<"segment" | "manual">("segment");
   const [filter, setFilter] = useState(emptySegmentFilter);
   const [picked, setPicked] = useState<number[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const [sentCount, setSentCount] = useState<number | null>(null);
+  const [sent, setSent] = useState<{ added: number; total: number } | null>(null);
+  const segment = useSegmentPreview(filter);
   const code = `KS-${String(survey.id).padStart(4, "0")}`;
   const back = <Link href="/manager/surveys" className="mb-3 inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Danh sách khảo sát</Link>;
 
@@ -93,13 +134,13 @@ export function SurveySend({ survey }: { survey: SurveyListItem }) {
     return <>{back}<PageHeader eyebrow={`${s.code} · ${code}`} title={survey.title} /><EmptyState title="Khảo sát đã đóng" description="Khảo sát đã đóng nên không gửi thêm được. Bạn vẫn xem được kết quả đã thu." action={<Link href={`/manager/surveys/${survey.id}/results`} className={cn(buttonVariants(), "h-12 px-4")}>Xem kết quả</Link>} /></>;
   }
 
-  if (sentCount !== null) {
+  if (sent !== null) {
     return (
       <>
         {back}
         <PageHeader eyebrow={`${s.code} · ${code}`} title="Đã gửi khảo sát" description={survey.title} actions={<StatusBadge kind="survey" status="Open" />} />
         <section role="status" className="rounded-lg border border-border bg-card p-4 sm:p-6">
-          <p className="flex gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" />Đã gửi cho {sentCount} khách hàng (dữ liệu mẫu, chưa gửi máy chủ).</p>
+          <p className="flex gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" />Đã gửi cho {sent.added} khách hàng. Khảo sát hiện có {sent.total} người nhận.</p>
           <p className="mt-2 text-sm text-muted-foreground">Khảo sát xuất hiện trong Hộp khảo sát của khách và tạo một thông báo trong ứng dụng.</p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Link href={`/manager/surveys/${survey.id}/results`} className={cn(buttonVariants(), "h-12 px-4")}>Xem kết quả</Link>
@@ -110,20 +151,24 @@ export function SurveySend({ survey }: { survey: SurveyListItem }) {
     );
   }
 
-  const matched = segmentAgeError(filter) ? [] : surveyCandidatesFixture.filter((row) => matchesSegment(row, filter));
-  const recipients = mode === "segment" ? matched.length : picked.length;
+  const matched = segment.preview?.count ?? 0;
+  const recipients = mode === "segment" ? matched : picked.length;
 
   function review() {
     if (mode === "segment" && segmentAgeError(filter)) return setProblem("Chưa gửi được: khoảng tuổi không hợp lệ. Sửa khoảng tuổi rồi thử lại.");
+    if (mode === "segment" && (segment.loading || segment.error)) return setProblem("Chưa gửi được: chưa đếm xong khách phù hợp. Chờ một chút rồi thử lại.");
     if (recipients === 0) return setProblem(mode === "segment" ? "Chưa gửi được: không có khách phù hợp. Bỏ bớt tiêu chí rồi thử lại." : "Chưa gửi được: chưa chọn khách nào. Chọn ít nhất một khách rồi thử lại.");
     setProblem(null);
     setConfirming(true);
   }
 
-  function send() {
-    // Static phase: the request body is built to check the contract but not sent until api.ts lands.
-    toRecipientsRequest(mode === "segment" ? { segment: filter } : { customerIds: picked });
-    setSentCount(recipients);
+  /** Recipients can only be added to an Open survey, so a draft is published first. Errors stay in the dialog. */
+  async function send() {
+    if (survey.status === "Draft") {
+      await publishSurvey(survey.id);
+      setSurvey((current) => ({ ...current, status: "Open" }));
+    }
+    setSent(await addRecipients(survey.id, mode === "segment" ? { segment: filter } : { customerIds: picked }));
   }
 
   return (
@@ -137,10 +182,10 @@ export function SurveySend({ survey }: { survey: SurveyListItem }) {
             <TabsTrigger value="manual" className={tabTrigger}><ListChecks aria-hidden="true" />Chọn thủ công</TabsTrigger>
           </TabsList>
           <TabsContent value="segment" className="space-y-6">
-            <SegmentFilterBuilder value={filter} onChange={(next) => { setFilter(next); setProblem(null); }} preferences={preferencesFixture} categories={segmentCategoriesFixture} matchCount={matched.length} />
-            <SampleTable rows={matched.slice(0, SAMPLE_SIZE)} total={matched.length} />
+            <SegmentFilterBuilder value={filter} onChange={(next) => { setFilter(next); setProblem(null); }} preferences={preferences} categories={categories} matchCount={matched} />
+            <SampleTable rows={segment.preview?.sample ?? []} total={matched} loading={segment.loading} error={segment.error} />
           </TabsContent>
-          <TabsContent value="manual"><ManualPicker selected={picked} onChange={(ids) => { setPicked(ids); setProblem(null); }} /></TabsContent>
+          <TabsContent value="manual"><ManualPicker customers={customers} selected={picked} onChange={(ids) => { setPicked(ids); setProblem(null); }} /></TabsContent>
         </Tabs>
 
         <aside aria-labelledby="send-summary" className="space-y-4 rounded-lg border border-border bg-card p-4 sm:p-6 xl:sticky xl:top-6">

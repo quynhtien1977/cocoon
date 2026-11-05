@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { components } from "@/lib/api/schema";
 import type { SegmentFilterValue } from "@/components/data/segment-filter-builder";
-import type { QuestionResult, QuestionType, SurveyDraft, SurveyPurpose } from "./types";
+import type { QuestionResult, QuestionType, SurveyDetail, SurveyDraft, SurveyPurpose } from "./types";
 
 type SurveyUpsertRequest = components["schemas"]["SurveyUpsertRequest"];
 type RecipientsRequest = components["schemas"]["RecipientsRequest"];
@@ -79,6 +79,25 @@ export function toSurveyUpsertRequest(draft: SurveyDraft): SurveyUpsertRequest {
       type: questionTypeOrdinal[item.type],
       isRequired: item.isRequired,
       options: isChoice(item.type) ? item.options.map((choice) => ({ text: choice.text.trim(), preferenceId: choice.preferenceId })) : [],
+    })),
+  };
+}
+
+const calendarDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+const toDay = (value: string | null) => value ? calendarDay.format(new Date(value)) : "";
+
+/** GET surveys/{id} back into the form; keys reuse the API ids. */
+export function fromSurveyDetail(survey: SurveyDetail): SurveyDraft {
+  return {
+    title: survey.title,
+    description: survey.description ?? "",
+    purpose: survey.purpose,
+    productId: survey.productId,
+    openAt: toDay(survey.openAt),
+    closeAt: toDay(survey.closeAt),
+    questions: survey.questions.map((item) => ({
+      key: `q${item.id}`, text: item.text, type: item.type, isRequired: item.isRequired,
+      options: item.options.map((choice) => ({ key: `o${choice.id}`, text: choice.text, preferenceId: choice.preferenceId })),
     })),
   };
 }

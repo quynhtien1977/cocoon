@@ -1,35 +1,56 @@
 "use client";
 
-import { useId, useState, type FormEvent } from "react";
+import { useCallback, useId, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { ChevronsDownUp, ChevronsUpDown, CircleCheck, Info, ListChecks, Plus, SlidersHorizontal } from "lucide-react";
+import { EmptyState } from "@/components/brand/empty-state";
 import { PageHeader } from "@/components/brand/page-header";
 import { StatusBadge } from "@/components/brand/status-badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { screen } from "@/lib/screens";
+import { ApiError } from "@/lib/api/client";
+import { useApiData } from "@/lib/api/use-api-data";
 import { cn } from "@/lib/utils";
+import { createSurvey, loadBuilder, updateSurvey } from "../api";
 import { newQuestion, QuestionEditor } from "../question-editor";
-import { purposeLabels, toSurveyUpsertRequest, validateSurveyDraft } from "../schemas";
-import { preferencesFixture, upcomingProductsFixture } from "../surveys.fixture";
-import type { SurveyDraft, SurveyPurpose } from "../types";
+import { purposeLabels, validateSurveyDraft } from "../schemas";
+import type { PreferenceOption, SurveyDraft, SurveyPurpose, UpcomingProduct } from "../types";
 import { fieldClass, labelClass } from "./form-styles";
+import { LoadState } from "./load-state";
 import { SurveyPreview } from "./survey-preview";
 
 const time = new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit" });
 
 const emptyDraft = (): SurveyDraft => ({ title: "", description: "", purpose: "Satisfaction", productId: null, openAt: "", closeAt: "", questions: [newQuestion()] });
 
+/** M8 route body: /surveys/new without an id, /surveys/[id]/edit with one. */
+export function SurveyBuilderPage({ id }: { id?: number }) {
+  const load = useCallback((signal: AbortSignal) => loadBuilder(id, signal), [id]);
+  const { data, loading, error, missing, retry } = useApiData(load, "Chưa tải được khảo sát. Kiểm tra kết nối rồi thử lại.");
+  if (!data) return <LoadState loading={loading} missing={missing} error={error} retry={retry} label="khảo sát" />;
+  if (data.status && data.status !== "Draft") return <EmptyState title="Không sửa được khảo sát" description="Khảo sát đã mở nên câu hỏi bị khóa. Muốn đổi câu hỏi hãy tạo khảo sát mới."
+    action={<Link href="/manager/surveys" className={cn(buttonVariants(), "h-12 px-4")}>Về danh sách khảo sát</Link>} />;
+  return <SurveyBuilder initial={data.draft} surveyId={data.surveyId} preferences={data.preferences} products={data.products} />;
+}
+
 export interface SurveyBuilderProps {
   /** Existing Draft survey for /surveys/[id]/edit; omit for /surveys/new. */
   initial?: SurveyDraft;
+  surveyId?: number;
+  preferences: readonly PreferenceOption[];
+  /** Products with status Upcoming, for the NewProduct purpose. */
+  products: readonly UpcomingProduct[];
 }
 
-export function SurveyBuilder({ initial }: SurveyBuilderProps) {
+export function SurveyBuilder({ initial, surveyId, preferences, products }: SurveyBuilderProps) {
   const s = screen("M8");
   const id = useId();
   const [draft, setDraft] = useState<SurveyDraft>(() => initial ?? emptyDraft());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [savedId, setSavedId] = useState(surveyId);
+  const [saving, setSaving] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const update = (patch: Partial<SurveyDraft>) => setDraft((current) => ({ ...current, ...patch }));
   const questionErrors = (index: number) => Object.fromEntries(Object.entries(errors)
@@ -43,14 +64,25 @@ export function SurveyBuilder({ initial }: SurveyBuilderProps) {
     return { ...current, questions };
   });
 
-  function save(event: FormEvent) {
+  async function save(event: FormEvent) {
     event.preventDefault();
+    if (saving) return;
     const found = validateSurveyDraft(draft);
     setErrors(found);
+    setServerError(null);
     if (Object.keys(found).length) { setSavedAt(null); return; }
-    // Static phase: the request body is built to check the contract but not sent until api.ts lands.
-    toSurveyUpsertRequest(draft);
-    setSavedAt(new Date());
+    setSaving(true);
+    try {
+      // After the first create, later saves update the same draft instead of creating another.
+      const saved = savedId === undefined ? await createSurvey(draft) : await updateSurvey(savedId, draft);
+      setSavedId(saved.id);
+      setSavedAt(new Date());
+    } catch (reason) {
+      setSavedAt(null);
+      setServerError(reason instanceof ApiError ? reason.message : "Không kết nối được máy chủ. Thử lại sau.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const fieldError = (name: string) => errors[name] && <p id={`${id}-${name}-error`} className="text-sm text-destructive">{errors[name]}</p>;
@@ -94,7 +126,7 @@ export function SurveyBuilder({ initial }: SurveyBuilderProps) {
               <select id={`${id}-product`} value={draft.productId ?? ""} onChange={(event) => update({ productId: event.target.value ? Number(event.target.value) : null })}
                 aria-invalid={!!errors.productId} aria-describedby={describedBy("productId")} className={fieldClass}>
                 <option value="">Chọn sản phẩm</option>
-                {upcomingProductsFixture.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+                {products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
               </select>
               {fieldError("productId")}
               <p className="text-xs text-muted-foreground">Chỉ hiện sản phẩm có trạng thái Sắp ra mắt.</p>
@@ -132,7 +164,7 @@ export function SurveyBuilder({ initial }: SurveyBuilderProps) {
           </div>
           {errors.questions && <p role="alert" className="text-sm text-destructive">{errors.questions}</p>}
           {draft.questions.map((question, index) => (
-            <QuestionEditor key={question.key} index={index} total={draft.questions.length} question={question} preferences={preferencesFixture} errors={questionErrors(index)} collapsed={collapsed}
+            <QuestionEditor key={question.key} index={index} total={draft.questions.length} question={question} preferences={preferences} errors={questionErrors(index)} collapsed={collapsed}
               onChange={(next) => setDraft((current) => ({ ...current, questions: current.questions.map((item, i) => i === index ? next : item) }))}
               onRemove={() => setDraft((current) => ({ ...current, questions: current.questions.filter((_, i) => i !== index) }))}
               onMove={(offset) => moveQuestion(index, offset)} />
@@ -146,13 +178,15 @@ export function SurveyBuilder({ initial }: SurveyBuilderProps) {
       <footer className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
         <div aria-live="polite" className="text-sm">
           {errorCount > 0 ? <p className="text-destructive">Chưa lưu được: còn {errorCount} lỗi. Sửa các ô được đánh dấu rồi lưu lại.</p>
-            : savedAt ? <p className="flex items-center gap-2 text-status-sage-fg"><CircleCheck className="size-4" aria-hidden="true" />Đã lưu bản nháp lúc {time.format(savedAt)} (dữ liệu mẫu, chưa gửi máy chủ).</p>
+            : serverError ? <p role="alert" className="text-destructive">Chưa lưu được: {serverError}</p>
+            : savedAt ? <p className="flex flex-wrap items-center gap-2 text-status-sage-fg"><CircleCheck className="size-4" aria-hidden="true" />Đã lưu bản nháp lúc {time.format(savedAt)}.
+              <Link href={`/manager/surveys/${savedId}/send`} className="font-semibold text-foreground underline underline-offset-4">Gửi khảo sát</Link></p>
             : null}
         </div>
         <div className="flex w-full flex-wrap gap-3 sm:w-auto">
           <Link href="/manager/surveys" className={cn(buttonVariants({ variant: "ghost" }), "h-12 px-4")}>Hủy</Link>
-          <Button type="submit" variant="outline" className="h-12 flex-1 px-6 sm:flex-none">Lưu bản nháp</Button>
-          <SurveyPreview draft={draft} products={upcomingProductsFixture} />
+          <Button type="submit" variant="outline" className="h-12 flex-1 px-6 sm:flex-none" disabled={saving}>{saving ? "Đang lưu…" : "Lưu bản nháp"}</Button>
+          <SurveyPreview draft={draft} products={products} />
         </div>
       </footer>
     </form>

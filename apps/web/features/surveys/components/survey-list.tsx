@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { CircleCheck, ClipboardList, FilePen, Info, Plus, Timer, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/brand/confirm-dialog";
@@ -10,9 +9,10 @@ import { StatusBadge } from "@/components/brand/status-badge";
 import { DataTable, type DataColumn, type DataFilter } from "@/components/data/data-table";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { screen } from "@/lib/screens";
+import { useApiData } from "@/lib/api/use-api-data";
 import { cn } from "@/lib/utils";
+import { closeSurvey, deleteSurvey, loadSurveys, publishSurvey } from "../api";
 import { purposeLabels } from "../schemas";
-import { surveysFixture } from "../surveys.fixture";
 import type { SurveyListItem, SurveyPurpose, SurveyStatus } from "../types";
 
 const date = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" });
@@ -44,17 +44,28 @@ function Progress({ row }: { row: SurveyListItem }) {
 
 const actionLink = "inline-flex min-h-12 items-center rounded-md px-3 font-label text-sm uppercase tracking-wider whitespace-nowrap focus-visible:outline-2 focus-visible:outline-ring";
 
-/** Edit and delete only while Draft (spec: questions lock once a survey opens); results exist once it has been sent. */
-function Actions({ row, onDelete }: { row: SurveyListItem; onDelete: (row: SurveyListItem) => void }) {
+/** Edit, open and delete only while Draft (spec: questions lock once a survey opens); results exist once it has been opened. */
+function Actions({ row, onChanged }: { row: SurveyListItem; onChanged: () => void }) {
+  const run = (action: (id: number) => Promise<void>) => async () => { await action(row.id); onChanged(); };
   return (
     <span className="flex flex-wrap items-center justify-end gap-1 min-[1400px]:flex-nowrap">
       {row.status === "Draft" && <Link href={`/manager/surveys/${row.id}/edit`} aria-label={`Chỉnh sửa ${row.title}`} className={cn(actionLink, "hover:bg-muted")}>Chỉnh sửa</Link>}
       {row.status !== "Closed" && <Link href={`/manager/surveys/${row.id}/send`} aria-label={`Gửi khảo sát ${row.title}`} className={cn(actionLink, "hover:bg-muted")}>Gửi khảo sát</Link>}
       {row.status !== "Draft" && <Link href={`/manager/surveys/${row.id}/results`} aria-label={`Xem kết quả ${row.title}`} className={cn(actionLink, "bg-primary text-primary-foreground hover:bg-primary/80")}>Xem kết quả</Link>}
       {row.status === "Draft" && (
+        <ConfirmDialog portal="manager" title="Mở khảo sát?" description={`“${row.title}” sẽ chuyển sang Đang mở; từ đó câu hỏi bị khóa, không sửa được nữa.`} confirmLabel="Mở khảo sát"
+          trigger={<Button type="button" variant="ghost" className={cn(actionLink, "hover:bg-muted")} aria-label={`Mở khảo sát ${row.title}`}>Mở khảo sát</Button>}
+          onConfirm={run(publishSurvey)} />
+      )}
+      {row.status === "Open" && (
+        <ConfirmDialog portal="manager" title="Đóng khảo sát?" description={`Khách sẽ không trả lời “${row.title}” được nữa. Kết quả đã thu vẫn được giữ.`} confirmLabel="Đóng khảo sát"
+          trigger={<Button type="button" variant="ghost" className={cn(actionLink, "hover:bg-muted")} aria-label={`Đóng khảo sát ${row.title}`}>Đóng khảo sát</Button>}
+          onConfirm={run(closeSurvey)} />
+      )}
+      {row.status === "Draft" && (
         <ConfirmDialog portal="manager" title="Xóa bản nháp khảo sát?" description={`“${row.title}” sẽ bị xóa cùng toàn bộ câu hỏi. Không thể hoàn tác.`} confirmLabel="Xóa bản nháp"
           trigger={<Button type="button" variant="ghost" size="icon-lg" className="size-12 text-destructive" aria-label={`Xóa ${row.title}`}><Trash2 aria-hidden="true" /></Button>}
-          onConfirm={() => onDelete(row)} />
+          onConfirm={run(deleteSurvey)} />
       )}
     </span>
   );
@@ -67,9 +78,9 @@ const filters: DataFilter<SurveyListItem>[] = [
 
 export function SurveyList() {
   const s = screen("M7");
-  const [surveys, setSurveys] = useState(surveysFixture);
+  const { data, loading, error, retry } = useApiData(loadSurveys, "Chưa tải được danh sách khảo sát. Kiểm tra kết nối rồi thử lại.");
+  const surveys = data ?? [];
   const count = (status: SurveyStatus) => surveys.filter((row) => row.status === status).length;
-  const remove = (row: SurveyListItem) => setSurveys((current) => current.filter((item) => item.id !== row.id));
 
   const columns: DataColumn<SurveyListItem>[] = [
     {
@@ -81,7 +92,7 @@ export function SurveyList() {
     { id: "period", header: "Thời gian", value: (row) => row.openAt, sortable: true, searchable: false, cell: (row) => <span className={cn("whitespace-nowrap text-sm", !row.openAt && "text-muted-foreground")}>{period(row)}</span> },
     { id: "status", header: "Trạng thái", value: (row) => row.status, searchable: false, cell: (row) => <StatusBadge kind="survey" status={row.status} className="whitespace-nowrap" /> },
     { id: "progress", header: "Tiến độ phản hồi", value: responseRate, sortable: true, searchable: false, cell: (row) => <Progress row={row} /> },
-    { id: "actions", header: "Thao tác", value: () => null, searchable: false, cell: (row) => <Actions row={row} onDelete={remove} /> },
+    { id: "actions", header: "Thao tác", value: () => null, searchable: false, cell: (row) => <Actions row={row} onChanged={retry} /> },
   ];
 
   return (
@@ -95,7 +106,7 @@ export function SurveyList() {
         <StatTile label="Đã đóng" value={count("Closed")} icon={<CircleCheck />} hint="Đã có kết quả cuối" />
         <StatTile label="Bản nháp" value={count("Draft")} icon={<FilePen />} hint="Còn sửa được câu hỏi" />
       </div>
-      <DataTable data={surveys} columns={columns} getRowId={(row) => row.id} caption="Khảo sát" filters={filters} cardsUntil="wide" renderCard={(row) => (
+      <DataTable data={surveys} columns={columns} getRowId={(row) => row.id} caption="Khảo sát" filters={filters} loading={loading} error={error} onRetry={retry} cardsUntil="wide" renderCard={(row) => (
         <article className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
           <header className="flex items-start justify-between gap-3">
             <span className="min-w-0">
@@ -106,7 +117,7 @@ export function SurveyList() {
           </header>
           <span className="flex flex-wrap items-center gap-2 text-sm"><PurposeChip purpose={row.purpose} /><span className={cn(!row.openAt && "text-muted-foreground")}>{period(row)}</span></span>
           <Progress row={row} />
-          <div className="mt-auto"><Actions row={row} onDelete={remove} /></div>
+          <div className="mt-auto"><Actions row={row} onChanged={retry} /></div>
         </article>
       )} emptyTitle="Không tìm thấy khảo sát" emptyDescription="Thử từ khóa khác hoặc bỏ bớt bộ lọc." />
       <p className="mt-6 flex gap-3 rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">

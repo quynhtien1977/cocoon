@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, CircleCheck, Download, PieChart, Send, Star } from "lucide-react";
 import { EmptyState } from "@/components/brand/empty-state";
@@ -8,9 +9,12 @@ import { StatTile } from "@/components/brand/stat-tile";
 import { StatusBadge } from "@/components/brand/status-badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { screen } from "@/lib/screens";
+import { useApiData } from "@/lib/api/use-api-data";
 import { cn } from "@/lib/utils";
+import { loadResults } from "../api";
 import { purposeLabels, questionTypeLabels, surveyResultsToCsv } from "../schemas";
-import type { ChoiceResult, QuestionResult, RatingResult, SurveyListItem, TextResult } from "../types";
+import type { ChoiceResult, QuestionResult, RatingResult, SurveyInfo, TextResult } from "../types";
+import { LoadState } from "./load-state";
 
 const date = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" });
 const percent = new Intl.NumberFormat("vi-VN", { style: "percent", maximumFractionDigits: 1 });
@@ -28,7 +32,7 @@ function ChoiceBody({ question }: { question: ChoiceResult }) {
     <>
       <ul className="space-y-3">
         {options.map((option, index) => (
-          <li key={option.text} className="space-y-1">
+          <li key={option.id} className="space-y-1">
             <span className="flex flex-wrap justify-between gap-x-3 text-sm"><span className="font-semibold">{option.text}</span><span className="tabular-nums">{option.count} lượt ({percent.format(ratio(option.count, question.answerCount))})</span></span>
             <Bar value={ratio(option.count, question.answerCount)} tone={index === 0 ? "bg-status-sage-fg" : "bg-gold"} />
           </li>
@@ -44,7 +48,7 @@ function RatingBody({ question }: { question: RatingResult }) {
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-4 rounded-md bg-muted p-4">
-        <span className="font-heading text-4xl lining-nums tabular-nums">{average.format(question.average)}<span className="text-base text-muted-foreground">/5</span></span>
+        <span className="font-heading text-4xl lining-nums tabular-nums">{question.average == null ? "—" : average.format(question.average)}<span className="text-base text-muted-foreground">/5</span></span>
         <span className="text-sm text-muted-foreground">{percent.format(ratio(high, question.answerCount))} khách chấm 4–5 sao</span>
       </div>
       <ul className="space-y-2">
@@ -67,8 +71,8 @@ function TextBody({ question }: { question: TextResult }) {
   if (question.answers.length === 0) return <p className="text-sm text-muted-foreground">Chưa có câu trả lời.</p>;
   return (
     <ul className="space-y-3">
-      {question.answers.map((answer) => (
-        <li key={answer.customerName} className="rounded-md border-l-2 border-gold bg-muted p-3">
+      {question.answers.map((answer, index) => (
+        <li key={index} className="rounded-md border-l-2 border-gold bg-muted p-3">
           <p className="text-sm italic">“{answer.content}”</p>
           <p className="mt-2 font-label text-xs uppercase tracking-wider text-muted-foreground">{answer.customerName}</p>
         </li>
@@ -89,14 +93,22 @@ function QuestionCard({ question, index }: { question: QuestionResult; index: nu
   );
 }
 
-function downloadCsv(survey: SurveyListItem, results: readonly QuestionResult[]) {
+function downloadCsv(survey: SurveyInfo, results: readonly QuestionResult[]) {
   const url = URL.createObjectURL(new Blob([surveyResultsToCsv(results)], { type: "text/csv;charset=utf-8" }));
   const link = Object.assign(document.createElement("a"), { href: url, download: `ket-qua-khao-sat-${survey.id}.csv` });
   link.click();
   URL.revokeObjectURL(url);
 }
 
-export function SurveyResults({ survey, results }: { survey: SurveyListItem; results: readonly QuestionResult[] }) {
+/** M10 route body. */
+export function SurveyResultsPage({ id }: { id: number }) {
+  const load = useCallback((signal: AbortSignal) => loadResults(id, signal), [id]);
+  const { data, loading, error, missing, retry } = useApiData(load, "Chưa tải được kết quả khảo sát. Kiểm tra kết nối rồi thử lại.");
+  if (!data) return <LoadState loading={loading} missing={missing} error={error} retry={retry} label="kết quả khảo sát" />;
+  return <SurveyResults survey={data.survey} results={data.results} />;
+}
+
+export function SurveyResults({ survey, results }: { survey: SurveyInfo; results: readonly QuestionResult[] }) {
   const s = screen("M10");
   const code = `KS-${String(survey.id).padStart(4, "0")}`;
   const back = <Link href="/manager/surveys" className="mb-3 inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Danh sách khảo sát</Link>;
@@ -131,7 +143,7 @@ export function SurveyResults({ survey, results }: { survey: SurveyListItem; res
           <span className="font-label text-xs uppercase tracking-wider text-muted-foreground">Tổng mẫu: N = {survey.responseCount}</span>
         </div>
         {results.length === 0 ? <EmptyState title="Chưa có câu trả lời" description="Kết quả sẽ hiện khi khách bắt đầu trả lời khảo sát." />
-          : <div className="grid gap-4 lg:grid-cols-2">{results.map((question, index) => <QuestionCard key={question.text} question={question} index={index} />)}</div>}
+          : <div className="grid gap-4 lg:grid-cols-2">{results.map((question, index) => <QuestionCard key={question.questionId} question={question} index={index} />)}</div>}
       </section>
     </>
   );
