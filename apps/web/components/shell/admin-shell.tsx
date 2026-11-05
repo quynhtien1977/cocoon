@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ArrowUpRight, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, ShieldCheck, UserRound } from "lucide-react";
 import { MobileNavigation } from "@/components/shell/mobile-navigation";
 import { NavLinks } from "@/components/shell/nav-links";
 import { navFor } from "@/lib/screens";
@@ -20,7 +20,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <span className="flex flex-col"><span className="text-sm font-bold tracking-wider">COCOON</span><span className="font-label text-xs tracking-widest">ADMIN CONSOLE</span></span>
           </Link>
         </div>
-        <span className="hidden border border-white/25 px-3 py-1 text-xs sm:inline">Quản trị viên</span>
+        <Link href="/admin/profile" aria-label="Hồ sơ cá nhân" className="flex min-h-12 items-center gap-2 px-2 text-xs hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white">
+          <span className="hidden border border-white/25 px-3 py-1 sm:inline">Quản trị viên</span>
+          <UserRound className="size-5 sm:hidden" aria-hidden="true" />
+        </Link>
       </header>
       <div className="flex flex-1">
         <aside className="sticky top-16 hidden h-[calc(100dvh-4rem)] w-16 shrink-0 flex-col border-r border-border bg-card md:flex lg:w-[248px]">

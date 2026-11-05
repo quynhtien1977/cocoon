@@ -1,5 +1,12 @@
 export type AccountRole = "Admin" | "Manager" | "Staff" | "Customer";
 
+export const roleLabels: Record<AccountRole, string> = {
+  Admin: "Quản trị viên",
+  Manager: "Quản lý",
+  Staff: "Nhân viên",
+  Customer: "Khách hàng",
+};
+
 export function getAccountRole(profile: unknown): AccountRole | null {
   if (!profile || typeof profile !== "object" || !("role" in profile)) return null;
   const roles: AccountRole[] = ["Admin", "Manager", "Staff", "Customer"];
