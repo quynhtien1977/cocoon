@@ -26,7 +26,11 @@ export function validatePlanDetails(draft: PlanDraft): Record<string, string> {
   return errors;
 }
 
-export const toPlanDraft = (plan: RecommendationPlan): PlanDraft => ({ name: plan.name, goal: plan.goal ?? "", startAt: plan.startAt.slice(0, 10), endAt: plan.endAt.slice(0, 10), segment: plan.segment, productIds: plan.productIds });
+// The API returns UTC; en-CA formats as yyyy-mm-dd, read on the Vietnam calendar day the manager picked.
+const dayInVietnam = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Ho_Chi_Minh" });
+const toDateInput = (iso: string) => dayInVietnam.format(new Date(iso));
+
+export const toPlanDraft = (plan: RecommendationPlan): PlanDraft => ({ name: plan.name, goal: plan.goal ?? "", startAt: toDateInput(plan.startAt), endAt: toDateInput(plan.endAt), segment: plan.segment, productIds: plan.productIds });
 
 export const toPlanUpsertRequest = (draft: PlanDraft): PlanUpsertRequest => ({
   name: draft.name.trim(),
