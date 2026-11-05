@@ -56,3 +56,12 @@ test("the existing 501 stub displays unavailable without fabricating a session",
   });
   assert.deepEqual(calls, ["/api/v1/auth/login"]);
 });
+
+test("only customers can return to the exact recommendation section after login", async () => {
+  let role = "Customer";
+  globalThis.fetch = async url => String(url).endsWith("/me") ? Response.json({ role }) : new Response(null, { status: 204 });
+  assert.equal(await signIn("person@example.com", "test-password", "shared", "/account#goi-y-cho-ban"), "/account#goi-y-cho-ban");
+  for (const target of ["https://evil.example", "//evil.example", "/admin", "/account#other"]) assert.equal(await signIn("person@example.com", "test-password", "shared", target), "/account");
+  role = "Manager";
+  assert.equal(await signIn("person@example.com", "test-password", "shared", "/account#goi-y-cho-ban"), "/manager");
+});

@@ -17,13 +17,15 @@ export interface ProductCardProps {
   reason?: ReactNode;
   action?: ReactNode;
   className?: string;
+  /** Called when either the product image or title is opened. */
+  onOpen?: () => void;
 }
 
 function flattenReasons(reason: ReactNode): ReactNode[] {
   return Children.toArray(reason).flatMap((child) => isValidElement<{ children?: ReactNode }>(child) && child.type === Fragment ? flattenReasons(child.props.children) : [child]);
 }
 
-export function ProductCard({ name, href, imageUrl, imageAlt, minPrice, avgRating = null, reason, action, className }: ProductCardProps) {
+export function ProductCard({ name, href, imageUrl, imageAlt, minPrice, avgRating = null, reason, action, className, onOpen }: ProductCardProps) {
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const hasImage = !!imageUrl && failedSource !== imageUrl;
   const price = minPrice !== null && Number.isFinite(minPrice) && minPrice >= 0
@@ -45,10 +47,11 @@ export function ProductCard({ name, href, imageUrl, imageAlt, minPrice, avgRatin
             <span className="text-center text-sm">Chưa có ảnh sản phẩm</span>
           </div>
         )}
+        {href && <Link href={href} aria-label={`Xem sản phẩm ${name}`} onClick={onOpen} className="absolute inset-0 focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-gold-strong" />}
       </div>
       <div className="flex flex-1 flex-col gap-3 p-4">
         <h3 className="font-heading text-lg leading-snug break-words">
-          {href ? <Link href={href} className="underline-offset-4 hover:underline">{name}</Link> : name}
+          {href ? <Link href={href} onClick={onOpen} className="underline-offset-4 hover:underline">{name}</Link> : name}
         </h3>
         <p className="text-sm font-bold tabular-nums">{price === null ? "Chưa có giá" : `Từ ${price}`}</p>
         <RatingStars value={avgRating} />
