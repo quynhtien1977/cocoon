@@ -44,7 +44,7 @@ export function BackofficeShell({ variant, nav, children }: { variant: keyof typ
             <MobileNavigation items={nav} title={labels[variant]} home={home} tone="ink" />
             <p className="font-label text-sm uppercase tracking-wider">Cocoon <span className="text-muted-foreground">/ {labels[variant]}</span></p>
           </div>
-          <div className="flex items-center gap-3 text-sm"><span className="hidden text-muted-foreground sm:inline">{labels[variant]}</span><span className="flex size-8 items-center justify-center rounded-full bg-secondary"><UserRound className="size-4" aria-hidden="true" /></span></div>
+          <Link href={`/${variant}/profile`} aria-label="Hồ sơ cá nhân" className="flex min-h-12 items-center gap-3 rounded-md px-2 text-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"><span className="hidden text-muted-foreground sm:inline">{labels[variant]}</span><span className="flex size-8 items-center justify-center rounded-full bg-secondary"><UserRound className="size-4" aria-hidden="true" /></span></Link>
         </header>
         <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1280px] p-6 outline-none">{children}</main>
       </div>
