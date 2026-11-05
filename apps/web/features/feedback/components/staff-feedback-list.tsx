@@ -10,7 +10,7 @@ import { DataTable, type DataColumn, type DataFilter } from "@/components/data/d
 import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { loadAssignedFeedback } from "../api";
-import { useApiData } from "../use-api-data";
+import { useApiData } from "@/lib/api/use-api-data";
 import type { FeedbackListItem } from "../types";
 
 const date = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" });
@@ -40,7 +40,7 @@ const filters: DataFilter<FeedbackListItem>[] = [
 
 export function StaffFeedbackList() {
   const s = screen("S1");
-  const { data, loading, error, retry } = useApiData(loadAssignedFeedback);
+  const { data, loading, error, retry } = useApiData(loadAssignedFeedback, "Chưa tải được phản hồi. Kiểm tra kết nối rồi thử lại.");
   const assigned = data ?? [];
   const waiting = assigned.filter(needsAction).length;
 

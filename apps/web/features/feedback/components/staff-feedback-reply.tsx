@@ -11,7 +11,7 @@ import { screen } from "@/lib/screens";
 import { loadFeedbackDetail, replyToFeedback } from "../api";
 import { REPLY_MAX, validateReply } from "../schemas";
 import type { FeedbackDetail } from "../types";
-import { useApiData } from "../use-api-data";
+import { useApiData } from "@/lib/api/use-api-data";
 import { caseCard, CustomerSummary, FeedbackTimeline, OrderProductSummary } from "./feedback-case";
 import { FeedbackLoadState } from "./feedback-load-state";
 
@@ -83,7 +83,7 @@ export function StaffFeedbackReply({ initial }: { initial: FeedbackDetail }) {
 
 export function StaffFeedbackReplyPage({ id }: { id: number }) {
   const load = useCallback((signal: AbortSignal) => loadFeedbackDetail(id, signal), [id]);
-  const { data, loading, error, missing, retry } = useApiData(load);
+  const { data, loading, error, missing, retry } = useApiData(load, "Chưa tải được phản hồi. Kiểm tra kết nối rồi thử lại.");
   if (!data) return <FeedbackLoadState loading={loading} missing={missing} error={error} onRetry={retry} backHref="/staff/feedback" />;
   return <StaffFeedbackReply initial={data} />;
 }

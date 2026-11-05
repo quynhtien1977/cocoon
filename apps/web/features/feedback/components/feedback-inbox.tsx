@@ -13,7 +13,7 @@ import { updateTableParams } from "@/components/data/table-state";
 import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { loadFeedback } from "../api";
-import { useApiData } from "../use-api-data";
+import { useApiData } from "@/lib/api/use-api-data";
 import type { FeedbackListItem, FeedbackStatus } from "../types";
 
 const dateTime = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" });
@@ -86,7 +86,7 @@ function StatusTabs({ rows }: { rows: readonly FeedbackListItem[] }) {
 
 export function FeedbackInbox() {
   const s = screen("M5");
-  const { data, loading, error, retry } = useApiData(loadFeedback);
+  const { data, loading, error, retry } = useApiData(loadFeedback, "Chưa tải được phản hồi. Kiểm tra kết nối rồi thử lại.");
   const feedback = data ?? [];
   const ready = data !== null;
   const count = (...status: FeedbackStatus[]) => feedback.filter((row) => status.includes(row.status)).length;

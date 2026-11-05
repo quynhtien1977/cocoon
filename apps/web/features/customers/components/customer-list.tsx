@@ -10,7 +10,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { customersToCsv } from "../customers-csv";
-import { customersFixture, preferencesFixture } from "../customers.fixture";
+import { useApiData } from "@/lib/api/use-api-data";
+import { loadCustomers } from "../api";
 import type { CustomerListItem } from "../types";
 
 const date = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" });
@@ -49,10 +50,11 @@ const columns: DataColumn<CustomerListItem>[] = [
   { id: "actions", header: "Thao tác", value: () => null, searchable: false, cell: (row) => <Link href={`/manager/customers/${row.id}`} aria-label={`Xem hồ sơ ${row.fullName}`} className="inline-flex min-h-12 items-center font-semibold whitespace-nowrap text-gold-strong hover:underline">Xem hồ sơ</Link> },
 ];
 
-const filters: DataFilter<CustomerListItem>[] = [
+/** Preference options come from the loaded rows, so only tags some customer has are offered. */
+const buildFilters = (rows: readonly CustomerListItem[]): DataFilter<CustomerListItem>[] => [
   { id: "gender", label: "Giới tính", options: ["Nữ", "Nam", "Khác"].map((value) => ({ value, label: value })), matches: (row, value) => row.gender === value },
   { id: "age", label: "Nhóm tuổi", options: ageGroups.map(({ value, label }) => ({ value, label })), matches: (row, value) => { const group = ageGroups.find((item) => item.value === value); return !!group && row.age !== null && row.age >= group.min && row.age <= group.max; } },
-  { id: "preference", label: "Sở thích", options: preferencesFixture.map((value) => ({ value, label: value })), matches: (row, value) => row.preferences.includes(value) },
+  { id: "preference", label: "Sở thích", options: [...new Set(rows.flatMap((row) => row.preferences))].sort((a, b) => a.localeCompare(b, "vi")).map((value) => ({ value, label: value })), matches: (row, value) => row.preferences.includes(value) },
   { id: "status", label: "Trạng thái", options: [{ value: "Active", label: "Hoạt động" }, { value: "Locked", label: "Đã khóa" }], matches: (row, value) => row.status === value },
 ];
 
@@ -89,7 +91,8 @@ function downloadCsv(rows: readonly CustomerListItem[]) {
 
 export function CustomerList() {
   const s = screen("M2");
-  const customers = customersFixture;
+  const { data, loading, error, retry } = useApiData(loadCustomers, "Chưa tải được danh sách khách hàng. Kiểm tra kết nối rồi thử lại.");
+  const customers = data ?? [];
   const active = customers.filter((row) => row.status === "Active").length;
   const counts = new Map<string, number>();
   for (const preference of customers.flatMap((row) => row.preferences)) counts.set(preference, (counts.get(preference) ?? 0) + 1);
@@ -101,7 +104,7 @@ export function CustomerList() {
   return (
     <>
       <PageHeader eyebrow={s.code} title="Danh sách khách hàng" description={`Hồ sơ ${customers.length} khách hàng: thông tin liên hệ, sở thích chăm sóc da và lịch sử mua hàng.`} actions={<>
-        <Button type="button" variant="outline" className="h-12 px-4" onClick={() => downloadCsv(customers)}><Download aria-hidden="true" />Xuất file CSV</Button>
+        <Button type="button" variant="outline" className="h-12 px-4" disabled={!customers.length} onClick={() => downloadCsv(customers)}><Download aria-hidden="true" />Xuất file CSV</Button>
         <Link href="/manager/customers/new" className={cn(buttonVariants(), "h-12 px-4")}><UserPlus aria-hidden="true" />Thêm khách hàng</Link>
       </>} />
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
@@ -110,7 +113,7 @@ export function CustomerList() {
         <StatTile label="Sở thích phổ biến" value={topPreference} icon={<Heart />} progress={topCount / total} hint={`${topCount} khách quan tâm`} />
         <StatTile label="Đơn trung bình mỗi khách" value={decimal.format(avgOrders)} unit="đơn" icon={<ShoppingBag />} progress={buyers / total} hint={`${buyers} khách đã mua ít nhất 1 đơn`} />
       </div>
-      <DataTable data={customers} columns={columns} getRowId={(row) => row.id} caption="Khách hàng" filters={filters} renderCard={(row) => <CustomerCard row={row} />} cardsUntil="wide"
+      <DataTable data={customers} columns={columns} getRowId={(row) => row.id} caption="Khách hàng" filters={buildFilters(customers)} loading={loading} error={error} onRetry={retry} renderCard={(row) => <CustomerCard row={row} />} cardsUntil="wide"
         emptyTitle="Không tìm thấy khách hàng" emptyDescription="Thử từ khóa khác hoặc bỏ bớt bộ lọc." />
       <aside aria-labelledby="heritage-title" className="mt-8 flex flex-col gap-6 rounded-lg border border-border bg-card p-4 sm:p-6 md:flex-row md:items-center md:justify-between">
         <div className="flex gap-4">

@@ -6,7 +6,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 import { CustomerList } from "../features/customers/components/customer-list";
-import { customersFixture } from "../features/customers/customers.fixture";
+import type { CustomerListItem } from "../features/customers/types";
 import { customersToCsv } from "../features/customers/customers-csv";
 import { FeedbackInbox } from "../features/feedback/components/feedback-inbox";
 import { ManagerDashboard } from "../features/reports/components/manager-dashboard";
@@ -17,6 +17,15 @@ import { surveyDraftFixture, surveysFixture } from "../features/surveys/surveys.
 
 beforeEach(() => window.history.replaceState(null, "", "/"));
 afterEach(cleanup);
+
+const customer = (id: number, fullName: string, gender: string | null): CustomerListItem => ({ id, code: `KH-${String(id).padStart(4, "0")}`, fullName, email: `kh${id}@example.com`, phone: null, age: 30, gender, preferences: ["Da dầu mụn"], orderCount: 1, lastOrderAt: "2026-10-20T03:00:00Z", joinedAt: "2025-01-10T02:00:00Z", status: "Active" });
+const customers = [customer(5, "Trúc Nguyễn", "Nữ"), customer(6, "Lê Minh Quân", "Nam"), customer(7, "Hồ Gia Bảo", "Nam")];
+/** Serves M2's GET customers; restore with the returned function. */
+function serveCustomers() {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({ items: customers, totalCount: customers.length, page: 1, pageSize: 100 }), { headers: { "content-type": "application/json" } })) as typeof fetch;
+  return () => { globalThis.fetch = realFetch; };
+}
 
 // DataTable reads filters from the URL; tests seed it directly instead of driving the router.
 const withParams = (search: string, node: ReactNode) => <SearchParamsContext.Provider value={new URLSearchParams(search)}>{node}</SearchParamsContext.Provider>;
@@ -40,30 +49,39 @@ test("M1 overview previews open the matching report tab", async () => {
   assert.ok(screen.getByRole("table", { name: "Cặp sản phẩm hay mua cùng" }));
 });
 
-test("M2 renders a mobile card per row with a link name distinct from the table", () => {
-  render(withParams("size=10", <CustomerList />));
-  const first = customersFixture[0];
-  assert.equal(screen.getByRole("link", { name: `Hồ sơ ${first.fullName}, ${first.code}` }).getAttribute("href"), `/manager/customers/${first.id}`);
-  assert.ok(screen.getByLabelText("Sắp xếp"));
-  assert.ok(screen.getByRole("button", { name: "Xuất file CSV" }));
+test("M2 renders a mobile card per row with a link name distinct from the table", async () => {
+  const restore = serveCustomers();
+  try {
+    render(withParams("size=10", <CustomerList />));
+    const first = customers[0];
+    assert.equal((await screen.findByRole("link", { name: `Hồ sơ ${first.fullName}, ${first.code}` })).getAttribute("href"), `/manager/customers/${first.id}`);
+    assert.ok(screen.getByLabelText("Sắp xếp"));
+    assert.ok(screen.getByRole("button", { name: "Xuất file CSV" }));
+  } finally {
+    restore();
+  }
 });
 
 test("customer CSV keeps diacritics and neutralises formula cells", () => {
-  const csv = customersToCsv([{ ...customersFixture[0], fullName: "=HYPERLINK(\"x\")", preferences: ["Da dầu mụn", "Dưỡng ẩm"] }]);
+  const csv = customersToCsv([{ ...customers[0], fullName: "=HYPERLINK(\"x\")", preferences: ["Da dầu mụn", "Dưỡng ẩm"] }]);
   assert.ok(csv.startsWith("﻿\"Mã KH\""));
   const [, row] = csv.slice(1).split("\r\n");
   assert.ok(row.includes(`"'=HYPERLINK(""x"")"`));
   assert.ok(row.includes('"Da dầu mụn; Dưỡng ẩm"'));
 });
 
-test("M2 lists customers with links to M4 and filters by gender from the URL", () => {
-  render(withParams("filter.gender=Nam&size=50", <CustomerList />));
-  const table = screen.getByRole("table", { name: /Khách hàng/ });
-  const expected = customersFixture.filter((row) => row.gender === "Nam");
-  assert.equal(within(table).getAllByRole("row").length - 1, expected.length);
-  const link = screen.getByRole("link", { name: `Xem hồ sơ ${expected[0].fullName}` });
-  assert.equal(link.getAttribute("href"), `/manager/customers/${expected[0].id}`);
-  assert.equal(screen.getByRole("link", { name: "Thêm khách hàng" }).getAttribute("href"), "/manager/customers/new");
+test("M2 lists customers from GET customers with links to M4 and filters by gender from the URL", async () => {
+  const restore = serveCustomers();
+  try {
+    render(withParams("filter.gender=Nam&size=50", <CustomerList />));
+    const link = await screen.findByRole("link", { name: "Xem hồ sơ Lê Minh Quân" });
+    const table = screen.getByRole("table", { name: /Khách hàng/ });
+    assert.equal(within(table).getAllByRole("row").length - 1, 2);
+    assert.equal(link.getAttribute("href"), "/manager/customers/6");
+    assert.equal(screen.getByRole("link", { name: "Thêm khách hàng" }).getAttribute("href"), "/manager/customers/new");
+  } finally {
+    restore();
+  }
 });
 
 test("M5 filters low ratings and links each row to M6", async () => {
