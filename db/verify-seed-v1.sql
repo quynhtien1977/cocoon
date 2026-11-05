@@ -22,6 +22,14 @@ SELECT count(*) FILTER (WHERE a."IsActive" AND NOT a."IsDeleted") AS active_cust
 FROM "CustomerProfile" c JOIN "Account" a ON a."Id" = c."AccountId";
 
 SELECT "Status", count(*) AS total FROM "Product" GROUP BY "Status" ORDER BY "Status";
+-- Fresh catalog: 35 rows. Untouched upgraded v1: 48 physical / 35 current / 13 retired.
+-- Counts may differ after user edits; never reset data to force this baseline.
+SELECT count(*) AS total_variants,
+       count(*) FILTER (WHERE NOT "IsDeleted") AS current_variants,
+       count(*) FILTER (WHERE "IsDeleted") AS retired_variants,
+       count(*) FILTER (WHERE NOT "IsDeleted" AND ("ImageUrl" IS NULL
+           OR "ImageUrl" NOT LIKE 'https://image.cocoonvietnam.com/uploads/%')) AS current_without_official_image
+FROM "ProductVariant" WHERE "Sku" ~ '^COC-V1-[0-9]{3}-[1-3]$';
 SELECT "Channel", "Status", count(*) AS total FROM "Order" GROUP BY "Channel", "Status" ORDER BY "Channel", "Status";
 SELECT count(DISTINCT date_trunc('month', "OrderedAt" AT TIME ZONE 'UTC')) AS order_months FROM "Order";
 

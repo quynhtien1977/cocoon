@@ -21,4 +21,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Seeding/cocoon-catalog.json" LogicalName="Cocoon.Infrastructure.Seeding.cocoon-catalog.json" />
+  </ItemGroup>
+
 </Project>

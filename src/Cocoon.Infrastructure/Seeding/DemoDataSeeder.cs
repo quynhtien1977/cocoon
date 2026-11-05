@@ -10,7 +10,7 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
 {
     private int _added;
 
-    /// <summary>Adds local demo data. Existing rows, credentials and user edits are never reset.</summary>
+    /// <summary>Adds local demo data and upgrades recognized legacy catalog defaults; user edits and history are preserved.</summary>
     public async Task<int> RunAsync(CancellationToken cancellationToken = default, bool includeFeedback = false,
         bool includeSurveysAndPlans = false)
     {
@@ -132,23 +132,28 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
         await db.SaveChangesAsync(ct);
         var existingProducts = await db.Set<Product>().IgnoreQueryFilters().ToListAsync(ct);
         var variants = await db.Set<ProductVariant>().IgnoreQueryFilters().ToListAsync(ct);
+        var usedVariantIds = (await db.Set<OrderItem>().Select(i => i.ProductVariantId).Distinct().ToListAsync(ct)).ToHashSet();
         var result = new List<Product>();
         for (var index = 0; index < DemoCatalog.Products.Length; index++)
         {
             var skuPrefix = $"COC-V1-{index + 1:000}-";
             var productIds = variants.Where(v => v.Sku.StartsWith(skuPrefix, StringComparison.Ordinal)).Select(v => v.ProductId).Distinct().ToArray();
             if (productIds.Length > 1) throw new InvalidOperationException("SKU demo trỏ đến nhiều sản phẩm. Seed đã dừng.");
-            var name = DemoCatalog.Products[index];
+            var definition = DemoCatalog.Products[index];
+            var name = definition.Name;
+            var categoryId = selectedCategories.Single(c => c.Name == definition.Category).Id;
+            var description = $"Sản phẩm Cocoon. Thông tin chính thức: {definition.Variants[0].SourceUrl}";
             var product = productIds.Length == 1 ? existingProducts.Single(p => p.Id == productIds[0])
-                : existingProducts.SingleOrDefault(p => p.NameNormalized == SearchText.Normalize(name));
+                : existingProducts.SingleOrDefault(p => p.NameNormalized == SearchText.Normalize(name)
+                    || p.NameNormalized == SearchText.Normalize(definition.LegacyName));
             if (product is null)
             {
                 product = Add(new Product
                 {
-                    Name = name, NameNormalized = SearchText.Normalize(name), CategoryId = selectedCategories[index / 4].Id,
-                    Description = $"{name} — sản phẩm mô phỏng phục vụ đồ án CRM.",
-                    Ingredients = "Thành phần mô phỏng từ thực vật.", Benefits = "Chăm sóc cá nhân theo nhu cầu.",
-                    Usage = "Dữ liệu minh họa, không phải hướng dẫn sử dụng sản phẩm thật.",
+                    Name = name, NameNormalized = SearchText.Normalize(name), CategoryId = categoryId,
+                    Description = description,
+                    Ingredients = "Xem thành phần trên trang sản phẩm chính thức.", Benefits = "Xem công dụng trên trang sản phẩm chính thức.",
+                    Usage = "Sử dụng theo hướng dẫn trên trang sản phẩm chính thức.",
                     Status = index >= 22 ? ProductStatus.Upcoming : index == 21 ? ProductStatus.Inactive : ProductStatus.Active,
                     CreatedAt = referenceUtc.AddMonths(-12)
                 });
@@ -160,16 +165,48 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
                         PreferenceId = preferences[(index / 2 + (tag == 2 ? 6 : tag)) % preferences.Count].Id
                     });
             }
-            for (var variantIndex = 0; variantIndex < 1 + index % 3; variantIndex++)
+            else if (!product.IsDeleted && (product.Name == definition.LegacyName || product.Name == name))
+            {
+                if (product.Name == definition.LegacyName && product.NameNormalized == SearchText.Normalize(definition.LegacyName))
+                    (product.Name, product.NameNormalized) = (name, SearchText.Normalize(name));
+                if (product.CategoryId == selectedCategories[index / 4].Id) product.CategoryId = categoryId;
+                if (product.Description == $"{definition.LegacyName} — sản phẩm mô phỏng phục vụ đồ án CRM.") product.Description = description;
+                if (product.Ingredients == "Thành phần mô phỏng từ thực vật.") product.Ingredients = "Xem thành phần trên trang sản phẩm chính thức.";
+                if (product.Benefits == "Chăm sóc cá nhân theo nhu cầu.") product.Benefits = "Xem công dụng trên trang sản phẩm chính thức.";
+                if (product.Usage == "Dữ liệu minh họa, không phải hướng dẫn sử dụng sản phẩm thật.") product.Usage = "Sử dụng theo hướng dẫn trên trang sản phẩm chính thức.";
+            }
+            for (var variantIndex = 0; variantIndex < Math.Max(1 + index % 3, definition.Variants.Length); variantIndex++)
             {
                 var sku = skuPrefix + (variantIndex + 1);
-                if (!variants.Any(v => v.Sku == sku))
+                var existingVariant = variants.SingleOrDefault(v => v.Sku == sku);
+                var legacyName = $"{100 + variantIndex * 100} ml";
+                var legacyPrice = (90000 + index * 10000) * (variantIndex + 1);
+                if (variantIndex >= definition.Variants.Length)
+                {
+                    // Retire only untouched, unused generated sizes. No hard delete or historical reference is changed.
+                    if (!product.IsDeleted && existingVariant is { IsDeleted: false } && !usedVariantIds.Contains(existingVariant.Id)
+                        && existingVariant.Name == legacyName && existingVariant.Price == legacyPrice
+                        && DemoCatalog.IsLegacyImage(index, existingVariant.ImageUrl))
+                    {
+                        existingVariant.IsDeleted = true;
+                        existingVariant.Name = "Biến thể seed cũ đã ngừng dùng";
+                        existingVariant.ImageUrl = definition.Variants[0].ImageUrl;
+                    }
+                    continue;
+                }
+                var variant = definition.Variants[variantIndex];
+                if (existingVariant is null)
                     variants.Add(Add(new ProductVariant
                     {
-                        ProductId = product.Id, Sku = sku, Name = $"{100 + variantIndex * 100} ml",
-                        Price = (90000 + index * 10000) * (variantIndex + 1),
-                        ImageUrl = DemoCatalog.Placeholder(index / 4, name)
+                        ProductId = product.Id, Sku = sku, Name = variant.Name,
+                        Price = variant.Price, ImageUrl = variant.ImageUrl
                     }));
+                else if (!product.IsDeleted && !existingVariant.IsDeleted)
+                {
+                    if (existingVariant.Name == legacyName) existingVariant.Name = variant.Name;
+                    if (existingVariant.Price == legacyPrice) existingVariant.Price = variant.Price;
+                    if (DemoCatalog.IsLegacyImage(index, existingVariant.ImageUrl)) existingVariant.ImageUrl = variant.ImageUrl;
+                }
             }
             result.Add(product);
         }
