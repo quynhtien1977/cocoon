@@ -11,7 +11,8 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
     private int _added;
 
     /// <summary>Adds local demo data. Existing rows, credentials and user edits are never reset.</summary>
-    public async Task<int> RunAsync(CancellationToken cancellationToken = default, bool includeFeedback = false)
+    public async Task<int> RunAsync(CancellationToken cancellationToken = default, bool includeFeedback = false,
+        bool includeSurveysAndPlans = false)
     {
         if (referenceUtc.Kind != DateTimeKind.Utc)
             throw new ArgumentException("Mốc seed phải là UTC.", nameof(referenceUtc));
@@ -22,7 +23,8 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
         var customers = await AddAccounts(preferences, cancellationToken);
         var products = await AddCatalog(preferences, cancellationToken);
         await AddOrders(customers, products, cancellationToken);
-        if (includeFeedback) await AddFeedback(cancellationToken);
+        if (includeFeedback || includeSurveysAndPlans) await AddFeedback(cancellationToken);
+        if (includeSurveysAndPlans) await AddSurveysAndPlans(customers, products, preferences, cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return _added;
     }
