@@ -9,6 +9,7 @@ using Cocoon.Application.Accounts;
 using Cocoon.Infrastructure.Accounts;
 using Cocoon.Application.Reports;
 using Cocoon.Infrastructure.Reports;
+using Cocoon.Infrastructure.Surveys;
 using Cocoon.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Cocoon.Infrastructure.Persistence;
@@ -53,6 +54,7 @@ builder.Services.AddOptions<RecommendationWeights>().BindConfiguration("Recommen
 builder.Services.AddScoped<CustomerFactsService>();
 builder.Services.AddScoped<RecommendationService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<CustomerSurveyService>();
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     // Controller Problem(statusCode: x) sets Status before the response status is written.
     ApiProblems.Customize(context.ProblemDetails, context.ProblemDetails.Status ?? context.HttpContext.Response.StatusCode));
