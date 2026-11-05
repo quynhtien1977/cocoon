@@ -14,6 +14,7 @@ public sealed record ReportPeriod(DateTimeOffset? From = null, DateTimeOffset? T
 
 public interface IReportService
 {
+    Task<RecommendationReport> RecommendationsAsync(ReportPeriod period, CancellationToken ct);
     Task<ReportOverview> OverviewAsync(ReportPeriod period, CancellationToken ct);
     Task<CustomerAgeReport> CustomersByAgeAsync(CancellationToken ct);
     Task<CustomerGenderReport> CustomersByGenderAsync(CancellationToken ct);
@@ -21,6 +22,13 @@ public interface IReportService
     Task<FeedbackRatingReport> FeedbackRatingsAsync(ReportPeriod period, CancellationToken ct);
     Task<CategoryPurchaseReport> PurchasesByCategoryAsync(ReportPeriod period, CancellationToken ct);
 }
+
+/// <summary>Rates are 0–1 fractions of the generated cohort, based on latest stored statuses, not an event log.</summary>
+public sealed record RecommendationReport(int EligibleCustomers, int CoveredCustomers, decimal Coverage,
+    int RecommendationCount, int ClickedCount, int DismissedCount, decimal ClickRate, decimal DismissRate,
+    int ActivePlans, DateTime? LastBuiltAt, IReadOnlyList<RecommendationProductRow> TopProducts, IReadOnlyList<RecommendationPlanRow> ByPlan);
+public sealed record RecommendationProductRow(int Id, string Name, int RecommendationCount, int Clicks, int Dismissals, decimal ClickRate, decimal DismissRate);
+public sealed record RecommendationPlanRow(int? PlanId, string? PlanName, int CustomerCount, int RecommendationCount, int Clicks, int Dismissals, decimal ClickRate, decimal DismissRate);
 
 public sealed record ReportOverview(int TotalCustomers, int NewCustomers30d, int NewFeedback, decimal? AvgRating,
     int OpenSurveys, int NewCustomersThisMonth, int RatingCount, int CompletedResponses);

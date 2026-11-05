@@ -132,6 +132,50 @@ public sealed class ReportService(AppDbContext db) : IReportService
             .Select(g => new CategoryPurchaseRow(g.Id, g.Name, AgeGroups[g.AgeGroup], g.Revenue, g.Quantity, g.Orders)).ToArray(), today);
     }
 
+    public Task<RecommendationReport> RecommendationsAsync(ReportPeriod period, CancellationToken ct) => Snapshot(async () =>
+    {
+        var now = DateTime.UtcNow;
+        var end = period.To?.UtcDateTime ?? now;
+        var rows = db.Set<Recommendation>().AsNoTracking().Where(r => r.GeneratedAt < end);
+        if (period.From is { } from) rows = rows.Where(r => r.GeneratedAt >= from.UtcDateTime);
+        var eligible = ActiveCustomers.Where(c => c.ConsentPersonalData).Select(c => c.AccountId);
+        var eligibleCount = await eligible.CountAsync(ct);
+        var covered = await rows.Where(r => eligible.Contains(r.CustomerId)).Select(r => r.CustomerId).Distinct().CountAsync(ct);
+        var totals = await rows.GroupBy(r => 1).Select(g => new
+        {
+            Count = g.Count(), Clicks = g.Count(r => r.Status == RecommendationStatus.Clicked),
+            Dismissals = g.Count(r => r.Status == RecommendationStatus.Dismissed), LastBuiltAt = (DateTime?)g.Max(r => r.GeneratedAt)
+        }).SingleOrDefaultAsync(ct);
+        var count = totals?.Count ?? 0;
+        var clicks = totals?.Clicks ?? 0;
+        var dismissals = totals?.Dismissals ?? 0;
+        var activePlans = await db.Set<RecommendationPlan>().CountAsync(p => p.Status == RecommendationPlanStatus.Active && p.StartAt <= now && p.EndAt > now, ct);
+
+        // Aggregate in the database before joining retained catalog names; never load individual recommendations.
+        var products = await rows.GroupBy(r => r.ProductId).Select(g => new
+            {
+                Id = g.Key, Count = g.Count(), Clicks = g.Count(r => r.Status == RecommendationStatus.Clicked),
+                Dismissals = g.Count(r => r.Status == RecommendationStatus.Dismissed)
+            }).Join(db.Set<Product>().IgnoreQueryFilters(), r => r.Id, p => p.Id, (r, p) => new { r.Id, p.Name, r.Count, r.Clicks, r.Dismissals })
+            .OrderByDescending(r => r.Clicks).ThenByDescending(r => r.Count).ThenBy(r => r.Id).Take(10).ToListAsync(ct);
+        var planGroups = rows.GroupBy(r => r.PlanId).Select(g => new
+        {
+            PlanId = g.Key, Customers = g.Select(r => r.CustomerId).Distinct().Count(), Count = g.Count(),
+            Clicks = g.Count(r => r.Status == RecommendationStatus.Clicked), Dismissals = g.Count(r => r.Status == RecommendationStatus.Dismissed)
+        });
+        var plans = await (from g in planGroups
+            join p in db.Set<RecommendationPlan>() on g.PlanId equals (int?)p.Id into matched
+            from p in matched.DefaultIfEmpty()
+            orderby g.PlanId.HasValue, g.PlanId
+            select new { g.PlanId, PlanName = p == null ? null : p.Name, g.Customers, g.Count, g.Clicks, g.Dismissals }).ToListAsync(ct);
+        return new RecommendationReport(eligibleCount, covered, Ratio(covered, eligibleCount), count, clicks, dismissals,
+            Ratio(clicks, count), Ratio(dismissals, count), activePlans, totals?.LastBuiltAt,
+            products.Select(p => new RecommendationProductRow(p.Id, p.Name, p.Count, p.Clicks, p.Dismissals, Ratio(p.Clicks, p.Count), Ratio(p.Dismissals, p.Count))).ToList(),
+            plans.Select(p => new RecommendationPlanRow(p.PlanId, p.PlanName, p.Customers, p.Count, p.Clicks, p.Dismissals, Ratio(p.Clicks, p.Count), Ratio(p.Dismissals, p.Count))).ToList());
+    }, ct);
+
+    private static decimal Ratio(int numerator, int denominator) => denominator == 0 ? 0 : Math.Round((decimal)numerator / denominator, 6, MidpointRounding.AwayFromZero);
+
     private IQueryable<Feedback> Feedbacks(ReportPeriod period, DateTime now)
     {
         var rows = db.Set<Feedback>().AsNoTracking();

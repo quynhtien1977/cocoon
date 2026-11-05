@@ -35,5 +35,7 @@ public sealed class ReportsController(IReportService reports) : ApiStubControlle
     public async Task<ActionResult<CategoryPurchaseReport>> PurchasesByCategory([FromQuery] ReportPeriod period, CancellationToken ct) =>
         Ok(await reports.PurchasesByCategoryAsync(period, ct));
 
-    [HttpGet("recommendations")] public IActionResult Recommendations() => NotImplementedYet();
+    [HttpGet("recommendations")]
+    [ProducesResponseType<RecommendationReport>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Recommendations([FromQuery] ReportPeriod period, CancellationToken ct) => Ok(await reports.RecommendationsAsync(period, ct));
 }
