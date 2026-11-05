@@ -127,7 +127,7 @@ export function RegisterForm({ onClose }: { onClose: () => void }) {
                   <Select.Trigger className={registration.trigger} aria-labelledby={`preference-${group.key}`}><span>{selections[group.key].length ? `Đã chọn ${selections[group.key].length} mục` : "Chọn sở thích của bạn"}</span><Select.Icon><ChevronDown size={18} /></Select.Icon></Select.Trigger>
                   <Select.Portal><Select.Positioner className={registration.positioner} sideOffset={6} align="start" alignItemWithTrigger={false} collisionPadding={12}>
                     <Select.Popup className={registration.dropdown}><Select.List>
-                      {group.options.map((option) => <Select.Item key={option.key} value={option.key} label={option.label} className={registration.option}><span className={registration.check}><Select.ItemIndicator><Check size={14} /></Select.ItemIndicator></span><Select.ItemText><span>{option.label}</span>{"detail" in option && <small>{option.detail}</small>}<small>{option.english}</small></Select.ItemText></Select.Item>)}
+                      {group.options.map((option) => <Select.Item key={option.key} value={option.key} label={option.label} className={registration.option}><span className={registration.check}><Select.ItemIndicator><Check size={14} /></Select.ItemIndicator></span><Select.ItemText><span>{option.label}</span><small>{option.english}</small></Select.ItemText></Select.Item>)}
                     </Select.List></Select.Popup>
                   </Select.Positioner></Select.Portal>
                 </Select.Root>
