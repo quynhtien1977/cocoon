@@ -1,8 +1,13 @@
-// Response shapes for reports/* (spec 6.2). Replace with lib/api/schema.d.ts types once P3 publishes the DTOs.
+// Matches src/Cocoon.Application/Reports/ReportContracts.cs; the API declares no report schemas in schema.d.ts.
+// Percentages are 0–100; rates (lowRatingRate) are 0–1. See db/REPORTS_SQL.md for each definition.
+
+/** Optional [from, to) bounds as ISO 8601; omitted means unbounded (to defaults to now). */
+export interface ReportRange { from?: string; to?: string }
 
 export interface ReportOverview {
   totalCustomers: number;
   newCustomers30d: number;
+  /** Feedback still in status New, created in the period. */
   newFeedback: number;
   avgRating: number | null;
   openSurveys: number;
@@ -11,28 +16,23 @@ export interface ReportOverview {
   completedResponses: number;
 }
 
-export interface WeeklyFeedback { week: string; total: number; lowRating: number }
-export interface AgeGroupCount { group: string; customers: number }
-export interface GenderCount { gender: string; customers: number }
-export interface PreferenceCount { preference: string; customers: number }
-export interface CategoryRating { category: string; avgRating: number; feedbackCount: number }
-export interface MonthlyLowRating { month: string; lowRatingRate: number }
+export interface CustomerAgeReport { items: { group: string; customers: number; percentage: number }[]; totalCustomers: number; asOf: string }
+export interface CustomerGenderReport { items: { gender: string; customers: number; percentage: number }[]; totalCustomers: number; asOf: string }
+/** Denominator is consenting customers; multi-select, so shares can sum past 100%. */
+export interface CustomerPreferenceReport { items: { preferenceId: number; preference: string; customers: number; percentage: number }[]; consentingCustomers: number; multiSelect: boolean }
 
-/** reports/purchases/categories: revenue in VND per category × age group. */
-export interface CategoryAgeRevenue { category: string; ageGroup: string; revenue: number }
-
-export interface CoPurchasePair { productA: string; productB: string; bothCount: number; confidence: number }
-
-export interface AttentionFeedback {
-  id: number;
-  customerName: string;
-  productName: string;
-  rating: number;
-  excerpt: string;
-  status: "New" | "Accepted" | "Assigned";
-  orderCode: string;
-  createdAt: string;
+export interface FeedbackRatingReport {
+  feedbackCount: number;
+  avgRating: number | null;
+  distribution: { rating: number; feedbackCount: number; percentage: number }[];
+  /** month is "YYYY-MM" (UTC). */
+  byMonth: { month: string; feedbackCount: number; avgRating: number; lowRatingRate: number }[];
+  byProduct: { productId: number; product: string; feedbackCount: number; avgRating: number }[];
+  byCategory: { categoryId: number; category: string; feedbackCount: number; avgRating: number }[];
 }
 
-/** Editorial highlight under the overview; static copy until reports expose insights. */
-export interface ReportInsight { id: string; icon: "coffee" | "leaf" | "clock"; eyebrow: string; title: string; body: string }
+/** Completed orders only; revenue in VND per category × age group. */
+export interface CategoryPurchaseReport { items: { categoryId: number; category: string; ageGroup: string; revenue: number; quantity: number; orderCount: number }[]; asOf: string }
+
+export interface CustomerReports { age: CustomerAgeReport; gender: CustomerGenderReport; preferences: CustomerPreferenceReport }
+export interface ActivityReports { overview: ReportOverview; ratings: FeedbackRatingReport; purchases: CategoryPurchaseReport }
