@@ -13,12 +13,12 @@ test("registration validates every required field and confirmation", () => {
   assert.ok(validateRegistration({ ...valid, password: "PASSWORD1" }).password);
   assert.ok(validateRegistration({ ...valid, password: "Password" }).password);
   assert.ok(validateRegistration({ ...valid, confirmation: "" }).confirmation);
-  assert.deepEqual(preferenceGroups.map((group) => group.options.length), [6, 5, 4]);
+  assert.deepEqual(preferenceGroups.map((group) => group.options.length), [5, 5, 2]);
 });
 
 test("optional preferences resolve only to real active catalog IDs", () => {
-  const rows = [{ id: 81, name: "Da khô / Mất nước", isActive: true }, { id: 95, name: "Facial Care" }];
-  assert.deepEqual(resolvePreferenceIds(["dry", "face", "dry"], rows), [81, 95]);
+  const rows = [{ id: 81, name: "Da khô", isActive: true }, { id: 95, name: "Body Care" }];
+  assert.deepEqual(resolvePreferenceIds(["dry", "body", "dry"], rows), [81, 95]);
   assert.throws(() => resolvePreferenceIds(["dry"], []));
   assert.throws(() => resolvePreferenceIds(["dry"], [{ ...rows[0], isActive: false }]));
   assert.throws(() => resolvePreferenceIds(["dry"], [rows[0], { ...rows[0], id: 82 }]));

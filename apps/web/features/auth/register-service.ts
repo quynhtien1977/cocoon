@@ -1,26 +1,24 @@
 import { ApiError, apiRequest } from "../../lib/api/client";
 
+// Labels are the seeded preference catalog names (db/SEED_V1.md); ids are always looked up from GET /preferences.
 export const preferenceGroups = [
   { key: "skin", label: "Loại da", options: [
-    { key: "dry", label: "Da khô / Mất nước", english: "Dry Skin" },
-    { key: "oily", label: "Da dầu / Lỗ chân lông to", english: "Oily & Pores" },
-    { key: "acne", label: "Da mụn / Dễ nổi mụn", english: "Acne-prone Skin" },
-    { key: "sensitive", label: "Da nhạy cảm / Dễ kích ứng", english: "Sensitive Skin" },
-    { key: "uneven", label: "Da không đều màu / Thâm nám", english: "Uneven Tone / Pigmentation" },
-    { key: "aging", label: "Lão hóa / Nếp nhăn", english: "Anti-aging" },
+    { key: "dry", label: "Da khô", english: "Dry Skin" },
+    { key: "oily", label: "Da dầu", english: "Oily Skin" },
+    { key: "acne", label: "Mụn", english: "Acne-prone Skin" },
+    { key: "sensitive", label: "Da nhạy cảm", english: "Sensitive Skin" },
+    { key: "uneven", label: "Thâm nám", english: "Uneven Tone / Pigmentation" },
   ] },
-  { key: "products", label: "Dòng sản phẩm yêu thích", options: [
-    { key: "face", label: "Chăm sóc da mặt", detail: "Tẩy da chết, Toner, Serum, Kem dưỡng", english: "Facial Care" },
-    { key: "body", label: "Chăm sóc cơ thể", detail: "Tẩy tế bào chết cơ thể, Sữa tắm, Dưỡng thể", english: "Body Care" },
-    { key: "hair", label: "Chăm sóc tóc", detail: "Dầu gội bưởi, Dầu xả, Xịt tóc", english: "Hair Care" },
-    { key: "lip", label: "Son dưỡng / Chăm sóc môi", english: "Lip Care" },
-    { key: "gifts", label: "Bộ quà tặng & Combo thuần chay", english: "Vegan Gift Sets" },
+  { key: "products", label: "Nhu cầu chăm sóc", options: [
+    { key: "hydrate", label: "Cấp ẩm", english: "Hydration" },
+    { key: "sun", label: "Chống nắng", english: "Sun Care" },
+    { key: "body", label: "Dưỡng thể", english: "Body Care" },
+    { key: "lip", label: "Chăm sóc môi", english: "Lip Care" },
+    { key: "hair", label: "Tóc gãy rụng", english: "Hair Fall Care" },
   ] },
   { key: "criteria", label: "Tiêu chí lựa chọn mỹ phẩm", options: [
-    { key: "vegan", label: "100% Thuần chay & Không thử nghiệm trên động vật", english: "100% Vegan & Cruelty-free" },
-    { key: "local", label: "Thành phần thuần Việt / Chiết xuất thiên nhiên", english: "Local & Natural Ingredients" },
-    { key: "free", label: "Không chứa cồn, paraben, hạt vi nhựa", english: "Free from Alcohol, Parabens" },
-    { key: "eco", label: "Sản phẩm thân thiện với môi trường / Tái chế", english: "Eco-friendly / Sustainable" },
+    { key: "vegan", label: "Thuần chay", english: "100% Vegan & Cruelty-free" },
+    { key: "herbal", label: "Mùi thảo mộc", english: "Herbal Scent" },
   ] },
 ] as const;
 
@@ -40,12 +38,6 @@ export function validateRegistration(values: Registration): RegistrationErrors {
 }
 
 const normalize = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replaceAll("đ", "d").replace(/[^a-z0-9]/g, "");
-// Explicit equivalents from the existing seed catalog; never map by substring
-// or use seed ordering as a database ID.
-const catalogAliases: Record<string, string[]> = {
-  dry: ["Da khô"], oily: ["Da dầu"], acne: ["Mụn"], sensitive: ["Da nhạy cảm"],
-  uneven: ["Thâm nám"], lip: ["Chăm sóc môi"], vegan: ["Thuần chay"],
-};
 
 export function resolvePreferenceIds(keys: string[], response: unknown): number[] {
   const rows = Array.isArray(response) ? response : response && typeof response === "object" && "items" in response && Array.isArray(response.items) ? response.items : [];
@@ -53,7 +45,7 @@ export function resolvePreferenceIds(keys: string[], response: unknown): number[
   return [...new Set(keys.map((key) => {
     const option = options.find((item) => item.key === key);
     if (!option) throw new Error("Lựa chọn sở thích không hợp lệ. Vui lòng chọn lại.");
-    const aliases = [option.label, option.english, `${option.label} (${option.english})`, ...(catalogAliases[key] ?? [])].map(normalize);
+    const aliases = [option.label, option.english, `${option.label} (${option.english})`].map(normalize);
     const matches = rows.filter((row) => row && typeof row === "object" && Number.isInteger(row.id) && row.id > 0 && row.isActive !== false && typeof row.name === "string" && aliases.includes(normalize(row.name)));
     if (matches.length !== 1) throw new Error("Sở thích đã chọn hiện chưa thể lưu. Bạn có thể thử lại sau hoặc bỏ các lựa chọn để tiếp tục.");
     return matches[0].id as number;
