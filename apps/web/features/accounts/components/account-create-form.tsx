@@ -8,31 +8,48 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import type { AccountRole } from "@/lib/auth/roles";
 import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
-import { assignableRoles, roleLabels, roleSummaries, toCreateAccountRequest, validateAccountDraft } from "../schemas";
+import { ApiError } from "@/lib/api/client";
+import { createAccount, type AccountCreated } from "../api";
+import { assignableRoles, roleLabels, roleSummaries, validateAccountDraft } from "../schemas";
 import type { AccountDraft } from "../types";
 
 const fieldClass = "min-h-12 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-destructive";
 const labelClass = "font-label text-sm uppercase tracking-wider";
 const emptyDraft: AccountDraft = { fullName: "", email: "", role: "Staff" };
+const draftFields = new Set(["fullName", "email", "role"]);
 
 export function AccountCreateForm() {
   const s = screen("A2");
   const id = useId();
   const [draft, setDraft] = useState(emptyDraft);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [created, setCreated] = useState<string | null>(null);
-  const update = (patch: Partial<AccountDraft>) => { setDraft((current) => ({ ...current, ...patch })); setCreated(null); };
+  const [created, setCreated] = useState<AccountCreated | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const update = (patch: Partial<AccountDraft>) => { setDraft((current) => ({ ...current, ...patch })); setCreated(null); setSubmitError(null); };
   const summary = roleSummaries[draft.role];
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
+    if (submitting) return;
     const found = validateAccountDraft(draft);
     setErrors(found);
+    setSubmitError(null);
     if (Object.keys(found).length) { setCreated(null); return; }
-    // Static phase: the request body is built to check the contract but not sent until api.ts lands.
-    const request = toCreateAccountRequest(draft);
-    setCreated(request.email);
-    setDraft(emptyDraft);
+    setSubmitting(true);
+    try {
+      setCreated(await createAccount(draft));
+      setDraft(emptyDraft);
+    } catch (error) {
+      if (!(error instanceof ApiError)) { setSubmitError("Không kết nối được máy chủ. Thử lại sau."); return; }
+      // 409 EMAIL_TAKEN and 400 VALIDATION_ERROR name the field; show them next to it.
+      const fields = Object.fromEntries(Object.entries(error.errors).filter(([field]) => draftFields.has(field)).map(([field, messages]) => [field, messages[0]]));
+      if (Object.keys(fields).length) setErrors(fields);
+      else if (error.status === 409) setErrors({ email: error.message });
+      else setSubmitError(error.message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const fieldError = (name: string) => errors[name] && <p id={`${id}-${name}-error`} className="text-sm text-destructive">{errors[name]}</p>;
@@ -74,11 +91,12 @@ export function AccountCreateForm() {
 
         <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5 sm:col-span-2">
           <div aria-live="polite" className="min-w-0 text-sm">
-            {created && <p className="flex items-center gap-2 text-status-sage-fg"><CircleCheck className="size-4 shrink-0" aria-hidden="true" /><span className="min-w-0 break-all">Đã tạo tài khoản {created} (dữ liệu mẫu, chưa gửi máy chủ).</span></p>}
+            {submitError ? <p role="alert" className="text-destructive">Chưa tạo được tài khoản: {submitError}</p>
+              : created ? <p className="flex items-start gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0 break-all">Đã tạo tài khoản {created.email} ({roleLabels[created.role]}). Mật khẩu tạm để đăng nhập lần đầu: <code className="font-mono font-semibold text-foreground">{created.temporaryPassword}</code>. Người dùng phải đổi mật khẩu khi đăng nhập.</span></p> : null}
           </div>
           <div className="flex w-full gap-3 sm:ml-auto sm:w-auto">
             <Link href="/admin" className={cn(buttonVariants({ variant: "outline" }), "h-12 flex-1 px-6 sm:flex-none")}>Hủy</Link>
-            <Button type="submit" className="h-12 flex-1 px-6 sm:flex-none">Tạo tài khoản</Button>
+            <Button type="submit" disabled={submitting} className="h-12 flex-1 px-6 sm:flex-none">{submitting ? "Đang tạo…" : "Tạo tài khoản"}</Button>
           </div>
         </footer>
       </form>

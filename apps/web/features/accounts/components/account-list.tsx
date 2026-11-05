@@ -11,7 +11,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import type { AccountRole } from "@/lib/auth/roles";
 import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
-import { accountsFixture } from "../accounts.fixture";
+import { useApiData } from "@/lib/api/use-api-data";
+import { changeAccountRole, changeAccountStatus, deleteAccount, loadAccounts } from "../api";
 import { assignableRoles, roleLabels } from "../schemas";
 import type { AccountListItem } from "../types";
 
@@ -20,9 +21,9 @@ const lastLogin = (row: AccountListItem) => row.lastLoginAt ? dateTime.format(ne
 const iconButton = "size-12";
 
 interface ActionHandlers {
-  onRole: (row: AccountListItem, role: AccountRole) => void;
-  onToggleLock: (row: AccountListItem) => void;
-  onDelete: (row: AccountListItem) => void;
+  onRole: (row: AccountListItem, role: AccountRole) => Promise<void>;
+  onToggleLock: (row: AccountListItem) => Promise<void>;
+  onDelete: (row: AccountListItem) => Promise<void>;
 }
 
 /** Every change goes through ConfirmDialog naming the account and the consequence (spec 8.5). */
@@ -60,13 +61,17 @@ const filters: DataFilter<AccountListItem>[] = [
 
 export function AccountList() {
   const s = screen("A1");
-  const [accounts, setAccounts] = useState(accountsFixture);
-  const patch = (row: AccountListItem, change: Partial<AccountListItem>) => setAccounts((current) => current.map((item) => item.id === row.id ? { ...item, ...change } : item));
-  // Static phase: changes live in this page's state only, until admin/accounts is wired up.
+  const { data, loading, error, retry } = useApiData(loadAccounts, "Chưa tải được danh sách tài khoản. Kiểm tra kết nối rồi thử lại.");
+  // Rows after confirmed changes; null until the first change, reset when the list reloads.
+  const [edited, setEdited] = useState<AccountListItem[] | null>(null);
+  const accounts = edited ?? data ?? [];
+  const edit = (change: (rows: AccountListItem[]) => AccountListItem[]) => setEdited((current) => change(current ?? data ?? []));
+  const patch = (row: AccountListItem, change: Partial<AccountListItem>) => edit((rows) => rows.map((item) => item.id === row.id ? { ...item, ...change } : item));
+  // API first: if it throws, ConfirmDialog shows the message and the row stays as it was.
   const handlers: ActionHandlers = {
-    onRole: (row, role) => patch(row, { role }),
-    onToggleLock: (row) => patch(row, { status: row.status === "Locked" ? "Active" : "Locked" }),
-    onDelete: (row) => setAccounts((current) => current.filter((item) => item.id !== row.id)),
+    onRole: async (row, role) => { if (role !== row.role) await changeAccountRole(row.id, role); patch(row, { role }); },
+    onToggleLock: async (row) => { const unlock = row.status === "Locked"; await changeAccountStatus(row.id, unlock); patch(row, { status: unlock ? "Active" : "Locked" }); },
+    onDelete: async (row) => { await deleteAccount(row.id); edit((rows) => rows.filter((item) => item.id !== row.id)); },
   };
 
   const columns: DataColumn<AccountListItem>[] = [
@@ -87,7 +92,7 @@ export function AccountList() {
       <PageHeader eyebrow={s.code} title="Quản trị tài khoản" description="Quản lý tài khoản và phân quyền người dùng trong toàn hệ thống Cocoon CRM." actions={
         <Link href="/admin/accounts/new" className={cn(buttonVariants(), "h-12 px-4")}><Plus aria-hidden="true" />Tạo tài khoản mới</Link>
       } />
-      <DataTable data={accounts} columns={columns} getRowId={(row) => row.id} caption="Tài khoản" filters={filters} cardsUntil="xl" renderCard={(row) => (
+      <DataTable data={accounts} columns={columns} getRowId={(row) => row.id} caption="Tài khoản" filters={filters} loading={loading} error={error} onRetry={() => { setEdited(null); retry(); }} cardsUntil="xl" renderCard={(row) => (
         <article className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
           <header className="flex items-start justify-between gap-3">
             <span className="min-w-0"><span className="block font-semibold">{row.fullName}</span><span className="block truncate text-xs text-muted-foreground">{row.email}</span></span>
