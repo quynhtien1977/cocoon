@@ -208,12 +208,15 @@ const orders = [{ id: 1, code: "CO-1", placedAt: "2026-10-20T03:00:00Z", itemCou
 test("M4 loads the profile and tabs from the API, locks and soft-deletes", async () => {
   const user = userEvent.setup();
   stubFetch((url, init) => init?.method && init.method !== "GET" ? new Response(null, { status: 204 })
-    : url.includes("/orders") ? page(orders) : url.includes("/feedback") || url.includes("/surveys") ? page([]) : json(profile));
+    : url.includes("/orders") ? page(orders) : url.includes("/feedback") || url.includes("/surveys") ? page([])
+    : url.endsWith("/recommendations") ? json([{ id: 3, productName: "Gel bí đao", score: 0.67, status: "Clicked", reasons: [{ code: "PREFERENCE", label: "Hợp với sở thích Da dầu" }, { code: "CATEGORY", label: "Bạn hay chọn Làm sạch" }] }])
+    : json(profile));
   render(<CustomerDetailPage id={9} />);
   await user.click(await screen.findByRole("tab", { name: "Đơn hàng (2)" }));
   assert.equal(within(screen.getByRole("table")).getAllByRole("row").length - 1, 2);
   await user.click(screen.getByRole("tab", { name: "Gợi ý" }));
-  assert.ok(screen.getByText("Chưa có gợi ý"));
+  assert.ok(screen.getByText("Hợp với sở thích Da dầu · Bạn hay chọn Làm sạch"));
+  assert.ok(screen.getByText("Đã bấm xem"));
   await user.click(screen.getByRole("button", { name: "Khóa tài khoản" }));
   await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Khóa tài khoản" }));
   assert.ok(await screen.findByRole("button", { name: "Mở khóa" }));

@@ -8,15 +8,24 @@ export interface CustomerCreated { id: number; email: string; temporaryPassword:
 export const loadCustomers = (signal?: AbortSignal) => loadAllPages<CustomerListItem>("/customers", signal);
 export const loadPreferences = (signal?: AbortSignal) => apiRequest<Preference[]>("/preferences", { signal });
 
-/** M4 profile plus its tabs. Recommendations stay empty until GET customers/{id}/recommendations is implemented. */
+interface RecommendationRow { id: number; productName: string; score: number; status: "Active" | "Clicked" | "Dismissed" | "Expired"; reasons: { label: string }[] }
+
+/** M4 profile plus its tabs. */
 export async function loadCustomerDetail(id: number, signal?: AbortSignal): Promise<CustomerDetail> {
-  const [profile, orders, feedback, surveys] = await Promise.all([
+  const [profile, orders, feedback, surveys, recommendations] = await Promise.all([
     apiRequest<Omit<CustomerDetail, "orders" | "feedback" | "surveys" | "recommendations">>(`/customers/${id}`, { signal }),
     loadAllPages<CustomerOrder>(`/customers/${id}/orders`, signal),
     loadAllPages<CustomerFeedback>(`/customers/${id}/feedback`, signal),
     loadAllPages<CustomerSurvey>(`/customers/${id}/surveys`, signal),
+    apiRequest<RecommendationRow[]>(`/customers/${id}/recommendations`, { signal }),
   ]);
-  return { ...profile, orders, feedback, surveys, recommendations: [] };
+  return {
+    ...profile, orders, feedback, surveys,
+    recommendations: recommendations.map((row) => ({
+      id: row.id, productName: row.productName, score: row.score, reason: row.reasons.map((reason) => reason.label).join(" · "),
+      state: row.status === "Clicked" || row.status === "Dismissed" ? row.status : "None",
+    })),
+  };
 }
 
 export const createCustomer = (body: CreateCustomerBody) => apiRequest<CustomerCreated>("/customers", { method: "POST", json: body });
