@@ -6,6 +6,7 @@ import { ArrowLeft, ShoppingBag } from "lucide-react";
 import { ApiError } from "../../lib/api/client";
 import { loadProduct, type ApiProduct } from "./product-service";
 import styles from "./product-detail.module.css";
+import { RecommendationSection } from "./recommendation-section";
 
 export function ApiProductDetail({ id }: { id: string }) {
   const [product, setProduct] = useState<ApiProduct | null>(null);
@@ -42,5 +43,6 @@ export function ApiProductDetail({ id }: { id: string }) {
       </div>
     </div>}
     <Link href="/account/products" className={styles.back}><ArrowLeft size={18} />Tiếp tục khám phá sản phẩm</Link>
+    {product && !loading && !error && <RecommendationSection excludeProductId={product.id} />}
   </article>;
 }

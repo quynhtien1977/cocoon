@@ -1,5 +1,6 @@
 import { ApiError, apiRequest } from "../../lib/api/client";
 import { getAccountRole, type AccountRole } from "../../lib/auth/roles";
+import { CUSTOMER_RECOMMENDATIONS_HREF } from "../../lib/customer-links";
 export { getAccountRole } from "../../lib/auth/roles";
 
 export type LoginPortal = "shared" | "admin" | "customer";
@@ -16,7 +17,7 @@ export function validateLogin(email: string, password: string) {
   };
 }
 
-export async function signIn(email: string, password: string, portal: LoginPortal): Promise<string> {
+export async function signIn(email: string, password: string, portal: LoginPortal, returnTo?: string | null): Promise<string> {
   await apiRequest<unknown>("/auth/login", { method: "POST", json: { email: email.trim(), password }, refresh: false });
   try {
     const profile = await apiRequest<unknown>("/me", { refresh: false });
@@ -25,7 +26,7 @@ export async function signIn(email: string, password: string, portal: LoginPorta
     if (portal === "admin" && role !== "Admin") throw new Error("Tài khoản này không thuộc quản trị viên. Vui lòng dùng trang đăng nhập chung.");
     if (portal === "shared" && role === "Admin") throw new Error("Tài khoản quản trị viên cần đăng nhập tại trang dành riêng cho Admin.");
     if (portal === "customer" && role !== "Customer") throw new Error("Không thể mở phiên khách hàng. Vui lòng đăng nhập lại.");
-    return destinations[role];
+    return role === "Customer" && returnTo === CUSTOMER_RECOMMENDATIONS_HREF ? CUSTOMER_RECOMMENDATIONS_HREF : destinations[role];
   } catch (error) {
     // Clear a partially established session on profile failure or wrong entry point.
     await apiRequest<void>("/auth/logout", { method: "POST", refresh: false }).catch(() => undefined);

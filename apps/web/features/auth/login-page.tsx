@@ -52,7 +52,7 @@ export function LoginPage({ portal = "shared", modal = false, onClose }: { porta
     pendingRef.current = true;
     setPending(true);
     try {
-      const destination = await signIn(email, password, portal);
+      const destination = await signIn(email, password, portal, new URLSearchParams(window.location.search).get("next"));
       if (!activeRef.current) return;
       try {
         if (data.get("remember")) localStorage.setItem(rememberedEmailKey(portal), email);

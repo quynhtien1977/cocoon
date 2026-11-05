@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Leaf } from "lucide-react";
 import type { products } from "@/features/landing/products";
 import styles from "./product-detail.module.css";
+import { RecommendationSection } from "./recommendation-section";
 
 export function ProductDetail({ product }: { product: typeof products[number] }) {
   const images = [...new Set([product.image, product.hoverImage])];
@@ -22,5 +23,6 @@ export function ProductDetail({ product }: { product: typeof products[number] })
         <Link href="/account/products" className={styles.back}><ArrowLeft size={18} />Tiếp tục khám phá sản phẩm</Link>
       </div>
     </div>
+    <RecommendationSection excludeProductName={product.name} />
   </article>;
 }
