@@ -43,7 +43,7 @@ public static class LocalSeedCommand
             var added = await new DemoDataSeeder(db,
                 account => hasher.HashPassword(account, "Demo@12345"), DateTime.UtcNow.Date)
                 .RunAsync(includeFeedback: includeFeedback, includeSurveysAndPlans: includeSurveysAndPlans);
-            Console.WriteLine($"Seed {version} hoàn tất: thêm {added} bản ghi. Dữ liệu hiện có được giữ nguyên.");
+            Console.WriteLine($"Seed {version} hoàn tất: thêm {added} bản ghi. Đã đối chiếu catalog Cocoon; giữ chỉnh sửa và lịch sử hiện có.");
             return 0;
         }
         catch (Exception error)

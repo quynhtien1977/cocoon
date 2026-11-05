@@ -1,5 +1,6 @@
 using System.Security;
 using System.Text;
+using System.Text.Json;
 
 namespace Cocoon.Infrastructure.Seeding;
 
@@ -12,16 +13,33 @@ internal static class DemoCatalog
         ["Da dầu", "Da khô", "Da nhạy cảm", "Mụn", "Thâm nám", "Tóc gãy rụng",
          "Mùi thảo mộc", "Thuần chay", "Chống nắng", "Dưỡng thể", "Cấp ẩm", "Chăm sóc môi"];
 
-    // Illustrative demo names and prices, not a live commercial catalog.
-    internal static readonly string[] Products =
-    [
-        "Sữa rửa mặt sen Hậu Giang", "Nước sen Hậu Giang", "Gel rửa mặt bí đao", "Nước tẩy trang bí đao",
-        "Tinh chất nghệ Hưng Yên", "Kem dưỡng bí đao", "Mặt nạ cà phê Đắk Lắk", "Tinh chất rau má",
-        "Kem chống nắng bí đao", "Sữa chống nắng nghệ", "Kem chống nắng rau má", "Sữa chống nắng hoa sen",
-        "Dầu gội bưởi", "Dầu xả bưởi", "Tinh dầu dưỡng tóc bưởi", "Xịt dưỡng tóc hương nhu",
-        "Sữa tắm cà phê", "Tẩy da chết cà phê", "Sữa dưỡng thể dừa", "Gel tắm hoa sen",
-        "Son dưỡng dầu dừa", "Son dưỡng cà phê", "Son dưỡng sen mới", "Mặt nạ môi dừa mới"
-    ];
+    internal sealed record CatalogVariant(string Name, decimal Price, string ImageUrl, string SourceUrl);
+    internal sealed record CatalogProduct(string LegacyName, string Name, string Category, CatalogVariant[] Variants);
+    private sealed record CatalogSnapshot(CatalogProduct[] Products);
+
+    // A reviewed, embedded snapshot: seed never depends on the network or the frontend filesystem.
+    internal static readonly CatalogProduct[] Products = LoadProducts();
+
+    private static CatalogProduct[] LoadProducts()
+    {
+        using var source = typeof(DemoCatalog).Assembly.GetManifestResourceStream("Cocoon.Infrastructure.Seeding.cocoon-catalog.json")
+            ?? throw new InvalidOperationException("Thiếu snapshot catalog Cocoon.");
+        return JsonSerializer.Deserialize<CatalogSnapshot>(source, new JsonSerializerOptions(JsonSerializerDefaults.Web))?.Products
+            ?? throw new InvalidOperationException("Snapshot catalog Cocoon không hợp lệ.");
+    }
+
+    internal static bool IsLegacyImage(int index, string? image) => image is not null
+        && (image == Placeholder(index / 4, Products[index].LegacyName) || image == LegacyOfficialImage(index));
+
+    // Verified against the existing FE image manifests; do not infer photos from category or similar names.
+    private static string? LegacyOfficialImage(int index) => index switch
+    {
+        1 => "https://image.cocoonvietnam.com/uploads/Web_Avatar_Nuoc_Sen_140ml_copy_100_14377247e3.jpg",
+        2 => "https://image.cocoonvietnam.com/uploads/z3526520930085_8478409d6ac4058a7b77514ce71bdada_d14a16f231.jpg",
+        3 => "https://image.cocoonvietnam.com/uploads/Artboard_6_3ec256ca12.jpg",
+        20 => "https://image.cocoonvietnam.com/uploads/Son_duong_dau_dua_26498c9936.jpg",
+        _ => null
+    };
 
     internal static string Placeholder(int category, string name)
     {
