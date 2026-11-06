@@ -177,7 +177,7 @@ test("M7 loads surveys, offers actions by status, publishes and deletes drafts t
   assert.equal(within(draftRow).getByRole("link", { name: "Chỉnh sửa Nghiên cứu mặt nạ nghệ" }).getAttribute("href"), "/manager/surveys/83/edit");
   assert.equal(within(draftRow).queryByRole("link", { name: /Xem kết quả/ }), null);
   const closedRow = within(table).getByText("Thói quen chống nắng").closest("tr")!;
-  assert.equal(within(closedRow).getByRole("link", { name: "Xem kết quả Thói quen chống nắng" }).getAttribute("href"), "/manager/surveys/75/results");
+  assert.equal(within(closedRow).getByRole("link", { name: "Thói quen chống nắng" }).getAttribute("href"), "/manager/surveys/75/results");
   assert.equal(within(closedRow).queryByRole("link", { name: /Chỉnh sửa|Gửi khảo sát/ }), null);
   assert.equal(within(closedRow).queryByRole("button", { name: /Mở khảo sát|Đóng khảo sát/ }), null);
   assert.ok(within(within(table).getByText("Hài lòng gel bí đao").closest("tr")!).getByRole("button", { name: "Đóng khảo sát Hài lòng gel bí đao" }));

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Bolt, CircleCheck, EyeOff, MousePointerClick, PieChart, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Bolt, CircleCheck, CircleStop, EyeOff, Pencil, MousePointerClick, PieChart, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/brand/confirm-dialog";
 import { PageHeader } from "@/components/brand/page-header";
 import { StatTile } from "@/components/brand/stat-tile";
@@ -21,10 +21,14 @@ import type { PlanStatus, RecommendationPlan } from "../types";
 const date = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" });
 const dateTime = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" });
 const percent = new Intl.NumberFormat("vi-VN", { style: "percent", maximumFractionDigits: 1 });
-const actionLink = "inline-flex min-h-12 items-center rounded-md border border-input px-3 font-label text-sm uppercase tracking-wider whitespace-nowrap hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring";
+// Icon actions with a tooltip, as in the survey and account lists.
+const iconAction = "inline-flex size-12 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring";
 
 const period = (plan: RecommendationPlan) => `${date.format(new Date(plan.startAt))} – ${date.format(new Date(plan.endAt))}`;
 const planCode = (plan: RecommendationPlan) => `KP-${plan.id}`;
+const planHref = (plan: RecommendationPlan) => `/manager/recommendations/plans/${plan.id}`;
+// The name is the keyboard route to the plan; mouse users can click anywhere on the row (DataTable rowHref).
+const PlanLink = ({ plan }: { plan: RecommendationPlan }) => <Link href={planHref(plan)} className="font-semibold underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring">{plan.name}</Link>;
 
 const filters: DataFilter<RecommendationPlan>[] = [
   { id: "status", label: "Trạng thái", options: (Object.keys(statusMap.recommendationPlan) as PlanStatus[]).map((value) => ({ value, label: statusMap.recommendationPlan[value][0] })), matches: (row, value) => row.status === value },
@@ -77,22 +81,26 @@ export function RecommendationOverview({ initial }: { initial: OverviewData }) {
     setNotice({ text: `Đã xóa bản nháp “${plan.name}”.`, ok: true });
   }
 
-  const Actions = ({ plan }: { plan: RecommendationPlan }) => (
-    <span className="flex flex-wrap items-center justify-end gap-1 min-[1400px]:flex-nowrap">
-      <Link href={`/manager/recommendations/plans/${plan.id}`} aria-label={`${plan.status === "Draft" ? "Chỉnh sửa" : "Xem chi tiết"} ${plan.name}`} className={actionLink}>{plan.status === "Draft" ? "Chỉnh sửa" : "Chi tiết"}</Link>
-      {plan.status === "Active" && (
-        <ConfirmDialog portal="manager" title="Kết thúc kế hoạch?" description={`“${plan.name}” sẽ dừng ngay và không chạy lại được. Số liệu đã có vẫn được giữ.`} confirmLabel="Kết thúc kế hoạch"
-          trigger={<Button type="button" variant="ghost" className="min-h-12 px-3 font-label uppercase tracking-wider text-destructive" aria-label={`Kết thúc ${plan.name}`}>Kết thúc</Button>} onConfirm={() => end(plan)} />
-      )}
-      {plan.status === "Draft" && (
-        <ConfirmDialog portal="manager" title="Xóa bản nháp kế hoạch?" description={`“${plan.name}” sẽ bị xóa. Không thể hoàn tác.`} confirmLabel="Xóa bản nháp"
-          trigger={<Button type="button" variant="ghost" size="icon-lg" className="size-12 text-destructive" aria-label={`Xóa ${plan.name}`}><Trash2 aria-hidden="true" /></Button>} onConfirm={() => remove(plan)} />
-      )}
-    </span>
-  );
+  // In the table every action keeps its own slot (edit, end, delete) so the same icon lines up on every row.
+  const Actions = ({ plan, card = false }: { plan: RecommendationPlan; card?: boolean }) => {
+    const slot = (action: ReactNode) => action || (card ? null : <span aria-hidden="true" />);
+    return (
+      <span className={card ? "flex flex-wrap items-center gap-1" : "grid grid-cols-[repeat(3,3rem)] items-center justify-end gap-1"}>
+        {slot(plan.status === "Draft" && <Link href={planHref(plan)} aria-label={`Chỉnh sửa ${plan.name}`} title="Chỉnh sửa" className={iconAction}><Pencil className="size-5" aria-hidden="true" /></Link>)}
+        {slot(plan.status === "Active" && (
+          <ConfirmDialog portal="manager" title="Kết thúc kế hoạch?" description={`“${plan.name}” sẽ dừng ngay và không chạy lại được. Số liệu đã có vẫn được giữ.`} confirmLabel="Kết thúc kế hoạch"
+            trigger={<Button type="button" variant="ghost" size="icon-lg" className="size-12 text-destructive" aria-label={`Kết thúc ${plan.name}`} title="Kết thúc kế hoạch"><CircleStop aria-hidden="true" /></Button>} onConfirm={() => end(plan)} />
+        ))}
+        {slot(plan.status === "Draft" && (
+          <ConfirmDialog portal="manager" title="Xóa bản nháp kế hoạch?" description={`“${plan.name}” sẽ bị xóa. Không thể hoàn tác.`} confirmLabel="Xóa bản nháp"
+            trigger={<Button type="button" variant="ghost" size="icon-lg" className="size-12 text-destructive" aria-label={`Xóa ${plan.name}`} title="Xóa bản nháp"><Trash2 aria-hidden="true" /></Button>} onConfirm={() => remove(plan)} />
+        ))}
+      </span>
+    );
+  };
 
   const columns: DataColumn<RecommendationPlan>[] = [
-    { id: "name", header: "Kế hoạch", value: (row) => `${row.name} ${planCode(row)}`, sortable: true, cell: (row) => <span className="block w-64 whitespace-normal"><span className="block font-mono text-xs text-gold-strong">{planCode(row)}</span><span className="block font-semibold">{row.name}</span><span className="block text-xs text-muted-foreground">{row.productIds.length} sản phẩm</span></span> },
+    { id: "name", header: "Kế hoạch", value: (row) => `${row.name} ${planCode(row)}`, sortable: true, cell: (row) => <span className="block w-64 whitespace-normal"><span className="block font-mono text-xs text-gold-strong">{planCode(row)}</span><span className="block"><PlanLink plan={row} /></span><span className="block text-xs text-muted-foreground">{row.productIds.length} sản phẩm</span></span> },
     { id: "segment", header: "Phân khúc", value: (row) => segmentSummary(row.segment, preferences, categories), cell: (row) => <span className="block w-44 whitespace-normal text-sm">{segmentSummary(row.segment, preferences, categories)}</span> },
     { id: "period", header: "Thời gian", value: (row) => row.startAt, sortable: true, searchable: false, cell: (row) => <span className="block w-24 whitespace-normal text-sm">{period(row)}</span> },
     { id: "status", header: "Trạng thái", value: (row) => row.status, searchable: false, cell: (row) => <StatusBadge kind="recommendationPlan" status={row.status} className="whitespace-nowrap" /> },
@@ -133,15 +141,15 @@ export function RecommendationOverview({ initial }: { initial: OverviewData }) {
         )}
       </section>
       <h2 className="mb-4 font-heading text-xl">Danh sách kế hoạch</h2>
-      <DataTable data={plans} columns={columns} getRowId={(row) => row.id} caption="Kế hoạch gợi ý" filters={filters} paramPrefix="plans." cardsUntil="wide" renderCard={(row) => (
+      <DataTable data={plans} columns={columns} getRowId={(row) => row.id} caption="Kế hoạch gợi ý" filters={filters} paramPrefix="plans." cardsUntil="wide" rowHref={planHref} renderCard={(row) => (
         <article className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
           <header className="flex items-start justify-between gap-3">
-            <span className="min-w-0"><span className="block font-mono text-xs text-gold-strong">{planCode(row)} · {row.productIds.length} sản phẩm</span><span className="block font-semibold">{row.name}</span></span>
+            <span className="min-w-0"><span className="block font-mono text-xs text-gold-strong">{planCode(row)} · {row.productIds.length} sản phẩm</span><span className="block"><PlanLink plan={row} /></span></span>
             <StatusBadge kind="recommendationPlan" status={row.status} className="shrink-0 whitespace-nowrap" />
           </header>
           <p className="text-sm">{segmentSummary(row.segment, preferences, categories)}</p>
           <p className="text-sm text-muted-foreground">{period(row)}{row.status !== "Draft" && ` · ${row.recipientCount} khách`}{row.clickRate !== null && ` · Bấm ${percent.format(row.clickRate)}`}</p>
-          <div className="mt-auto"><Actions plan={row} /></div>
+          <div className="mt-auto"><Actions plan={row} card /></div>
         </article>
       )} emptyTitle={plans.length ? "Không có kế hoạch phù hợp" : "Chưa có kế hoạch gợi ý"} emptyDescription={plans.length ? "Thử từ khóa khác hoặc bỏ bớt bộ lọc." : "Bấm “Tạo kế hoạch mới” để bắt đầu."} />
     </>

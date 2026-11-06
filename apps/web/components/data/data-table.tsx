@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useId, useRef, type ReactNode } from "react";
+import { Suspense, useEffect, useId, useRef, type MouseEvent, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,8 @@ export interface DataTableProps<T> {
   renderCard?: (row: T) => ReactNode;
   /** Width where the table replaces the cards; wider for tables that need more than a tablet's width beside the sidebar. */
   cardsUntil?: "md" | "lg" | "xl" | "wide";
+  /** Makes the whole row (and card) open this page on click. Keep a real link inside the row for keyboard users. */
+  rowHref?: (row: T) => string | undefined;
 }
 
 // Literal class names so Tailwind can see them.
@@ -87,9 +89,21 @@ function SearchField({ id, query, onQuery }: { id: string; query: string; onQuer
     placeholder="Nhập từ khóa…" />;
 }
 
-function TableContent<T>({ data, columns, getRowId, caption, filters = [], paramPrefix = "", loading = false, error, onRetry, emptyTitle = "Không có dữ liệu", emptyDescription = "Thử thay đổi từ khóa hoặc bộ lọc.", renderCard, cardsUntil = "md" }: DataTableProps<T>) {
+function TableContent<T>({ data, columns, getRowId, caption, filters = [], paramPrefix = "", loading = false, error, onRetry, emptyTitle = "Không có dữ liệu", emptyDescription = "Thử thay đổi từ khóa hoặc bộ lọc.", renderCard, rowHref, cardsUntil = "md" }: DataTableProps<T>) {
   const breakpoint = cardBreakpoints[cardsUntil];
   const searchParams = useSearchParams();
+  const openRow = (row: T) => (event: MouseEvent<HTMLElement>) => {
+    const href = rowHref?.(row);
+    const target = event.target as Element;
+    // Controls in the row keep their own click; dialogs opened from the row are portaled outside it but still bubble here.
+    if (!href || !event.currentTarget.contains(target) || target.closest("a, button, input, select, textarea, label")) return;
+    if (event.metaKey || event.ctrlKey) { window.open(href, "_blank", "noopener"); return; }
+    // Clicking the row's own link keeps Next's client navigation without needing the router here.
+    const link = [...event.currentTarget.querySelectorAll<HTMLAnchorElement>("a[href]")].find((anchor) => anchor.getAttribute("href") === href);
+    if (link) link.click();
+    else window.location.assign(href);
+  };
+  const rowLinkClass = rowHref ? "cursor-pointer hover:bg-muted/60" : undefined;
   const id = useId();
   const state = readTableState(new URLSearchParams(searchParams.toString()), paramPrefix, columns.filter((column) => column.sortable).map((column) => column.id), filters);
   const query = normalize(state.query.trim());
@@ -142,7 +156,7 @@ function TableContent<T>({ data, columns, getRowId, caption, filters = [], param
         <Button variant="outline" className="min-h-12 flex-1 px-4 sm:flex-none" disabled={!state.query && !Object.values(state.filters).some(Boolean)} onClick={() => update({ q: "", page: "1", ...Object.fromEntries(filters.map((filter) => [`filter.${filter.id}`, ""])) })}>Đặt lại bộ lọc</Button>
       </div>
       {loading ? <LoadingTable /> : error ? <div role="alert" className="rounded-lg border border-destructive p-6"><p>{error}</p>{onRetry && <Button type="button" variant="outline" className="mt-3" onClick={onRetry}>Thử lại</Button>}</div> : <>
-        {renderCard && (rows.length ? <ul className={`grid gap-3 sm:grid-cols-2 ${breakpoint.cards}`}>{rows.map((row) => <li key={getRowId(row)} className="grid">{renderCard(row)}</li>)}</ul>
+        {renderCard && (rows.length ? <ul className={`grid gap-3 sm:grid-cols-2 ${breakpoint.cards}`}>{rows.map((row) => <li key={getRowId(row)} className={rowHref ? "grid cursor-pointer" : "grid"} onClick={rowHref && openRow(row)}>{renderCard(row)}</li>)}</ul>
           : <div className={breakpoint.cards}><EmptyState title={emptyTitle} description={emptyDescription} /></div>)}
         <div className={renderCard ? breakpoint.table : undefined}><Table>
           <TableCaption className="sr-only">{caption}</TableCaption>
@@ -151,7 +165,7 @@ function TableContent<T>({ data, columns, getRowId, caption, filters = [], param
               {column.header}{state.sort !== column.id ? <ArrowUpDown className="size-4" aria-hidden="true" /> : state.direction === "asc" ? <ArrowUp className="size-4" aria-hidden="true" /> : <ArrowDown className="size-4" aria-hidden="true" />}
             </button> : column.header}
           </TableHead>)}</TableRow></TableHeader>
-          <TableBody>{rows.length ? rows.map((row) => <TableRow key={getRowId(row)} className="h-11">{columns.map((column) => <TableCell key={column.id}>{column.cell ? column.cell(row) : column.value(row) ?? "—"}</TableCell>)}</TableRow>) : <TableRow><TableCell colSpan={Math.max(1, columns.length)}><EmptyState title={emptyTitle} description={emptyDescription} /></TableCell></TableRow>}</TableBody>
+          <TableBody>{rows.length ? rows.map((row) => <TableRow key={getRowId(row)} className={rowLinkClass ? `h-11 ${rowLinkClass}` : "h-11"} onClick={rowHref && openRow(row)}>{columns.map((column) => <TableCell key={column.id}>{column.cell ? column.cell(row) : column.value(row) ?? "—"}</TableCell>)}</TableRow>) : <TableRow><TableCell colSpan={Math.max(1, columns.length)}><EmptyState title={emptyTitle} description={emptyDescription} /></TableCell></TableRow>}</TableBody>
         </Table></div>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p role="status" className="text-sm text-muted-foreground">{matching.length} kết quả · Trang {page}/{pages}</p>
