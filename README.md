@@ -1,18 +1,44 @@
 # Cocoon CRM
 
-Monorepo đồ án HTTTDN 841065: Next.js trên host, ASP.NET Core .NET 10 và PostgreSQL 18 trong Docker Compose. Yêu cầu sản phẩm: [docs/PRD.md](docs/PRD.md); quyết định triển khai: [docs/DECISIONS.md](docs/DECISIONS.md).
+Monorepo đồ án HTTTDN 841065: Next.js chạy trên host, ASP.NET Core .NET 10 và PostgreSQL 18 chạy trong Docker Compose. Thiết kế giao diện, CSDL, API và phân công: [spec 15/10/2026](plan/superpowers/specs/2026-10-15-crm-ui-architecture-design.md); backlog: [plan/jira-backlog-cocoon.csv](plan/jira-backlog-cocoon.csv).
+
+## Cấu trúc
+
+| Thư mục | Nội dung |
+|---|---|
+| `apps/web` | Next.js 16: 5 route group `(public)`, `(customer)`, `(staff)`, `(manager)`, `(admin)`; `components`, `features`, `lib`, `proxy.ts` |
+| `src/Cocoon.Api` | Controller `/api/v1`, auth JWT, CLI seed (`Seeding/LocalSeedCommand.cs`) |
+| `src/Cocoon.Domain` | Entity và enum |
+| `src/Cocoon.Infrastructure` | `AppDbContext`, EF migration, dữ liệu seed (`Seeding/`) |
+| `tests/Cocoon.Tests` | Test backend (xUnit, database `cocoon_tests`) |
+| `db` | `schema.sql` xuất từ migration, `openapi.json`, tài liệu và SQL kiểm chứng seed, `create-app-role.sh` (mount vào container `db` tại `/workspace/db`) |
+| `scripts` | `init-local-env.ps1`, `start-api.sh`, `ef.sh` |
 
 ## Trạng thái
 
-Giai đoạn 0B: Docker Compose, health API, JWT bearer từ cookie, policy bốn vai trò, CORS, ProblemDetails, log Serilog và OpenAPI/Scalar.
-
-Phần GPT của 0C ban đầu: DbContext, `InitialCreate`, script schema, fetch client có refresh một lần và rewrite API. Hiện source có 28 entity và migration `AddOrdersAndRecommendations`; auth đã có đăng nhập/refresh và kiểm tra tài khoản mỗi request. COC-50 bổ sung [seed v1 local](db/SEED_V1.md) cho tài khoản, sở thích, sản phẩm, khách hàng và đơn mua mô phỏng. Các endpoint CRM còn stub không được coi là hoàn thành từ bộ seed.
+- **Hạ tầng (0B):** Docker Compose, health API, JWT bearer từ cookie, policy bốn vai trò, CORS, ProblemDetails, log Serilog, OpenAPI/Scalar.
+- **CSDL:** migration `InitialCreate` và `AddOrdersAndRecommendations`. Auth có đăng ký, đăng nhập, refresh, logout, hồ sơ/sở thích và kiểm tra tài khoản mỗi request.
+- **API CRM:** route và policy đã có trong OpenAPI theo hướng contract-first; phần lớn endpoint Customers, Products, Feedback, Surveys, Reports và cổng khách hàng (`me/*`) vẫn trả `501 Not Implemented`.
+- **Seed:** [seed v1 — COC-50](db/SEED_V1.md) gồm tài khoản, sở thích, sản phẩm, khách hàng và đơn mua mô phỏng. Seed phản hồi, khảo sát, kế hoạch gợi ý (v2/v3) làm ở task sau. Bộ seed không chứng minh endpoint stub đã hoàn thành.
+- **Web:** shell cho 5 vai trò; cổng khách hàng có sản phẩm, giỏ, đơn, phản hồi, khảo sát, hồ sơ và gợi ý. Màn chưa có API thật dùng dữ liệu xem trước.
 
 ## Yêu cầu máy
 
-- Docker Desktop chạy Linux containers; image `postgres:18` và `mcr.microsoft.com/dotnet/sdk:10.0` có sẵn. Compose không pull lại PostgreSQL.
+- Docker Desktop chạy Linux containers. Compose tự pull `postgres:18` khi máy chưa có image (`pull_policy: missing`); image `mcr.microsoft.com/dotnet/sdk:10.0` dùng cho container API.
 - Node.js 24 LTS + npm (đã kiểm tra Node `24.11.1`, npm `11.6.2`). Không cần SDK .NET trên Windows.
-- RTK; chạy mọi lệnh từ gốc repo trừ bước frontend. Chạy lệnh .NET trong container để giữ đầu ra Linux riêng.
+- RTK; chạy mọi lệnh từ gốc repo trừ bước frontend. Chạy lệnh .NET trong container để giữ đầu ra Linux riêng (`bin-docker/`, `obj-docker/`).
+
+## Cổng và kết nối
+
+| Dịch vụ | Từ máy host | Trong mạng Compose |
+|---|---|---|
+| PostgreSQL | `localhost:5433` (`DB_HOST_PORT`) | `db:5432` |
+| API | <http://localhost:5080> (`API_HTTP_PORT`) | `api:8080` |
+| Web | <http://localhost:3000> | chạy trên host, không nằm trong Compose |
+
+Các cổng chỉ bind `127.0.0.1`. Cổng DB mặc định là `5433` để không đụng PostgreSQL cài sẵn trên Windows ở `5432`. Đổi `DB_HOST_PORT` chỉ đổi cổng ra host; container API luôn nối `db:5432` và Compose tự ghép chuỗi kết nối, không cần lưu chuỗi này trong `.env`. Công cụ DB trên host (DBeaver, pgAdmin, `psql`) nối `localhost:5433` với `POSTGRES_USER`/`POSTGRES_PASSWORD` trong `.env`.
+
+Container `db` có `restart: unless-stopped`: tự bật lại cùng Docker Desktop cho tới khi bạn dừng nó bằng `docker compose stop`.
 
 ## Chạy local trên Windows
 
@@ -22,7 +48,9 @@ rtk docker compose up -d --build
 rtk docker compose exec api dotnet ef database update -p src/Cocoon.Infrastructure -s src/Cocoon.Api
 ```
 
-Script đầu tiên chỉ tạo `.env` khi chưa có, sinh mật khẩu DB và khóa JWT độc lập, không in giá trị. Nếu đã có `.env`, giữ nguyên các giá trị và kiểm tra đủ tên biến trong `.env.example`. Mặc định database `cocoon`, host container `db`, DB host port `5432`, API `5080`, web `3000`. Không đưa `.env` vào Git. Compose tự ghép chuỗi kết nối, không cần lưu chuỗi này trong env example.
+Script đầu tiên chỉ tạo `.env` từ `.env.example` khi chưa có, sinh mật khẩu DB và khóa JWT độc lập, không in giá trị. Nếu đã có `.env`, script giữ nguyên giá trị; bạn tự đối chiếu đủ tên biến với `.env.example`. Mặc định database `cocoon`, DB host port `5433`, API `5080`, web `3000`. Giữ `POSTGRES_DB=cocoon`: seed và database test chỉ chạy với database tên `cocoon`. Không đưa `.env` vào Git.
+
+Đã có `.env` cũ với `DB_HOST_PORT=5432`? Sửa thành `5433` (hoặc xóa dòng để dùng mặc định) rồi chạy `rtk docker compose up -d` để tạo lại container. Volume `postgres-data` giữ nguyên dữ liệu. Gặp lỗi kết nối xem [Xử lý sự cố](#xử-lý-sự-cố).
 
 Trong `apps/web`:
 
@@ -31,12 +59,49 @@ rtk npm ci --ignore-scripts
 rtk npm run dev
 ```
 
-- Web: <http://localhost:3000> (hiện còn giao diện template, chờ Antigravity).
+- Web: <http://localhost:3000>.
 - Health: <http://localhost:5080/api/v1/health>.
 - API docs: <http://localhost:5080/swagger/>; JSON: <http://localhost:5080/swagger/v1/swagger.json>.
 - API qua Next.js: <http://localhost:3000/api/v1/health>.
 
 Next.js dùng `API_URL` của môi trường chạy frontend, mặc định `http://localhost:5080`. Nếu đổi cổng API, đặt `API_URL` trong `apps/web/.env.local`; không dùng biến `NEXT_PUBLIC_` cho cấu hình riêng. Đổi origin/cổng web thì cập nhật `WEB_ORIGIN` ở `.env` gốc và tạo lại container API.
+
+## Seed dữ liệu demo
+
+Chi tiết dữ liệu, quy tắc chạy lặp và kiểm chứng: [db/SEED_V1.md](db/SEED_V1.md).
+
+Seed chạy trong chính container `api`, không tạo container seed riêng. Khi container API chưa chạy:
+
+```powershell
+rtk docker compose up -d api db
+rtk docker compose exec api sh scripts/ef.sh database update -p src/Cocoon.Infrastructure -s src/Cocoon.Api
+rtk docker compose exec api dotnet build
+rtk docker compose exec api dotnet run --project src/Cocoon.Api --no-build --no-launch-profile -- seed
+```
+
+Khi API đang chạy và đã build xong:
+
+```powershell
+rtk docker compose exec api dotnet ef database update -p src/Cocoon.Infrastructure -s src/Cocoon.Api
+rtk docker compose exec api dotnet run --project src/Cocoon.Api --no-build --no-launch-profile -- seed
+```
+
+Kiểm chứng số liệu (chỉ đọc, không in credentials):
+
+```powershell
+rtk docker compose exec -T db sh /workspace/db/verify-seed-v1.sh
+```
+
+Seed chỉ chạy ở `Development` với host `db`, port `5432` trong mạng Compose và database `cocoon`; sai một điều kiện thì dừng trước khi ghi. Seed không tự chạy khi mở API, không reset dữ liệu và chạy lặp giữ dữ liệu đã có. Trên database trống, seed thêm 87 tài khoản (83 Customer), 12 sở thích, 24 sản phẩm/48 biến thể và 320 đơn/640 dòng — tổng 1.532 bản ghi; lượt thứ hai thêm 0.
+
+| Email | Vai trò |
+|---|---|
+| `admin@cocoon.demo` | Admin |
+| `manager@cocoon.demo` | Manager |
+| `staff1@cocoon.demo`, `staff2@cocoon.demo` | Staff |
+| `customer01@cocoon.demo` … `customer80@cocoon.demo` | Customer |
+
+Mật khẩu demo `Demo@12345` khi mới tạo. `customer81`, `customer82` bị khóa; `customer83` đã xóa mềm. Không sử dụng các giá trị demo ở production.
 
 ## Migration và kiểm thử
 
@@ -48,7 +113,7 @@ rtk docker compose exec api dotnet ef migrations script -p src/Cocoon.Infrastruc
 
 Database test chỉ chạy với connection host `db`, database `cocoon` trong Compose local. Fixture tạo database riêng `cocoon_tests` khi chưa có, áp dụng migration vào đó và rollback từng transaction. Không xóa hoặc reset database local chính. Test HTTP dùng host in-memory và controller chỉ tồn tại trong assembly test; không thêm endpoint kiểm thử vào API chạy thật.
 
-Trong `apps/web`:
+Nếu API không chạy, dùng one-off container (`db` phải đang chạy vì có `--no-deps`):
 
 ```powershell
 rtk npm test
