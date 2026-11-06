@@ -17,7 +17,14 @@ type Product = {
   url: string;
 };
 
-export function ProductCarousel({ products, grid = false }: { products: Product[]; grid?: boolean }) {
+export function ProductCarousel({ products, grid = false, trackId = "bestseller-track", label = "Danh sách sản phẩm bán chạy", onOpen }: {
+  products: Product[];
+  grid?: boolean;
+  trackId?: string;
+  label?: string;
+  /** Called when a product link inside a card is opened. */
+  onOpen?: (url: string) => void;
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
   const stepRef = useRef(0);
   const [position, setPosition] = useState({ index: 0, max: 0, visible: 4 });
@@ -65,7 +72,7 @@ export function ProductCarousel({ products, grid = false }: { products: Product[
 
   return (
     <div className={carousel.carousel}>
-      <div ref={trackRef} id={grid ? "catalog-grid" : "bestseller-track"} className={grid ? styles.productGrid : carousel.track} role="region" aria-label={grid ? "Tất cả sản phẩm" : "Danh sách sản phẩm bán chạy"} tabIndex={0}
+      <div ref={trackRef} id={grid ? "catalog-grid" : trackId} className={grid ? styles.productGrid : carousel.track} role="region" aria-label={grid ? "Tất cả sản phẩm" : label} tabIndex={0}
         onKeyDown={(event) => {
           if (grid) return;
           if (event.target !== event.currentTarget) return;
@@ -79,10 +86,11 @@ export function ProductCarousel({ products, grid = false }: { products: Product[
           }
         }}>
         {products.map((product) => (
-          <article key={product.url} className={carousel.card}>
+          <article key={product.url} className={carousel.card} onClick={onOpen && ((event) => { if ((event.target as Element).closest("a")) onOpen(product.url); })}>
             <ProductLink href={product.url} className={`${styles.productImage} ${carousel.image}`}>
-              <Image src={product.image} alt={product.name} fill sizes="(min-width: 801px) 25vw, 50vw" />
-              <Image className={carousel.hoverImage} src={product.hoverImage} alt="" aria-hidden="true" fill sizes="(min-width: 801px) 25vw, 50vw" />
+              {/* Remote catalog images are not in next.config remotePatterns, so only local ones go through the optimizer. */}
+              {product.image && <Image src={product.image} alt={product.name} fill sizes="(min-width: 801px) 25vw, 50vw" unoptimized={!product.image.startsWith("/")} />}
+              {product.hoverImage && <Image className={carousel.hoverImage} src={product.hoverImage} alt="" aria-hidden="true" fill sizes="(min-width: 801px) 25vw, 50vw" unoptimized={!product.hoverImage.startsWith("/")} />}
               <span>XEM SẢN PHẨM <ArrowUpRight size={16} /></span>
             </ProductLink>
             <p className={styles.productCategory}>{product.category}</p>
@@ -94,11 +102,11 @@ export function ProductCarousel({ products, grid = false }: { products: Product[
       </div>
       {!grid && position.max > 0 && <>
         <div className={carousel.arrows}>
-          <button type="button" aria-label="Sản phẩm trước" aria-controls="bestseller-track" disabled={position.index === 0} onClick={() => goTo(position.index - 1)}><ChevronLeft size={22} /></button>
-          <button type="button" aria-label="Sản phẩm tiếp theo" aria-controls="bestseller-track" disabled={position.index === position.max} onClick={() => goTo(position.index + 1)}><ChevronRight size={22} /></button>
+          <button type="button" aria-label="Sản phẩm trước" aria-controls={trackId} disabled={position.index === 0} onClick={() => goTo(position.index - 1)}><ChevronLeft size={22} /></button>
+          <button type="button" aria-label="Sản phẩm tiếp theo" aria-controls={trackId} disabled={position.index === position.max} onClick={() => goTo(position.index + 1)}><ChevronRight size={22} /></button>
         </div>
         <input className={carousel.slider} type="range" min={0} max={position.max} step={1} value={position.index}
-          aria-label="Vị trí danh sách sản phẩm" aria-controls="bestseller-track"
+          aria-label="Vị trí danh sách sản phẩm" aria-controls={trackId}
           aria-valuetext={`Sản phẩm ${position.index + 1} đến ${Math.min(products.length, position.index + position.visible)} trên ${products.length}`}
           style={{ "--thumb-width": `${Math.min(100, position.visible / products.length * 100)}%` } as CSSProperties}
           onChange={(event) => goTo(Number(event.target.value), false)} />
