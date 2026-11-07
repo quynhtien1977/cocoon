@@ -12,7 +12,7 @@ import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { acceptFeedback, assignFeedback, closeFeedback, loadFeedbackDetail, loadStaff } from "../api";
 import type { FeedbackDetail, FeedbackStatus, StaffOption } from "../types";
-import { useApiData } from "../use-api-data";
+import { useApiData } from "@/lib/api/use-api-data";
 import { caseCard, CustomerSummary, FeedbackTimeline, OrderProductSummary } from "./feedback-case";
 import { FeedbackLoadState } from "./feedback-load-state";
 
@@ -105,7 +105,7 @@ export function FeedbackProcessingPage({ id }: { id: number }) {
     const [detail, staff] = await Promise.all([loadFeedbackDetail(id, signal), loadStaff(signal)]);
     return { detail, staff };
   }, [id]);
-  const { data, loading, error, missing, retry } = useApiData(load);
+  const { data, loading, error, missing, retry } = useApiData(load, "Chưa tải được phản hồi. Kiểm tra kết nối rồi thử lại.");
   if (!data) return <FeedbackLoadState loading={loading} missing={missing} error={error} onRetry={retry} backHref="/manager/feedback" />;
   return <FeedbackProcessing initial={data.detail} staff={data.staff} />;
 }

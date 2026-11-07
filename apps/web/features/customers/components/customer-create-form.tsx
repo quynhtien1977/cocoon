@@ -7,7 +7,9 @@ import { PageHeader } from "@/components/brand/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
-import { preferencesFixture } from "../customers.fixture";
+import { ApiError } from "@/lib/api/client";
+import { useApiData } from "@/lib/api/use-api-data";
+import { createCustomer, loadPreferences, type CustomerCreated } from "../api";
 import { genderOptions, toCreateCustomerRequest, validateCustomerDraft } from "../schemas";
 import type { CustomerDraft } from "../types";
 
@@ -22,18 +24,32 @@ export function CustomerCreateForm() {
   const id = useId();
   const [draft, setDraft] = useState(emptyDraft);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [created, setCreated] = useState<string | null>(null);
-  const update = (patch: Partial<CustomerDraft>) => { setDraft((current) => ({ ...current, ...patch })); setCreated(null); };
-  const togglePreference = (value: string) => update({ preferences: draft.preferences.includes(value) ? draft.preferences.filter((item) => item !== value) : [...draft.preferences, value] });
+  const [created, setCreated] = useState<(CustomerCreated & { fullName: string }) | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const preferences = useApiData(loadPreferences, "Chưa tải được danh sách sở thích. Kiểm tra kết nối rồi thử lại.");
+  const update = (patch: Partial<CustomerDraft>) => { setDraft((current) => ({ ...current, ...patch })); setCreated(null); setSubmitError(null); };
+  const togglePreference = (value: number) => update({ preferences: draft.preferences.includes(value) ? draft.preferences.filter((item) => item !== value) : [...draft.preferences, value] });
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
+    if (submitting) return;
     const found = validateCustomerDraft(draft, today());
     setErrors(found);
+    setSubmitError(null);
     if (Object.keys(found).length) { setCreated(null); return; }
-    // Static phase: the request body is built to check the contract but not sent until api.ts lands.
-    setCreated(toCreateCustomerRequest(draft).fullName);
-    setDraft(emptyDraft);
+    setSubmitting(true);
+    try {
+      const request = toCreateCustomerRequest(draft);
+      setCreated({ ...(await createCustomer(request)), fullName: request.fullName });
+      setDraft(emptyDraft);
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : "Không kết nối được máy chủ. Thử lại sau.";
+      if (error instanceof ApiError && error.status === 409) setErrors({ email: message });
+      else setSubmitError(message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const fieldError = (name: string) => errors[name] && <p id={`${id}-${name}-error`} className="text-sm text-destructive">{errors[name]}</p>;
@@ -89,13 +105,15 @@ export function CustomerCreateForm() {
             <p className="text-sm text-muted-foreground">Chọn các nhu cầu chăm sóc da và tóc của khách.</p>
             <p aria-live="polite" className="shrink-0 text-sm text-muted-foreground">{draft.preferences.length} mục đã chọn</p>
           </div>
+          {preferences.error && <p role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">{preferences.error}<Button type="button" variant="outline" className="h-12 px-4" onClick={preferences.retry}>Thử lại</Button></p>}
+          {preferences.loading && <p role="status" className="text-sm text-muted-foreground">Đang tải danh sách sở thích…</p>}
           <div className="flex flex-wrap gap-2">
-            {preferencesFixture.map((preference) => {
-              const selected = draft.preferences.includes(preference);
+            {(preferences.data ?? []).map((preference) => {
+              const selected = draft.preferences.includes(preference.id);
               return (
-                <button key={preference} type="button" aria-pressed={selected} onClick={() => togglePreference(preference)}
+                <button key={preference.id} type="button" aria-pressed={selected} onClick={() => togglePreference(preference.id)}
                   className={cn("inline-flex min-h-12 items-center gap-1.5 rounded-md border px-3 font-label text-sm uppercase tracking-wider focus-visible:outline-2 focus-visible:outline-ring", selected ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-muted-foreground hover:text-foreground")}>
-                  {selected && <Check className="size-4" aria-hidden="true" />}{preference}
+                  {selected && <Check className="size-4" aria-hidden="true" />}{preference.name}
                 </button>
               );
             })}
@@ -105,11 +123,12 @@ export function CustomerCreateForm() {
         <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
           <div aria-live="polite" className="min-w-0 text-sm">
             {Object.keys(errors).length > 0 ? <p className="text-destructive">Chưa lưu được: còn {Object.keys(errors).length} lỗi. Sửa các ô được đánh dấu rồi lưu lại.</p>
-              : created ? <p className="flex items-center gap-2 text-status-sage-fg"><CircleCheck className="size-4 shrink-0" aria-hidden="true" />Đã lưu hồ sơ {created} (dữ liệu mẫu, chưa gửi máy chủ).</p> : null}
+              : submitError ? <p role="alert" className="text-destructive">Chưa lưu được: {submitError}</p>
+              : created ? <p className="flex items-start gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>Đã lưu hồ sơ {created.fullName}. Mật khẩu tạm để khách đăng nhập lần đầu: <code className="font-mono font-semibold text-foreground">{created.temporaryPassword}</code>. <Link href={`/manager/customers/${created.id}`} className="font-semibold underline">Xem hồ sơ</Link></span></p> : null}
           </div>
           <div className="flex w-full gap-3 sm:ml-auto sm:w-auto">
             <Link href="/manager/customers" className={cn(buttonVariants({ variant: "outline" }), "h-12 flex-1 px-6 sm:flex-none")}>Hủy</Link>
-            <Button type="submit" className="h-12 flex-1 px-6 sm:flex-none"><Save aria-hidden="true" />Lưu hồ sơ</Button>
+            <Button type="submit" disabled={submitting} className="h-12 flex-1 px-6 sm:flex-none"><Save aria-hidden="true" />{submitting ? "Đang lưu…" : "Lưu hồ sơ"}</Button>
           </div>
         </footer>
       </form>
