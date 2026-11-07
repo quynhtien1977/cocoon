@@ -1,9 +1,10 @@
-// Form and list shapes for M13/M14. The API declares no response types yet, so these follow spec 6.2 and PlanUpsertRequest.
+// Form and list shapes for M13/M14. The OpenAPI schema declares no response types for these, so they follow PlanView and RecommendationReport in src/.
 import type { SegmentFilterValue } from "@/components/data/segment-filter-builder";
 
 export type PlanStatus = "Draft" | "Active" | "Ended";
 
-export interface PlanProduct { id: number; name: string; categoryName: string; preferences: string[] }
+/** GET products row; only Active products can be added to a plan. */
+export interface PlanProduct { id: number; name: string; categoryName: string; status: string; preferences: string[] }
 
 export interface RecommendationPlan {
   id: number;
@@ -30,6 +31,18 @@ export interface PlanDraft {
   productIds: number[];
 }
 
-export interface RecommendationStats { coverage: number; clickRate: number; dismissRate: number; lastBuiltAt: string }
-export interface WeeklyInteraction { week: string; interactions: number }
-export interface TopProduct { id: number; name: string; tag: string; clicks: number }
+export interface TopProduct { id: number; name: string; recommendationCount: number; clicks: number; dismissals: number; clickRate: number; dismissRate: number }
+
+/** GET reports/recommendations (db/REPORTS_SQL.md); rates are 0–1 over recommendations generated, not impressions. */
+export interface RecommendationReport {
+  coverage: number;
+  clickRate: number;
+  dismissRate: number;
+  activePlans: number;
+  lastBuiltAt: string | null;
+  topProducts: TopProduct[];
+}
+
+export interface PlanRunResult { audienceCount: number; recommendationCount: number }
+export interface RebuildResult { customerCount: number; recommendationCount: number; builtAt: string }
+export interface SegmentPreview { count: number; sample: { id: number; code: string; fullName: string; email: string; age: number | null; gender: string | null }[] }

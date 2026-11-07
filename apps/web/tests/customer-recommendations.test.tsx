@@ -2,13 +2,18 @@ import "./dom-setup.mjs";
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import { PathnameContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 import { RecommendationSection } from "../features/customer/recommendation-section";
 import { RecommendationHomeLink } from "../features/customer/recommendation-home-link";
 import { loadRecommendations, parseRecommendations, recordRecommendationClick } from "../features/customer/recommendation-service";
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { cleanup(); globalThis.fetch = originalFetch; });
+const accountRouter = { push() {}, replace() {}, back() {}, forward() {}, refresh() {}, prefetch() {}, bfcacheId: "account" };
+// Product cards use the landing ProductLink, which reads the App Router and the current path.
+const inAccount = (ui: ReactNode) => <AppRouterContext.Provider value={accountRouter}><PathnameContext.Provider value="/account">{ui}</PathnameContext.Provider></AppRouterContext.Provider>;
 const row = { id: 71, score: 82.5, product: { id: 12, name: "Nước dưỡng tóc bưởi", minPrice: 162000, imageUrl: "/images/landing/product-1.jpg", avgRating: 4.5 }, reasons: [{ code: "preference", label: "Hợp sở thích của bạn" }, { code: "popular", label: "Được yêu thích" }, { code: "new", label: "Gợi ý mới" }] };
 
 test("recommendations read the existing customer contract and use recommendation IDs for clicks", async () => {
@@ -41,14 +46,14 @@ test("shared section excludes the viewed product, shows real details and records
     if (options?.method === "POST") { writes++; return Response.json({}, { status: 500 }); }
     return Response.json([row, { ...row, id: 72, product: { ...row.product, id: 13, name: "Sản phẩm đang xem" } }]);
   };
-  render(<RecommendationSection excludeProductId={13} />);
+  render(inAccount(<RecommendationSection excludeProductId={13} />));
   const link = await screen.findByRole("link", { name: row.product.name });
   assert.equal(link.getAttribute("href"), "/account/products/12");
   assert.equal(screen.queryByText("Sản phẩm đang xem"), null);
   assert.ok(screen.getByText(/162\.000/));
   assert.ok(screen.getByText("Hợp sở thích của bạn"));
   assert.equal(screen.queryByText("Gợi ý mới"), null);
-  const imageLink = screen.getByRole("link", { name: `Xem sản phẩm ${row.product.name}` });
+  const imageLink = screen.getByRole("link", { name: /XEM SẢN PHẨM/ });
   for (const anchor of [link, imageLink]) anchor.addEventListener("click", event => event.preventDefault());
   fireEvent.click(imageLink); fireEvent.click(link);
   await waitFor(() => assert.equal(writes, 1));

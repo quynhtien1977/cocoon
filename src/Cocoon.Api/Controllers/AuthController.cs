@@ -166,7 +166,8 @@ public sealed class ProfileController(AppDbContext db, RecommendationService rec
         return NoContent();
     }
 
-    [HttpGet("preferences")]
+    /// <summary>Public: the registration form lists these before an account exists.</summary>
+    [HttpGet("preferences"), AllowAnonymous]
     public async Task<IActionResult> ListPreferences(CancellationToken cancellationToken) =>
         Ok(await db.Set<Preference>().Where(p => p.IsActive).OrderBy(p => p.Name)
             .Select(p => new PreferenceItem(p.Id, p.Name)).ToListAsync(cancellationToken));

@@ -167,8 +167,23 @@ public sealed class CustomerPortalController(AppDbContext db, RecommendationServ
     public Task<IActionResult> Dismiss(int id, CancellationToken cancellationToken) =>
         Interact(id, [RecommendationStatus.Active, RecommendationStatus.Clicked], RecommendationStatus.Dismissed, cancellationToken);
 
-    [HttpGet("notifications")] public IActionResult Notifications() => NotImplementedYet();
-    [HttpPost("notifications/{id:int}/read")] public IActionResult MarkRead(int id) => NotImplementedYet();
+    /// <summary>Latest 50 in-app notifications (survey sent, feedback replied, plan launched), newest first.</summary>
+    [HttpGet("notifications")]
+    public async Task<IActionResult> Notifications(CancellationToken cancellationToken)
+    {
+        var me = AccountId;
+        return Ok(await db.Set<Notification>().Where(n => n.AccountId == me).OrderByDescending(n => n.CreatedAt).ThenByDescending(n => n.Id)
+            .Take(50).Select(n => new NotificationItem(n.Id, n.Type, n.Title, n.RefType, n.RefId, n.IsRead, n.CreatedAt)).ToListAsync(cancellationToken));
+    }
+
+    [HttpPost("notifications/{id:int}/read")]
+    public async Task<IActionResult> MarkRead(int id, CancellationToken cancellationToken)
+    {
+        var me = AccountId;
+        var updated = await db.Set<Notification>().Where(n => n.Id == id && n.AccountId == me)
+            .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsRead, true), cancellationToken);
+        return updated == 1 ? NoContent() : NotFound();
+    }
 
     private async Task<IActionResult> Interact(int id, RecommendationStatus[] from, RecommendationStatus to, CancellationToken cancellationToken)
     {
@@ -255,3 +270,4 @@ public sealed record MyFeedbackItem(int Id, int Rating, string Content, Feedback
 public sealed record MyFeedbackDetail(int Id, int Rating, string Content, FeedbackStatus Status, DateTime CreatedAt, string OrderCode,
     FeedbackProduct Product, IReadOnlyDictionary<FeedbackStatus, DateTime> StatusTimes, IReadOnlyList<FeedbackReplyItem> Replies);
 public sealed record CreatedFeedback(int Id);
+public sealed record NotificationItem(int Id, string Type, string Title, string RefType, int RefId, bool IsRead, DateTime CreatedAt);

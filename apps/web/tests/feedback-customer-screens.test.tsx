@@ -160,10 +160,10 @@ test("reply validation and request trim the content", () => {
   assert.deepEqual(toReplyRequest("  Nội dung đủ dài.  "), { content: "Nội dung đủ dài." });
 });
 
-test("M3 reports invalid fields, toggles preferences and posts the customer", async () => {
+
+test("M3 reports invalid fields and posts the customer without preferences", async () => {
   const user = userEvent.setup();
-  stubFetch((url) => url.endsWith("/preferences") ? json([{ id: 2, name: "Da nhạy cảm" }, { id: 3, name: "Da khô" }])
-    : json({ id: 120, email: "ha@example.com", role: "Customer", temporaryPassword: "Tam!1234", mustChangePassword: true }, 201));
+  stubFetch(() => json({ id: 120, email: "ha@example.com", role: "Customer", temporaryPassword: "Tam!1234", mustChangePassword: true }, 201));
   render(<CustomerCreateForm />);
   await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }));
   assert.ok(screen.getByText("Nhập họ và tên."));
@@ -171,21 +171,22 @@ test("M3 reports invalid fields, toggles preferences and posts the customer", as
   await user.type(screen.getByLabelText(/Họ và tên/), "Nguyễn Thu Hà");
   await user.type(screen.getByLabelText(/^Email/), "ha@example.com");
   await user.type(screen.getByLabelText(/Số điện thoại/), "0912 345 678");
-  const chip = await screen.findByRole("button", { name: "Da khô" });
-  await user.click(chip);
-  assert.equal(chip.getAttribute("aria-pressed"), "true");
-  assert.ok(screen.getByText("1 mục đã chọn"));
+
+  assert.equal(screen.queryByText(/Sở thích và nhu cầu ban đầu/), null);
+
   await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }));
   assert.ok(await screen.findByText(/Đã lưu hồ sơ Nguyễn Thu Hà/));
   assert.ok(screen.getByText("Tam!1234"));
   const post = requests.find((request) => request.method === "POST")!;
   assert.equal(post.url, "/api/v1/customers");
-  assert.deepEqual((post.body as { preferenceIds: number[] }).preferenceIds, [3]);
+  assert.deepEqual((post.body as { preferenceIds: number[] }).preferenceIds, []);
+  assert.equal(requests.some((request) => request.url.endsWith("/preferences")), false);
 });
 
 test("M3 shows the API conflict on the email field", async () => {
   const user = userEvent.setup();
-  stubFetch((url) => url.endsWith("/preferences") ? json([]) : json({ status: 409, code: "EMAIL_TAKEN", detail: "Email này đã được dùng." }, 409));
+
+  stubFetch(() => json({ status: 409, code: "EMAIL_TAKEN", detail: "Email này đã được dùng." }, 409));
   render(<CustomerCreateForm />);
   await user.type(screen.getByLabelText(/Họ và tên/), "Nguyễn Thu Hà");
   await user.type(screen.getByLabelText(/^Email/), "ha@example.com");
@@ -208,12 +209,15 @@ const orders = [{ id: 1, code: "CO-1", placedAt: "2026-10-20T03:00:00Z", itemCou
 test("M4 loads the profile and tabs from the API, locks and soft-deletes", async () => {
   const user = userEvent.setup();
   stubFetch((url, init) => init?.method && init.method !== "GET" ? new Response(null, { status: 204 })
-    : url.includes("/orders") ? page(orders) : url.includes("/feedback") || url.includes("/surveys") ? page([]) : json(profile));
+    : url.includes("/orders") ? page(orders) : url.includes("/feedback") || url.includes("/surveys") ? page([])
+    : url.endsWith("/recommendations") ? json([{ id: 3, productName: "Gel bí đao", score: 0.67, status: "Clicked", reasons: [{ code: "PREFERENCE", label: "Hợp với sở thích Da dầu" }, { code: "CATEGORY", label: "Bạn hay chọn Làm sạch" }] }])
+    : json(profile));
   render(<CustomerDetailPage id={9} />);
   await user.click(await screen.findByRole("tab", { name: "Đơn hàng (2)" }));
   assert.equal(within(screen.getByRole("table")).getAllByRole("row").length - 1, 2);
   await user.click(screen.getByRole("tab", { name: "Gợi ý" }));
-  assert.ok(screen.getByText("Chưa có gợi ý"));
+  assert.ok(screen.getByText("Hợp với sở thích Da dầu · Bạn hay chọn Làm sạch"));
+  assert.ok(screen.getByText("Đã bấm xem"));
   await user.click(screen.getByRole("button", { name: "Khóa tài khoản" }));
   await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Khóa tài khoản" }));
   assert.ok(await screen.findByRole("button", { name: "Mở khóa" }));

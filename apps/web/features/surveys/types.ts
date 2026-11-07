@@ -1,4 +1,3 @@
-import type { SegmentCustomer } from "@/components/data/segment-filter-builder";
 
 // Form-side shapes for M8. Enum names match Cocoon.Domain.Enums; schemas.ts maps them to the API ordinals.
 
@@ -37,7 +36,7 @@ export interface UpcomingProduct { id: number; name: string }
 /** Mirrors Cocoon.Domain.Enums.SurveyStatus. */
 export type SurveyStatus = "Draft" | "Open" | "Closed";
 
-/** Row shape for GET surveys (spec 6.2). Replace with lib/api/schema.d.ts types once P3 publishes the DTO. */
+/** Row of GET surveys (SurveysController.SurveyListItem). */
 export interface SurveyListItem {
   id: number;
   title: string;
@@ -51,11 +50,26 @@ export interface SurveyListItem {
   responseCount: number;
 }
 
-/** Customers M9 filters; stands in for POST segments/preview until it is wired up. */
-export type SurveyCandidate = SegmentCustomer;
+/** What M9 and M10 show about the survey itself. */
+export type SurveyInfo = Omit<SurveyListItem, "questionCount">;
 
-/** GET surveys/{id}/results has no published DTO yet; shapes follow spec 6.2 and the Stitch M10 mock. */
-export interface ChoiceResult { kind: "SingleChoice" | "MultiChoice"; text: string; answerCount: number; options: { text: string; count: number }[] }
-export interface RatingResult { kind: "Rating"; text: string; answerCount: number; average: number; distribution: Record<1 | 2 | 3 | 4 | 5, number> }
-export interface TextResult { kind: "ShortText"; text: string; answerCount: number; answers: { customerName: string; content: string }[] }
+/** GET surveys/{id}. */
+export interface SurveyDetail extends SurveyInfo {
+  description: string | null;
+  productId: number | null;
+  createdAt: string;
+  questions: { id: number; text: string; type: QuestionType; isRequired: boolean; options: { id: number; text: string; preferenceId: number | null }[] }[];
+}
+
+/** Customer row from POST segments/preview sample or GET customers, enough to show and pick a recipient. */
+export interface RecipientCustomer { id: number; code: string; fullName: string; email: string; age: number | null; gender: string | null }
+export interface SegmentPreview { count: number; sample: RecipientCustomer[] }
+export interface RecipientsAdded { added: number; total: number }
+
+/** GET surveys/{id}/results; each question carries only the fields of its kind. */
+export interface ChoiceResult { questionId: number; kind: "SingleChoice" | "MultiChoice"; text: string; answerCount: number; options: { id: number; text: string; count: number }[] }
+/** `average` is omitted by the API while nobody has rated. */
+export interface RatingResult { questionId: number; kind: "Rating"; text: string; answerCount: number; average?: number | null; distribution: Record<1 | 2 | 3 | 4 | 5, number> }
+export interface TextResult { questionId: number; kind: "ShortText"; text: string; answerCount: number; answers: { customerName: string; content: string }[] }
 export type QuestionResult = ChoiceResult | RatingResult | TextResult;
+export interface SurveyResultsData { recipientCount: number; responseCount: number; completionRate: number; questions: QuestionResult[] }

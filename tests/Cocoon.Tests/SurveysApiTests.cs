@@ -59,6 +59,16 @@ public sealed class SurveysApiTests : IClassFixture<DatabaseFixture>, IDisposabl
         Assert.Equal((0, 2), (again.GetProperty("added").GetInt32(), again.GetProperty("total").GetInt32()));
         Assert.Equal(HttpStatusCode.BadRequest, (await Send(HttpMethod.Post, $"/api/v1/surveys/{id}/recipients", manager, new { })).StatusCode);
 
+        var customer = FoundationFactory.Token("Customer", shop.CustomerId);
+        var notices = await Json(await Send(HttpMethod.Get, "/api/v1/me/notifications", customer));
+        var notice = notices.EnumerateArray().Single(n => n.GetProperty("refType").GetString() == "Survey" && n.GetProperty("refId").GetInt32() == id);
+        Assert.False(notice.GetProperty("isRead").GetBoolean());
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Post, $"/api/v1/me/notifications/{notice.GetProperty("id").GetInt32()}/read", customer)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Post, $"/api/v1/me/notifications/{notice.GetProperty("id").GetInt32()}/read",
+            FoundationFactory.Token("Customer", shop.OtherCustomerId))).StatusCode);
+        using (var anonymous = _factory.CreateClient())
+            Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync("/api/v1/preferences")).StatusCode);
+
         await Answer(id, shop.CustomerId);
         var results = await Json(await Send(HttpMethod.Get, $"/api/v1/surveys/{id}/results", manager));
         Assert.Equal((2, 1, 0.5), (results.GetProperty("recipientCount").GetInt32(), results.GetProperty("responseCount").GetInt32(),
@@ -105,7 +115,7 @@ public sealed class SurveysApiTests : IClassFixture<DatabaseFixture>, IDisposabl
         await db.SaveChangesAsync();
     }
 
-    private sealed record Shop(int ManagerId, int CustomerId, int PreferenceId);
+    private sealed record Shop(int ManagerId, int CustomerId, int OtherCustomerId, int PreferenceId);
 
     private async Task<Shop> Seed()
     {
@@ -120,7 +130,7 @@ public sealed class SurveysApiTests : IClassFixture<DatabaseFixture>, IDisposabl
         db.AddRange(new CustomerPreference { CustomerId = first.Id, PreferenceId = preference.Id },
             new CustomerPreference { CustomerId = second.Id, PreferenceId = preference.Id });
         await db.SaveChangesAsync();
-        return new Shop(manager.Id, first.Id, preference.Id);
+        return new Shop(manager.Id, first.Id, second.Id, preference.Id);
     }
 
     private async Task<HttpResponseMessage> Send(HttpMethod method, string path, string token, object? body = null)

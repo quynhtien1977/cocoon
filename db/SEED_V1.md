@@ -4,7 +4,7 @@ Theo [COC-50](https://nguyenquoccuong07122004.atlassian.net/browse/COC-50), spec
 
 ## Chạy seed
 
-Từ repo root với `.env` local hiện có:
+Từ repo root với `.env` local hiện có, khi container API **chưa** chạy:
 
 ```powershell
 rtk docker compose up -d api db
@@ -16,6 +16,7 @@ rtk docker compose exec api dotnet run --project src/Cocoon.Api --no-build --no-
 Nếu API đã chạy và build xong, chỉ cần:
 
 ```powershell
+rtk docker compose exec api dotnet ef database update -p src/Cocoon.Infrastructure -s src/Cocoon.Api
 rtk docker compose exec api dotnet run --project src/Cocoon.Api --no-build --no-launch-profile -- seed
 ```
 

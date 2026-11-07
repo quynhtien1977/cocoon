@@ -129,6 +129,12 @@ public sealed class FeedbackController(AppDbContext db) : ApiStubController
                 ? NotFound() : await TransitionFailed(id, cancellationToken);
         var reply = new FeedbackReply { FeedbackId = id, StaffId = me, Content = content, CreatedAt = now };
         db.Add(reply);
+        // C5 shows a toast for unread "feedback" notifications, so the customer learns about the reply.
+        var customerId = await db.Set<Feedback>().Where(f => f.Id == id).Select(f => f.CustomerId).SingleAsync(cancellationToken);
+        db.Add(new Notification
+        {
+            AccountId = customerId, Type = "feedback", Title = "Cocoon đã trả lời phản hồi của bạn", RefType = nameof(Feedback), RefId = id, CreatedAt = now
+        });
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         var staffName = await db.Set<StaffProfile>().Where(s => s.AccountId == me).Select(s => s.FullName).SingleAsync(cancellationToken);

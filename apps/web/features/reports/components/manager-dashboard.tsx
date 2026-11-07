@@ -1,50 +1,63 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useCallback, useId, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowRight, ClipboardList, Clock, Coffee, FileDown, Leaf, MessageSquareWarning, Star, UserPlus, Users } from "lucide-react";
+import { ArrowRight, ClipboardList, FileDown, MessageSquareWarning, Star, UserPlus, Users } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
-import { RatingStars } from "@/components/brand/rating-stars";
 import { StatTile } from "@/components/brand/stat-tile";
-import { StatusBadge } from "@/components/brand/status-badge";
 import { ChartCard, chartColor } from "@/components/data/chart-card";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useApiData } from "@/lib/api/use-api-data";
 import { screen } from "@/lib/screens";
-import { ageGroupFixture, attentionFeedbackFixture, categoryAgeRevenueFixture, categoryRatingFixture, coPurchaseFixture, genderFixture, insightsFixture, monthlyLowRatingFixture, overviewFixture, reportPeriodsFixture, topPreferencesFixture, weeklyFeedbackFixture } from "../reports.fixture";
-import type { CategoryAgeRevenue, ReportInsight } from "../types";
+import { loadActivityReports, loadCustomerReports, periodRange, reportPeriods, type ReportPeriod } from "../api";
+import type { ActivityReports, CategoryPurchaseReport, CustomerReports } from "../types";
 
 const percent = new Intl.NumberFormat("vi-VN", { style: "percent", maximumFractionDigits: 1 });
 const rating = new Intl.NumberFormat("vi-VN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const millions = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 });
-const dateTime = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" });
+/** API percentages are 0–100. */
+const share = (value: number) => percent.format(value / 100);
+const day = (isoDate: string) => isoDate.split("-").reverse().join("/");
+const monthLabel = (month: string) => month.split("-").reverse().join("/");
+const ageLabel = (group: string) => /\d/.test(group) ? `${group} tuổi` : group;
+/** Order of age_bucket 0–5 in db/REPORTS_SQL.md. */
+const ageOrder = ["<18", "18–24", "25–34", "35–44", "≥45", "Chưa cung cấp"];
 
 const tabTrigger = "min-h-12 flex-none rounded-none px-4 font-label text-sm uppercase tracking-wider";
 const card = "min-w-0 rounded-lg border border-border bg-card p-4 sm:p-6";
 const linkClass = "inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-gold-strong hover:underline";
-const insightIcons = { coffee: Coffee, leaf: Leaf, clock: Clock } satisfies Record<ReportInsight["icon"], unknown>;
 
 type Tab = "overview" | "customers" | "analytics";
+interface LoadState { loading: boolean; error: string | null; retry: () => void }
 
 export function ManagerDashboard() {
   const s = screen("M1");
   const id = useId();
   const [tab, setTab] = useState<Tab>("overview");
-  const [period, setPeriod] = useState(reportPeriodsFixture[0]);
-  const overview = overviewFixture;
-  const weeklyTotal = weeklyFeedbackFixture.reduce((sum, week) => sum + week.total, 0);
-  const weeklyLow = weeklyFeedbackFixture.reduce((sum, week) => sum + week.lowRating, 0);
+  const [period, setPeriod] = useState<ReportPeriod>("all");
+  const customers = useApiData(loadCustomerReports, "Chưa tải được báo cáo khách hàng. Kiểm tra kết nối rồi thử lại.");
+  const loadActivity = useCallback((signal: AbortSignal) => loadActivityReports(periodRange(period), signal), [period]);
+  const activity = useApiData(loadActivity, "Chưa tải được số liệu trong kỳ. Kiểm tra kết nối rồi thử lại.");
+  const overview = activity.data?.overview;
+  const ratings = activity.data?.ratings;
+  const monthly = (ratings?.byMonth ?? []).map((row) => ({ month: monthLabel(row.month), total: row.feedbackCount, lowRating: Math.round(row.feedbackCount * row.lowRatingRate), lowRatingRate: row.lowRatingRate }));
+  const lowTotal = ratings?.distribution.filter((row) => row.rating <= 2).reduce((sum, row) => sum + row.feedbackCount, 0) ?? 0;
+  const distribution = (ratings?.distribution ?? []).map((row) => ({ rating: `${row.rating} sao`, feedbackCount: row.feedbackCount }));
+  const chartState = { loading: activity.loading, error: activity.error, onRetry: activity.retry };
+  const people = customers.data ?? undefined;
+  const customerChartState = { loading: customers.loading, error: customers.error, onRetry: customers.retry };
 
   return (
     <>
       <PageHeader eyebrow={s.code} title="Tổng quan quản trị CRM & Khách hàng" description="Dữ liệu khách hàng, phản hồi và khảo sát của Cocoon trong kỳ báo cáo." actions={
         <>
           <label htmlFor={`${id}-period`} className="sr-only">Kỳ báo cáo</label>
-          {/* Static phase: every period shows the same fixture until reports/* takes a period parameter. */}
-          <select id={`${id}-period`} value={period} onChange={(event) => setPeriod(event.target.value)}
+          {/* Retry with the period change so the loading state shows and a previous error clears. */}
+          <select id={`${id}-period`} value={period} onChange={(event) => { setPeriod(event.target.value as ReportPeriod); activity.retry(); }}
             className="min-h-12 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring print:hidden">
-            {reportPeriodsFixture.map((item) => <option key={item}>{item}</option>)}
+            {reportPeriods.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>
           <Button type="button" className="h-12 px-4 print:hidden" onClick={() => window.print()}><FileDown aria-hidden="true" />Xuất báo cáo PDF</Button>
         </>
@@ -58,95 +71,57 @@ export function ManagerDashboard() {
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5">
-            <StatTile label="Tổng khách hàng" value={overview.totalCustomers} icon={<Users />} hint={`+${overview.newCustomersThisMonth} trong tháng này`} />
-            <StatTile label="Khách mới 30 ngày" value={overview.newCustomers30d} icon={<UserPlus />} change={{ value: 12, suffix: "%", label: "so với 30 ngày trước", tone: "positive" }} />
-            <StatTile label="Phản hồi mới" value={overview.newFeedback} icon={<MessageSquareWarning />} change={{ value: 3, label: "so với hôm qua", tone: "negative" }} />
-            <StatTile label="Điểm trung bình" value={overview.avgRating === null ? "—" : rating.format(overview.avgRating)} unit={overview.avgRating === null ? undefined : "/5"} icon={<Star />}
-              progress={overview.avgRating === null ? undefined : overview.avgRating / 5} hint={`Từ ${overview.ratingCount} lượt đánh giá`} />
-            <StatTile label="Khảo sát đang mở" value={overview.openSurveys} icon={<ClipboardList />} hint={`${overview.completedResponses} lượt hoàn tất`} className="col-span-2 lg:col-span-1" />
+            <StatTile label="Tổng khách hàng" value={overview?.totalCustomers ?? "—"} icon={<Users />} hint={overview && `+${overview.newCustomersThisMonth} trong tháng này`} />
+            <StatTile label="Khách mới 30 ngày" value={overview?.newCustomers30d ?? "—"} icon={<UserPlus />} hint="Tài khoản tạo trong 30 ngày qua" />
+            <StatTile label="Phản hồi mới" value={overview?.newFeedback ?? "—"} icon={<MessageSquareWarning />} hint="Chờ tiếp nhận, gửi trong kỳ" />
+            <StatTile label="Điểm trung bình" value={overview?.avgRating == null ? "—" : rating.format(overview.avgRating)} unit={overview?.avgRating == null ? undefined : "/5"} icon={<Star />}
+              progress={overview?.avgRating == null ? undefined : overview.avgRating / 5} hint={overview && `Từ ${overview.ratingCount} lượt đánh giá`} />
+            <StatTile label="Khảo sát đang mở" value={overview?.openSurveys ?? "—"} icon={<ClipboardList />} hint={overview && `${overview.completedResponses} lượt hoàn tất trong kỳ`} className="col-span-2 lg:col-span-1" />
           </div>
           <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-            <ChartCard title="Phản hồi theo tuần" description={`Tổng phản hồi và số phản hồi ≤ 2 sao, 8 tuần gần nhất. Tổng ${weeklyTotal} phản hồi, ${percent.format(weeklyLow / Math.max(weeklyTotal, 1))} ≤ 2 sao.`}
-              type="bar" data={weeklyFeedbackFixture} categoryKey="week" categoryLabel="Tuần bắt đầu"
-              series={[{ key: "total", label: "Tổng phản hồi" }, { key: "lowRating", label: "≤ 2 sao" }]} height={400} />
-            <AttentionList total={overview.newFeedback} />
+            <ChartCard title="Phản hồi theo tháng" description={ratings && `Tổng phản hồi và số phản hồi ≤ 2 sao trong kỳ. Tổng ${ratings.feedbackCount} phản hồi, ${percent.format(lowTotal / Math.max(ratings.feedbackCount, 1))} ≤ 2 sao.`}
+              type="bar" data={monthly} categoryKey="month" categoryLabel="Tháng"
+              series={[{ key: "total", label: "Tổng phản hồi" }, { key: "lowRating", label: "≤ 2 sao" }]} height={400} {...chartState} />
+            <ChartCard title="Phân bố điểm đánh giá" description="Số phản hồi theo số sao trong kỳ." type="bar" data={ratings?.feedbackCount ? distribution : []} categoryKey="rating" categoryLabel="Điểm"
+              series={[{ key: "feedbackCount", label: "Phản hồi" }]} {...chartState}
+              action={<Link href="/manager/feedback" className={linkClass}>Hộp phản hồi{overview && ` (${overview.newFeedback} mới)`}<ArrowRight className="size-4" aria-hidden="true" /></Link>} />
           </div>
-          <InsightStrip />
           <div className="grid gap-6 lg:grid-cols-2">
-            <CustomerPreview onOpen={() => setTab("customers")} />
-            <AnalyticsPreview onOpen={() => setTab("analytics")} />
+            <CustomerPreview data={customers.data} state={customers} onOpen={() => setTab("customers")} />
+            <AnalyticsPreview data={activity.data} state={activity} onOpen={() => setTab("analytics")} />
           </div>
         </TabsContent>
 
         <TabsContent value="customers" className="grid gap-6 lg:grid-cols-2">
-          <ChartCard title="Khách hàng theo nhóm tuổi" type="bar" data={ageGroupFixture} categoryKey="group" categoryLabel="Nhóm tuổi" series={[{ key: "customers", label: "Khách hàng" }]} />
-          <ChartCard title="Cơ cấu giới tính" type="pie" data={genderFixture} categoryKey="gender" categoryLabel="Giới tính" series={[{ key: "customers", label: "Khách hàng" }]} />
-          <ChartCard title="Sở thích phổ biến" description="Số khách có sở thích, gồm tự khai báo và suy ra từ khảo sát." type="horizontal-bar" data={topPreferencesFixture} categoryKey="preference" categoryLabel="Sở thích"
-            series={[{ key: "customers", label: "Khách hàng" }]} className="lg:col-span-2" />
+          <ChartCard title="Tỷ lệ khách hàng theo nhóm tuổi" description={people && `${people.age.totalCustomers} khách hàng đang hoạt động, tính đến ${day(people.age.asOf)}.`}
+            type="bar" data={people?.age.items ?? []} categoryKey="group" categoryLabel="Nhóm tuổi" series={[{ key: "percentage", label: "Tỷ lệ khách hàng" }]} formatValue={share} {...customerChartState} />
+          <ChartCard title="Cơ cấu giới tính" description={people && `${people.gender.totalCustomers} khách hàng đang hoạt động.`}
+            type="pie" data={people?.gender.items ?? []} categoryKey="gender" categoryLabel="Giới tính" series={[{ key: "customers", label: "Khách hàng" }]} {...customerChartState} />
+          <ChartCard title="Sở thích phổ biến" description={people && `Tỷ lệ trên ${people.preferences.consentingCustomers} khách đồng ý chia sẻ dữ liệu. Mỗi khách chọn được nhiều sở thích nên tổng có thể vượt 100%.`}
+            type="horizontal-bar" data={people?.preferences.items ?? []} categoryKey="preference" categoryLabel="Sở thích"
+            series={[{ key: "percentage", label: "Tỷ lệ khách hàng" }]} formatValue={share} className="lg:col-span-2" {...customerChartState} />
         </TabsContent>
 
         <TabsContent value="analytics" className="grid gap-6 lg:grid-cols-2">
-          <ChartCard title="Điểm trung bình theo danh mục" type="horizontal-bar" data={categoryRatingFixture} categoryKey="category" categoryLabel="Danh mục"
-            series={[{ key: "avgRating", label: "Điểm TB" }]} formatValue={(value) => rating.format(value)} maxValue={5} />
-          <ChartCard title="Tỷ lệ phản hồi ≤ 2 sao theo tháng" type="line" data={monthlyLowRatingFixture} categoryKey="month" categoryLabel="Tháng"
-            series={[{ key: "lowRatingRate", label: "Tỷ lệ ≤ 2 sao" }]} formatValue={(value) => percent.format(value)} />
-          <RevenueHeatmap data={categoryAgeRevenueFixture} />
-          <CoPurchaseTable />
+          <ChartCard title="Điểm trung bình theo danh mục" type="horizontal-bar" data={ratings?.byCategory ?? []} categoryKey="category" categoryLabel="Danh mục"
+            series={[{ key: "avgRating", label: "Điểm TB" }]} formatValue={(value) => rating.format(value)} maxValue={5} {...chartState} />
+          <ChartCard title="Tỷ lệ phản hồi ≤ 2 sao theo tháng" type="line" data={monthly} categoryKey="month" categoryLabel="Tháng"
+            series={[{ key: "lowRatingRate", label: "Tỷ lệ ≤ 2 sao" }]} formatValue={(value) => percent.format(value)} {...chartState} />
+          <RevenueHeatmap data={activity.data?.purchases} state={activity} />
         </TabsContent>
       </Tabs>
     </>
   );
 }
 
-function AttentionList({ total }: { total: number }) {
+/** Loading or error body for a section whose data has not arrived. */
+function Pending({ state, label }: { state: LoadState; label: string }) {
+  if (state.loading) return <div role="status"><span className="sr-only">Đang tải {label}</span><Skeleton className="h-40 w-full" /></div>;
   return (
-    <section aria-labelledby="attention-title" className={card}>
-      <header className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3">
-        <div>
-          <h2 id="attention-title" className="font-heading text-xl">Phản hồi cần chú ý</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Phản hồi mới, điểm thấp hoặc chưa xử lý xong.</p>
-        </div>
-        <Link href="/manager/feedback" className={linkClass}>Xem tất cả ({total})<ArrowRight className="size-4" aria-hidden="true" /></Link>
-      </header>
-      <ul className="divide-y divide-border">
-        {attentionFeedbackFixture.slice(0, 3).map((item) => (
-          <li key={item.id}>
-            <Link href="/manager/feedback" aria-label={`Mở hộp phản hồi: ${item.customerName}, ${item.productName}`} className="-mx-2 block space-y-1 rounded-md px-2 py-3 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring">
-              <span className="flex items-start justify-between gap-2">
-                <span className="min-w-0 text-sm"><span className="font-semibold">{item.customerName}</span><span className="text-muted-foreground"> · {item.productName}</span></span>
-                <span className="shrink-0"><StatusBadge kind="feedback" status={item.status} /></span>
-              </span>
-              <RatingStars value={item.rating} />
-              <span className="block truncate text-sm italic text-muted-foreground">“{item.excerpt}”</span>
-              <span className="flex justify-between gap-2 font-label text-xs uppercase tracking-wider text-muted-foreground">
-                <span>Đơn #{item.orderCode}</span>
-                <time dateTime={item.createdAt}>{dateTime.format(new Date(item.createdAt))}</time>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function InsightStrip() {
-  return (
-    <section aria-label="Điểm nhấn trong kỳ" className="grid gap-px overflow-hidden rounded-lg border border-border bg-border md:grid-cols-3">
-      {insightsFixture.map((insight) => {
-        const Icon = insightIcons[insight.icon];
-        return (
-          <article key={insight.id} className="flex gap-4 bg-card p-4 sm:p-6">
-            <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-gold-strong"><Icon className="size-5" /></span>
-            <div className="min-w-0">
-              <p className="font-label text-xs uppercase tracking-wider text-muted-foreground">{insight.eyebrow}</p>
-              <h3 className="mt-1 font-heading text-lg">{insight.title}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{insight.body}</p>
-            </div>
-          </article>
-        );
-      })}
-    </section>
+    <div role="alert" className="rounded-lg border border-destructive p-6">
+      <p>{state.error}</p>
+      <Button type="button" variant="outline" className="mt-3" onClick={state.retry}>Thử lại</Button>
+    </div>
   );
 }
 
@@ -165,37 +140,34 @@ function PreviewCard({ title, action, onOpen, children }: { title: string; actio
 
 const subheading = "font-label text-xs uppercase tracking-wider text-muted-foreground";
 
-function CustomerPreview({ onOpen }: { onOpen: () => void }) {
-  const totalAge = ageGroupFixture.reduce((sum, item) => sum + item.customers, 0);
-  const totalGender = genderFixture.reduce((sum, item) => sum + item.customers, 0);
-  const share = (index: number) => genderFixture.slice(0, index).reduce((sum, item) => sum + item.customers, 0) / Math.max(totalGender, 1) * 100;
-  const donut = genderFixture.map((_, index) => `${chartColor(index)} ${share(index)}% ${share(index + 1)}%`).join(", ");
+function CustomerPreview({ data, state, onOpen }: { data: CustomerReports | null; state: LoadState; onOpen: () => void }) {
+  if (!data) return <PreviewCard title="Phân bổ khách hàng" action="Xem báo cáo" onOpen={onOpen}><Pending state={state} label="phân bổ khách hàng" /></PreviewCard>;
+  const genders = data.gender.items;
+  const offset = (index: number) => genders.slice(0, index).reduce((sum, item) => sum + item.percentage, 0);
+  const donut = genders.map((_, index) => `${chartColor(index)} ${offset(index)}% ${offset(index + 1)}%`).join(", ");
   return (
     <PreviewCard title="Phân bổ khách hàng" action="Xem báo cáo" onOpen={onOpen}>
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
           <h3 className={subheading}>Độ tuổi</h3>
           <ul className="mt-3 space-y-3">
-            {ageGroupFixture.map((item) => {
-              const share = item.customers / Math.max(totalAge, 1);
-              return (
-                <li key={item.group} className="text-sm">
-                  <span className="flex justify-between gap-2"><span>{item.group} tuổi</span><span className="font-semibold tabular-nums">{percent.format(share)}</span></span>
-                  <span aria-hidden="true" className="mt-1 block h-1.5 bg-muted"><span className="block h-full bg-gold-strong" style={{ width: `${share * 100}%` }} /></span>
-                </li>
-              );
-            })}
+            {data.age.items.map((item) => (
+              <li key={item.group} className="text-sm">
+                <span className="flex justify-between gap-2"><span>{ageLabel(item.group)}</span><span className="font-semibold tabular-nums">{share(item.percentage)}</span></span>
+                <span aria-hidden="true" className="mt-1 block h-1.5 bg-muted"><span className="block h-full bg-gold-strong" style={{ width: `${item.percentage}%` }} /></span>
+              </li>
+            ))}
           </ul>
         </div>
         <div>
           <h3 className={subheading}>Giới tính</h3>
           <div className="mt-3 flex items-center gap-4">
-            <span aria-hidden="true" className="size-20 shrink-0 rounded-full" style={{ background: `radial-gradient(circle, var(--card) 52%, transparent 53%), conic-gradient(${donut})` }} />
+            <span aria-hidden="true" className="size-20 shrink-0 rounded-full" style={{ background: `radial-gradient(circle, var(--card) 52%, transparent 53%), conic-gradient(${donut || "var(--muted) 0% 100%"})` }} />
             <ul className="space-y-1 text-sm">
-              {genderFixture.map((item, index) => (
+              {genders.map((item, index) => (
                 <li key={item.gender} className="flex items-center gap-2">
                   <span aria-hidden="true" className="size-2.5 rounded-sm" style={{ background: chartColor(index) }} />
-                  {item.gender}: <span className="font-semibold tabular-nums">{percent.format(item.customers / Math.max(totalGender, 1))}</span>
+                  {item.gender}: <span className="font-semibold tabular-nums">{share(item.percentage)}</span>
                 </li>
               ))}
             </ul>
@@ -203,50 +175,57 @@ function CustomerPreview({ onOpen }: { onOpen: () => void }) {
         </div>
       </div>
       <h3 className={`${subheading} mt-6`}>Mối quan tâm hàng đầu</h3>
-      <ul className="mt-2 flex flex-wrap gap-2">
-        {topPreferencesFixture.slice(0, 3).map((item) => (
-          <li key={item.preference} className="rounded-sm bg-status-beige-bg px-2 py-1 font-label text-xs uppercase tracking-wider text-status-beige-fg">
-            {item.preference}: {percent.format(item.customers / Math.max(totalAge, 1))}
-          </li>
-        ))}
-      </ul>
+      {data.preferences.items.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">Chưa có khách nào chọn sở thích.</p> : (
+        <ul className="mt-2 flex flex-wrap gap-2">
+          {data.preferences.items.slice(0, 3).map((item) => (
+            <li key={item.preferenceId} className="rounded-sm bg-status-beige-bg px-2 py-1 font-label text-xs uppercase tracking-wider text-status-beige-fg">
+              {item.preference}: {share(item.percentage)}
+            </li>
+          ))}
+        </ul>
+      )}
     </PreviewCard>
   );
 }
 
-function AnalyticsPreview({ onOpen }: { onOpen: () => void }) {
-  const [topPair] = coPurchaseFixture;
-  const [previous, latest] = monthlyLowRatingFixture.slice(-2);
+function AnalyticsPreview({ data, state, onOpen }: { data: ActivityReports | null; state: LoadState; onOpen: () => void }) {
+  if (!data) return <PreviewCard title="Danh mục & doanh số" action="Xem phân tích" onOpen={onOpen}><Pending state={state} label="phân tích danh mục" /></PreviewCard>;
+  const revenue = new Map<string, number>();
+  for (const cell of data.purchases.items) revenue.set(cell.category, (revenue.get(cell.category) ?? 0) + cell.revenue);
+  const topRevenue = [...revenue].sort((a, b) => b[1] - a[1]).slice(0, 4);
+  const [previous, latest] = data.ratings.byMonth.slice(-2);
   return (
-    <PreviewCard title="Danh mục & cặp mua cùng" action="Xem phân tích" onOpen={onOpen}>
+    <PreviewCard title="Danh mục & doanh số" action="Xem phân tích" onOpen={onOpen}>
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
           <h3 className={subheading}>Điểm theo danh mục</h3>
-          <ul className="mt-3 space-y-2 text-sm">
-            {categoryRatingFixture.slice(0, 4).map((item) => (
-              <li key={item.category} className="flex justify-between gap-2">
-                {item.category}
-                <span className="inline-flex items-center gap-1 font-semibold tabular-nums text-gold-strong">{rating.format(item.avgRating)}<Star className="size-3.5" aria-hidden="true" /></span>
-              </li>
-            ))}
-          </ul>
+          {data.ratings.byCategory.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Chưa có đánh giá trong kỳ.</p> : (
+            <ul className="mt-3 space-y-2 text-sm">
+              {data.ratings.byCategory.slice(0, 4).map((item) => (
+                <li key={item.categoryId} className="flex justify-between gap-2">
+                  {item.category}
+                  <span className="inline-flex items-center gap-1 font-semibold tabular-nums text-gold-strong">{rating.format(item.avgRating)}<Star className="size-3.5" aria-hidden="true" /></span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-        {topPair && (
-          <div>
-            <h3 className={subheading}>Cặp mua kèm cao nhất</h3>
-            <div className="mt-3 rounded-md border border-border bg-muted p-3">
-              <p className="font-label text-sm uppercase tracking-wider text-gold-strong">Độ tin cậy {percent.format(topPair.confidence)}</p>
-              <p className="mt-1 text-sm">{topPair.productA} + {topPair.productB}</p>
-              <p className="mt-2 text-xs text-muted-foreground">{topPair.bothCount} khách đã mua cả hai sản phẩm.</p>
-            </div>
-          </div>
-        )}
+        <div>
+          <h3 className={subheading}>Doanh số theo danh mục</h3>
+          {topRevenue.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Chưa có đơn hoàn thành trong kỳ.</p> : (
+            <ul className="mt-3 space-y-2 text-sm">
+              {topRevenue.map(([category, total]) => (
+                <li key={category} className="flex justify-between gap-2">{category}<span className="font-semibold tabular-nums">{millions.format(total / 1_000_000)} triệu</span></li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
-      {previous && latest && (
+      {latest && (
         <p className="mt-6 flex flex-wrap justify-between gap-2 border-t border-border pt-4 text-sm">
-          <span className="text-muted-foreground">Tỷ lệ phản hồi ≤ 2 sao ({latest.month})</span>
-          <span className={latest.lowRatingRate <= previous.lowRatingRate ? "font-semibold text-status-sage-fg" : "font-semibold text-status-danger-fg"}>
-            {percent.format(latest.lowRatingRate)} (kỳ trước {percent.format(previous.lowRatingRate)})
+          <span className="text-muted-foreground">Tỷ lệ phản hồi ≤ 2 sao ({monthLabel(latest.month)})</span>
+          <span className={!previous || latest.lowRatingRate <= previous.lowRatingRate ? "font-semibold text-status-sage-fg" : "font-semibold text-status-danger-fg"}>
+            {percent.format(latest.lowRatingRate)}{previous && ` (tháng trước ${percent.format(previous.lowRatingRate)})`}
           </span>
         </p>
       )}
@@ -255,68 +234,47 @@ function AnalyticsPreview({ onOpen }: { onOpen: () => void }) {
 }
 
 /** Category × age group revenue. A table keeps exact values readable; color only reinforces magnitude. */
-function RevenueHeatmap({ data }: { data: readonly CategoryAgeRevenue[] }) {
-  const categories = [...new Set(data.map((cell) => cell.category))];
-  const ageGroups = [...new Set(data.map((cell) => cell.ageGroup))];
-  const max = Math.max(...data.map((cell) => cell.revenue), 1);
-  const value = (category: string, ageGroup: string) => data.find((cell) => cell.category === category && cell.ageGroup === ageGroup)?.revenue ?? 0;
+function RevenueHeatmap({ data, state }: { data: CategoryPurchaseReport | undefined; state: LoadState }) {
+  const cells = data?.items ?? [];
+  const categories = [...new Set(cells.map((cell) => cell.category))];
+  const ageGroups = [...new Set(cells.map((cell) => cell.ageGroup))].sort((a, b) => ageOrder.indexOf(a) - ageOrder.indexOf(b));
+  const max = Math.max(...cells.map((cell) => cell.revenue), 1);
+  const value = (category: string, ageGroup: string) => cells.find((cell) => cell.category === category && cell.ageGroup === ageGroup)?.revenue ?? 0;
   return (
     <section aria-labelledby="heatmap-title" className={`${card} lg:col-span-2`}>
       <h2 id="heatmap-title" className="font-heading text-xl">Doanh số danh mục × nhóm tuổi</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Triệu đồng, đơn hoàn thành trong 12 tháng.</p>
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[480px] border-separate border-spacing-1 text-sm">
-          <caption className="sr-only">Doanh số theo danh mục và nhóm tuổi, đơn vị triệu đồng</caption>
-          <thead>
-            <tr>
-              <th scope="col" className="p-2 text-left font-label text-xs uppercase tracking-wider text-muted-foreground">Danh mục</th>
-              {ageGroups.map((group) => <th key={group} scope="col" className="p-2 text-center font-label text-xs uppercase tracking-wider text-muted-foreground">{group}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {categories.map((category) => (
-              <tr key={category}>
-                <th scope="row" className="p-2 text-left font-normal">{category}</th>
-                {ageGroups.map((group) => {
-                  const revenue = value(category, group);
-                  const share = revenue / max;
-                  return (
-                    <td key={group} className="h-12 rounded-sm p-2 text-center tabular-nums"
-                      style={{ background: `color-mix(in oklch, var(--chart-1) ${Math.round(share * 85)}%, var(--card))`, color: share > 0.6 ? "var(--primary)" : undefined, fontWeight: share > 0.6 ? 700 : undefined }}>
-                      {millions.format(revenue / 1_000_000)}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function CoPurchaseTable() {
-  return (
-    <section aria-labelledby="copurchase-title" className={`${card} lg:col-span-2`}>
-      <h2 id="copurchase-title" className="font-heading text-xl">Cặp sản phẩm hay mua cùng</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Độ tin cậy = số khách mua cả hai / số khách mua sản phẩm A. Chỉ tính cặp có ít nhất 3 khách.</p>
-      <Table className="mt-4">
-        <TableCaption className="sr-only">Cặp sản phẩm hay mua cùng</TableCaption>
-        <TableHeader>
-          <TableRow><TableHead>Sản phẩm A</TableHead><TableHead>Sản phẩm B</TableHead><TableHead className="text-right">Số khách</TableHead><TableHead className="text-right">Độ tin cậy</TableHead></TableRow>
-        </TableHeader>
-        <TableBody>
-          {coPurchaseFixture.map((pair) => (
-            <TableRow key={`${pair.productA}-${pair.productB}`}>
-              <TableCell>{pair.productA}</TableCell>
-              <TableCell>{pair.productB}</TableCell>
-              <TableCell className="text-right tabular-nums">{pair.bothCount}</TableCell>
-              <TableCell className="text-right tabular-nums">{percent.format(pair.confidence)}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <p className="mt-1 text-sm text-muted-foreground">Triệu đồng, đơn hoàn thành trong kỳ. Tuổi tính tại ngày xem báo cáo.</p>
+      {!data ? <div className="mt-4"><Pending state={state} label="doanh số" /></div>
+        : cells.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">Chưa có đơn hoàn thành trong kỳ.</p> : (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[480px] border-separate border-spacing-1 text-sm">
+              <caption className="sr-only">Doanh số theo danh mục và nhóm tuổi, đơn vị triệu đồng</caption>
+              <thead>
+                <tr>
+                  <th scope="col" className="p-2 text-left font-label text-xs uppercase tracking-wider text-muted-foreground">Danh mục</th>
+                  {ageGroups.map((group) => <th key={group} scope="col" className="p-2 text-center font-label text-xs uppercase tracking-wider text-muted-foreground">{group}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {categories.map((category) => (
+                  <tr key={category}>
+                    <th scope="row" className="p-2 text-left font-normal">{category}</th>
+                    {ageGroups.map((group) => {
+                      const revenue = value(category, group);
+                      const ratio = revenue / max;
+                      return (
+                        <td key={group} className="h-12 rounded-sm p-2 text-center tabular-nums"
+                          style={{ background: `color-mix(in oklch, var(--chart-1) ${Math.round(ratio * 85)}%, var(--card))`, color: ratio > 0.6 ? "var(--primary)" : undefined, fontWeight: ratio > 0.6 ? 700 : undefined }}>
+                          {millions.format(revenue / 1_000_000)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
     </section>
   );
 }

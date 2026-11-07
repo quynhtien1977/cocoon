@@ -1,42 +1,43 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { ArrowDown, ArrowLeft, ArrowRight, Check, CircleCheck, Info, Plus, Rocket, Search, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/brand/confirm-dialog";
 import { EmptyState } from "@/components/brand/empty-state";
 import { PageHeader } from "@/components/brand/page-header";
 import { StatusBadge } from "@/components/brand/status-badge";
-import { emptySegmentFilter, matchesSegment, SegmentFilterBuilder, segmentAgeError, type SegmentCustomer, type SegmentOption } from "@/components/data/segment-filter-builder";
+import { emptySegmentFilter, SegmentFilterBuilder, segmentAgeError, type SegmentOption } from "@/components/data/segment-filter-builder";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
-import { MAX_PLAN_PRODUCTS, segmentSummary, toPlanUpsertRequest, validatePlanDetails } from "../schemas";
-import type { PlanDraft, PlanProduct } from "../types";
+import { activatePlan, createPlan, previewSegment, updatePlan } from "../api";
+import { MAX_PLAN_PRODUCTS, segmentSummary, validatePlanDetails } from "../schemas";
+import type { PlanDraft, PlanProduct, PlanRunResult, SegmentPreview } from "../types";
 
 const time = new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit" });
 const date = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" });
 const fieldClass = "min-h-12 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-destructive";
 const labelClass = "font-label text-sm uppercase tracking-wider text-muted-foreground";
 const card = "min-w-0 rounded-lg border border-border bg-card p-4 sm:p-6";
-const SAMPLE_SIZE = 5;
 const steps = [["Thông tin chung", "Tên, mục tiêu và thời gian"], ["Phân khúc khách hàng", "Chọn nhóm khách nhận gợi ý"], ["Lựa chọn sản phẩm", "Chọn và sắp xếp sản phẩm"]];
 
 const normalize = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/gi, "d").toLowerCase();
 const showDate = (value: string) => value ? date.format(new Date(`${value}T12:00:00+07:00`)) : "Chưa chọn";
 const emptyDraft = (): PlanDraft => ({ name: "", goal: "", startAt: "", endAt: "", segment: emptySegmentFilter(), productIds: [] });
+const failure = (reason: unknown, fallback: string) => reason instanceof Error && reason.message ? reason.message : fallback;
 
 export interface PlanEditorProps {
   /** Existing Draft plan for /plans/[id]; omit for /plans/new. */
   initial?: PlanDraft;
   planId?: number;
+  /** Every product, so a draft still names one hidden since; only Active ones can be added. */
   products: readonly PlanProduct[];
-  customers: readonly SegmentCustomer[];
   preferences: readonly SegmentOption[];
   categories: readonly SegmentOption[];
 }
 
-export function PlanEditor({ initial, planId, products, customers, preferences, categories }: PlanEditorProps) {
+export function PlanEditor({ initial, planId: initialId, products, preferences, categories }: PlanEditorProps) {
   const s = screen("M14");
   const id = useId();
   const [draft, setDraft] = useState<PlanDraft>(() => initial ?? emptyDraft());
@@ -45,15 +46,32 @@ export function PlanEditor({ initial, planId, products, customers, preferences, 
   const [problem, setProblem] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const [activated, setActivated] = useState(false);
+  const [planId, setPlanId] = useState(initialId);
+  const [saving, setSaving] = useState(false);
+  const [activated, setActivated] = useState<PlanRunResult | null>(null);
+  const [preview, setPreview] = useState<SegmentPreview | null>(null);
+  const [previewError, setPreviewError] = useState(false);
   const [query, setQuery] = useState("");
   const update = (patch: Partial<PlanDraft>) => { setDraft((current) => ({ ...current, ...patch })); setProblem(null); setSavedAt(null); };
 
   const ageError = segmentAgeError(draft.segment);
-  const matched = ageError ? [] : customers.filter((customer) => matchesSegment(customer, draft.segment));
+  const matchCount = ageError ? 0 : preview?.count ?? 0;
   const selected = draft.productIds.flatMap((productId) => products.find((item) => item.id === productId) ?? []);
   const needle = normalize(query.trim());
-  const available = products.filter((item) => !draft.productIds.includes(item.id) && normalize(`${item.name} ${item.categoryName}`).includes(needle));
+  const available = products.filter((item) => item.status === "Active" && !draft.productIds.includes(item.id) && normalize(`${item.name} ${item.categoryName}`).includes(needle));
+
+  // Live audience size from POST segments/preview, debounced while the manager toggles criteria.
+  const segmentKey = JSON.stringify(draft.segment);
+  useEffect(() => {
+    if (ageError) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      previewSegment(JSON.parse(segmentKey), controller.signal)
+        .then((result) => { setPreview(result); setPreviewError(false); })
+        .catch(() => { if (!controller.signal.aborted) setPreviewError(true); });
+    }, 300);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [segmentKey, ageError]);
 
   /** First step whose required data is missing, or null. Reports its problem on the way. */
   function firstInvalid(upTo: number): number | null {
@@ -73,18 +91,42 @@ export function PlanEditor({ initial, planId, products, customers, preferences, 
     setStep(next);
   }
 
-  function save() {
+  /** POST for a new plan, PUT afterwards; returns the plan id. */
+  async function persist(): Promise<number> {
+    if (planId === undefined) {
+      const created = await createPlan(draft);
+      setPlanId(created.id);
+      // Later saves PUT this plan, and a reload opens it instead of a blank form.
+      window.history.replaceState(null, "", `/manager/recommendations/plans/${created.id}`);
+      return created.id;
+    }
+    await updatePlan(planId, draft);
+    return planId;
+  }
+
+  async function save() {
     const invalid = firstInvalid(0);
     if (invalid !== null) { setStep(invalid); return; }
-    // Static phase: the request body is built to check the contract but not sent until api.ts lands.
-    toPlanUpsertRequest(draft);
-    setSavedAt(new Date());
+    setSaving(true);
+    try {
+      await persist();
+      setSavedAt(new Date());
+    } catch (reason) {
+      setProblem(failure(reason, "Chưa lưu được bản nháp. Kiểm tra kết nối rồi thử lại."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function activate() {
+    const id = await persist();
+    setActivated(await activatePlan(id));
   }
 
   function reviewActivation() {
     const invalid = firstInvalid(1);
     if (invalid !== null) { setStep(invalid); return; }
-    if (matched.length === 0) { setStep(1); setProblem("Chưa kích hoạt được: không có khách phù hợp. Bỏ bớt tiêu chí rồi thử lại."); return; }
+    if (preview && matchCount === 0) { setStep(1); setProblem("Chưa kích hoạt được: không có khách phù hợp. Bỏ bớt tiêu chí rồi thử lại."); return; }
     if (draft.productIds.length === 0) { setStep(2); setProblem("Chưa kích hoạt được: chưa chọn sản phẩm. Chọn ít nhất một sản phẩm rồi thử lại."); return; }
     setConfirming(true);
   }
@@ -104,7 +146,7 @@ export function PlanEditor({ initial, planId, products, customers, preferences, 
       <>
         <PageHeader eyebrow={s.code} title="Đã kích hoạt kế hoạch" description={draft.name.trim()} actions={<StatusBadge kind="recommendationPlan" status="Active" />} />
         <section role="status" className={card}>
-          <p className="flex gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" />Kế hoạch áp dụng cho {matched.length} khách hàng với {selected.length} sản phẩm (dữ liệu mẫu, chưa gửi máy chủ).</p>
+          <p className="flex gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" />Kế hoạch áp dụng cho {activated.audienceCount} khách hàng với {selected.length} sản phẩm, tạo {activated.recommendationCount} gợi ý.</p>
           <Link href="/manager/recommendations" className={cn(buttonVariants(), "mt-4 h-12 px-4")}>Về tổng quan gợi ý</Link>
         </section>
       </>
@@ -137,7 +179,7 @@ export function PlanEditor({ initial, planId, products, customers, preferences, 
             <div><dt className="text-muted-foreground">Tên kế hoạch</dt><dd className="font-semibold break-words">{draft.name.trim() || "Chưa đặt tên"}</dd></div>
             <div className="grid grid-cols-2 gap-3"><div><dt className="text-muted-foreground">Bắt đầu</dt><dd className="font-semibold">{showDate(draft.startAt)}</dd></div><div><dt className="text-muted-foreground">Kết thúc</dt><dd className="font-semibold">{showDate(draft.endAt)}</dd></div></div>
             <div><dt className="text-muted-foreground">Phân khúc</dt><dd>{segmentSummary(draft.segment, preferences, categories)}</dd></div>
-            <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3"><dt className="text-muted-foreground">Khách phù hợp</dt><dd className="font-heading text-2xl lining-nums tabular-nums">{matched.length}</dd></div>
+            <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3"><dt className="text-muted-foreground">Khách phù hợp</dt><dd className="font-heading text-2xl lining-nums tabular-nums">{matchCount}</dd></div>
             <div className="flex items-baseline justify-between gap-3"><dt className="text-muted-foreground">Sản phẩm đã chọn</dt><dd className="font-semibold tabular-nums">{selected.length}/{MAX_PLAN_PRODUCTS}</dd></div>
           </dl>
           <p className="flex gap-2 rounded-md bg-muted p-3 text-sm text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Chỉ bản nháp mới sửa được. Sản phẩm hiển thị theo thứ tự ưu tiên từ trên xuống.</p>
@@ -173,12 +215,14 @@ export function PlanEditor({ initial, planId, products, customers, preferences, 
 
           {step === 1 && (
             <>
-              <SegmentFilterBuilder value={draft.segment} onChange={(segment) => update({ segment })} preferences={preferences} categories={categories} matchCount={matched.length} />
+              <SegmentFilterBuilder value={draft.segment} onChange={(segment) => update({ segment })} preferences={preferences} categories={categories} matchCount={matchCount} />
               <section aria-labelledby={`${id}-sample`} className={card}>
                 <h2 id={`${id}-sample`} className="font-heading text-lg">Khách hàng mẫu</h2>
-                {matched.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">Chưa có khách phù hợp. Bỏ bớt tiêu chí để mở rộng phân khúc.</p> : (
+                {previewError ? <p role="alert" className="mt-2 text-sm text-destructive">Chưa đếm được khách phù hợp. Kiểm tra kết nối rồi đổi tiêu chí để thử lại.</p>
+                  : !preview && !ageError ? <p role="status" className="mt-2 text-sm text-muted-foreground">Đang đếm khách phù hợp…</p>
+                  : matchCount === 0 || !preview ? <p className="mt-2 text-sm text-muted-foreground">Chưa có khách phù hợp. Bỏ bớt tiêu chí để mở rộng phân khúc.</p> : (
                   <ul className="mt-2 divide-y divide-border">
-                    {matched.slice(0, SAMPLE_SIZE).map((customer) => <li key={customer.id} className="flex flex-wrap justify-between gap-x-3 py-2 text-sm"><span className="min-w-0"><span className="block font-semibold">{customer.fullName}</span><span className="block break-words text-muted-foreground">{customer.email}</span></span><span className="text-muted-foreground">{customer.daysSinceLastOrder === null ? "Chưa mua" : `Mua ${customer.daysSinceLastOrder} ngày trước`}</span></li>)}
+                    {preview.sample.map((customer) => <li key={customer.id} className="flex flex-wrap justify-between gap-x-3 py-2 text-sm"><span className="min-w-0"><span className="block font-semibold">{customer.fullName}</span><span className="block break-words text-muted-foreground">{customer.email}</span></span><span className="font-mono text-xs text-muted-foreground">{customer.code}</span></li>)}
                   </ul>
                 )}
               </section>
@@ -234,20 +278,20 @@ export function PlanEditor({ initial, planId, products, customers, preferences, 
 
       <footer className="mt-8 border-t border-border pt-6">
         <div aria-live="polite" className="mb-4 text-sm empty:hidden">
-          {problem ? <p role="alert" className="text-destructive">{problem}</p> : savedAt ? <p className="flex items-center gap-2 text-status-sage-fg"><CircleCheck className="size-4" aria-hidden="true" />Đã lưu bản nháp lúc {time.format(savedAt)} (dữ liệu mẫu, chưa gửi máy chủ).</p> : null}
+          {problem ? <p role="alert" className="text-destructive">{problem}</p> : savedAt ? <p className="flex items-center gap-2 text-status-sage-fg"><CircleCheck className="size-4" aria-hidden="true" />Đã lưu bản nháp lúc {time.format(savedAt)}.</p> : null}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           {step > 0 ? <Button type="button" variant="ghost" className="h-12 px-4" onClick={() => goTo(step - 1)}><ArrowLeft aria-hidden="true" />Quay lại bước {step}</Button> : <Link href="/manager/recommendations" className={cn(buttonVariants({ variant: "ghost" }), "h-12 px-4")}>Hủy</Link>}
           <div className="flex w-full flex-wrap gap-3 sm:w-auto">
-            <Button type="button" variant="outline" className="h-12 flex-1 px-6 sm:flex-none" onClick={save}>Lưu bản nháp</Button>
+            <Button type="button" variant="outline" className="h-12 flex-1 px-6 sm:flex-none" onClick={save} disabled={saving}>{saving ? "Đang lưu…" : "Lưu bản nháp"}</Button>
             {step < steps.length - 1
               ? <Button type="button" className="h-12 flex-1 px-6 sm:flex-none" onClick={() => goTo(step + 1)}>Tiếp tục<ArrowRight aria-hidden="true" /></Button>
-              : <Button type="button" className="h-12 flex-1 px-6 sm:flex-none" onClick={reviewActivation}><Rocket aria-hidden="true" />Kích hoạt kế hoạch</Button>}
+              : <Button type="button" className="h-12 flex-1 px-6 sm:flex-none" onClick={reviewActivation} disabled={saving}><Rocket aria-hidden="true" />Kích hoạt kế hoạch</Button>}
           </div>
         </div>
       </footer>
       <ConfirmDialog portal="manager" appearance="soft" open={confirming} onOpenChange={setConfirming} icon={<Rocket className="size-4" />} eyebrow="Xác nhận kích hoạt" title="Kích hoạt kế hoạch gợi ý?" confirmLabel="Kích hoạt ngay"
-        description={`${selected.length} sản phẩm sẽ hiển thị ở mục Gợi ý cho bạn của ${matched.length} khách hàng, và các khách này sẽ nhận thông báo trong ứng dụng.`} onConfirm={() => { toPlanUpsertRequest(draft); setActivated(true); }}>
+        description={`${selected.length} sản phẩm sẽ hiển thị ở mục Gợi ý cho bạn của ${matchCount} khách hàng, và các khách này sẽ nhận thông báo trong ứng dụng.`} onConfirm={activate}>
         <ol className="space-y-1 rounded-md bg-muted p-3 text-sm">{selected.map((product, index) => <li key={product.id}>{index + 1}. {product.name}</li>)}</ol>
       </ConfirmDialog>
     </>

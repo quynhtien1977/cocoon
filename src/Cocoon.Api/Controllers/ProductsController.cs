@@ -34,6 +34,11 @@ public sealed class ProductsController(AppDbContext db) : ApiStubController
             averageRating, feedbackCount, preferences.Select(x => x.Name).ToArray(), preferences.Select(x => x.Id).ToArray()));
     }
 
+    /// <summary>Active categories for filters such as SegmentFilterBuilder (M9, M14).</summary>
+    [HttpGet("categories"), Authorize(Policy = "RequireManager")]
+    public async Task<IActionResult> Categories(CancellationToken cancellationToken) =>
+        Ok(await db.Set<Category>().Where(c => c.IsActive).OrderBy(c => c.Name).Select(c => new CategoryItem(c.Id, c.Name)).ToListAsync(cancellationToken));
+
     /// <summary>M11. `untagged=true` keeps products without preference tags, the ones recommendations cannot match.</summary>
     [HttpGet("products"), Authorize(Policy = "RequireManager")]
     public async Task<IActionResult> List([FromQuery] ListQuery query, int? categoryId, bool? untagged, CancellationToken cancellationToken)
@@ -120,6 +125,7 @@ public sealed record ProductStatusRequest([Required, EnumDataType(typeof(Product
 /// <summary>Row of M11. Matches apps/web/features/manager/products-service.ts.</summary>
 public sealed record ProductListItem(int Id, string Name, string Sku, int CategoryId, string CategoryName, ProductStatus Status,
     string[] Preferences, double? AverageRating, int FeedbackCount, string Description, string? ImageUrl);
+public sealed record CategoryItem(int Id, string Name);
 public sealed record RatingCount(int Rating, int Count);
 public sealed record ProductInsights(int TotalFeedback, double? AverageRating, IReadOnlyList<RatingCount> RatingDistribution);
 public sealed record ProductVariantItem(int Id, string Name, string Sku, decimal Price, string? ImageUrl);

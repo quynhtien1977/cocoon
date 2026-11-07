@@ -2,14 +2,13 @@
 
 import { useId, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Check, CircleCheck, Save } from "lucide-react";
+import { CircleCheck, Save } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
-import { useApiData } from "@/lib/api/use-api-data";
-import { createCustomer, loadPreferences, type CustomerCreated } from "../api";
+import { createCustomer, type CustomerCreated } from "../api";
 import { genderOptions, toCreateCustomerRequest, validateCustomerDraft } from "../schemas";
 import type { CustomerDraft } from "../types";
 
@@ -27,10 +26,8 @@ export function CustomerCreateForm() {
   const [created, setCreated] = useState<(CustomerCreated & { fullName: string }) | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const preferences = useApiData(loadPreferences, "Chưa tải được danh sách sở thích. Kiểm tra kết nối rồi thử lại.");
   const update = (patch: Partial<CustomerDraft>) => { setDraft((current) => ({ ...current, ...patch })); setCreated(null); setSubmitError(null); };
-  const togglePreference = (value: number) => update({ preferences: draft.preferences.includes(value) ? draft.preferences.filter((item) => item !== value) : [...draft.preferences, value] });
-
+  
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (submitting) return;
@@ -58,7 +55,7 @@ export function CustomerCreateForm() {
 
   return (
     <>
-      <PageHeader eyebrow={s.code} title="Thêm hồ sơ khách hàng mới" description="Tạo hồ sơ và ghi nhận sở thích ban đầu của khách hàng." />
+      <PageHeader eyebrow={s.code} title="Thêm hồ sơ khách hàng mới" description="Tạo hồ sơ với thông tin định danh cơ bản của khách hàng." />
       <form onSubmit={submit} noValidate className="max-w-[1020px] space-y-8 rounded-lg border border-border border-t-4 border-t-gold bg-card p-4 sm:p-8">
         <section aria-labelledby={`${id}-identity`} className="space-y-5">
           <h2 id={`${id}-identity`} className={sectionTitle}><span className="font-bold text-gold-strong">01</span><span aria-hidden="true">/</span>Thông tin định danh cơ bản</h2>
@@ -98,28 +95,7 @@ export function CustomerCreateForm() {
             </div>
           </div>
         </section>
-
-        <section aria-labelledby={`${id}-preferences`} className="space-y-4">
-          <h2 id={`${id}-preferences`} className={sectionTitle}><span className="font-bold text-gold-strong">02</span><span aria-hidden="true">/</span>Sở thích và nhu cầu ban đầu</h2>
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-sm text-muted-foreground">Chọn các nhu cầu chăm sóc da và tóc của khách.</p>
-            <p aria-live="polite" className="shrink-0 text-sm text-muted-foreground">{draft.preferences.length} mục đã chọn</p>
-          </div>
-          {preferences.error && <p role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">{preferences.error}<Button type="button" variant="outline" className="h-12 px-4" onClick={preferences.retry}>Thử lại</Button></p>}
-          {preferences.loading && <p role="status" className="text-sm text-muted-foreground">Đang tải danh sách sở thích…</p>}
-          <div className="flex flex-wrap gap-2">
-            {(preferences.data ?? []).map((preference) => {
-              const selected = draft.preferences.includes(preference.id);
-              return (
-                <button key={preference.id} type="button" aria-pressed={selected} onClick={() => togglePreference(preference.id)}
-                  className={cn("inline-flex min-h-12 items-center gap-1.5 rounded-md border px-3 font-label text-sm uppercase tracking-wider focus-visible:outline-2 focus-visible:outline-ring", selected ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-muted-foreground hover:text-foreground")}>
-                  {selected && <Check className="size-4" aria-hidden="true" />}{preference.name}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
+        
         <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
           <div aria-live="polite" className="min-w-0 text-sm">
             {Object.keys(errors).length > 0 ? <p className="text-destructive">Chưa lưu được: còn {Object.keys(errors).length} lỗi. Sửa các ô được đánh dấu rồi lưu lại.</p>

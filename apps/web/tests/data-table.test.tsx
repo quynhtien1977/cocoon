@@ -59,7 +59,8 @@ test("colored filter selects, synchronizes URL and resets like a native filter",
   render(<Harness tableProps={{ ...props, filters: props.filters!.map(filter => ({ ...filter, colored: true })) }} />);
   const user = userEvent.setup();
   await user.click(screen.getByRole("combobox", { name: "Trạng thái" }));
-  await user.click(screen.getByRole("option", { name: "Hoạt động" }));
+  // The select popup opens asynchronously; wait for it instead of racing the click.
+  await user.click(await screen.findByRole("option", { name: "Hoạt động" }));
   assert.equal(new URLSearchParams(window.location.search).get("filter.active"), "yes");
   assert.equal(screen.getByRole("combobox", { name: "Trạng thái" }).textContent, "Hoạt động");
   await user.click(screen.getByRole("button", { name: "Đặt lại bộ lọc" }));
@@ -109,4 +110,19 @@ test("loading, empty and retry states are accessible", async () => {
   assert.equal(retried, true);
   rerender(<Harness tableProps={{ ...props, data: [] }} />);
   assert.ok(screen.getByRole("heading", { name: "Không có dữ liệu" }));
+});
+
+test("rowHref opens the row's own link from anywhere on the row, but never from a control inside it", () => {
+  const opened: string[] = [];
+  const columns: DataTableProps<Row>["columns"] = [
+    { id: "name", header: "Họ tên", value: (row) => row.name, cell: (row) => <a href={`/rows/${row.id}`} onClick={(event) => { event.preventDefault(); opened.push(`/rows/${row.id}`); }}>{row.name}</a> },
+    { id: "id", header: "Mã", value: (row) => row.id, searchable: false },
+    { id: "actions", header: "Thao tác", value: () => null, searchable: false, cell: () => <button type="button">Xóa</button> },
+  ];
+  render(<Harness tableProps={{ ...props, data: rows.slice(0, 2), filters: [], columns, rowHref: (row) => `/rows/${row.id}` }} />);
+  const row = screen.getByText("Đặng Ánh").closest("tr")!;
+  fireEvent.click(within(row).getByText("1"));
+  assert.deepEqual(opened, ["/rows/1"]);
+  fireEvent.click(within(row).getByRole("button", { name: "Xóa" }));
+  assert.deepEqual(opened, ["/rows/1"]);
 });

@@ -55,7 +55,7 @@ test("profile updates only the supported fields, preserving explicit consent", a
 
 test("preferences use registration groups and preserve unknown or inactive saved IDs", async () => {
   globalThis.fetch = async (url) => Response.json(url === "/api/v1/preferences"
-    ? [{ id: 42, name: "Dry Skin" }, { id: 50, name: "Facial Care" }, { id: 77, name: "Old choice", isActive: false }]
+    ? [{ id: 42, name: "Dry Skin" }, { id: 50, name: "Cấp ẩm" }, { id: 77, name: "Old choice", isActive: false }]
     : { preferenceIds: [42, 77, 99] });
   const result = await loadPreferences();
   assert.deepEqual(result.selected, [42, 77, 99]);

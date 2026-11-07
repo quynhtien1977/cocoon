@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/brand/status-badge";
 import type { SegmentOption } from "@/components/data/segment-filter-builder";
 import { Button } from "@/components/ui/button";
 import { screen } from "@/lib/screens";
+import { endPlan } from "../api";
 import { segmentSummary } from "../schemas";
 import type { PlanProduct, RecommendationPlan } from "../types";
 
@@ -23,6 +24,13 @@ export function PlanDetail({ initial, products, preferences, categories }: { ini
   const [ended, setEnded] = useState(false);
   const selected = plan.productIds.flatMap((id) => products.find((item) => item.id === id) ?? []);
 
+  // ConfirmDialog shows a thrown error and stays open, so the status changes only after the API succeeds.
+  async function end() {
+    await endPlan(plan.id);
+    setPlan((current) => ({ ...current, status: "Ended" }));
+    setEnded(true);
+  }
+
   return (
     <>
       <Link href="/manager/recommendations" className="mb-3 inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Tổng quan gợi ý</Link>
@@ -30,10 +38,10 @@ export function PlanDetail({ initial, products, preferences, categories }: { ini
         <StatusBadge kind="recommendationPlan" status={plan.status} className="self-center whitespace-nowrap" />
         {plan.status === "Active" && (
           <ConfirmDialog portal="manager" title="Kết thúc kế hoạch?" description={`“${plan.name}” sẽ dừng ngay và không chạy lại được. Số liệu đã có vẫn được giữ.`} confirmLabel="Kết thúc kế hoạch"
-            trigger={<Button type="button" variant="outline" className="h-12 px-4 text-destructive"><Lock aria-hidden="true" />Kết thúc kế hoạch</Button>} onConfirm={() => { setPlan((current) => ({ ...current, status: "Ended" })); setEnded(true); }} />
+            trigger={<Button type="button" variant="outline" className="h-12 px-4 text-destructive"><Lock aria-hidden="true" />Kết thúc kế hoạch</Button>} onConfirm={end} />
         )}
       </>} />
-      <div aria-live="polite">{ended && <p className="mb-6 flex items-center gap-2 rounded-md border border-border bg-status-sage-bg p-3 text-sm text-status-sage-fg"><CircleCheck className="size-4 shrink-0" aria-hidden="true" />Đã kết thúc kế hoạch (dữ liệu mẫu, chưa gửi máy chủ).</p>}</div>
+      <div aria-live="polite">{ended && <p className="mb-6 flex items-center gap-2 rounded-md border border-border bg-status-sage-bg p-3 text-sm text-status-sage-fg"><CircleCheck className="size-4 shrink-0" aria-hidden="true" />Đã kết thúc kế hoạch.</p>}</div>
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <section aria-labelledby="plan-info" className={card}>
           <h2 id="plan-info" className="border-b border-border pb-3 font-heading text-lg">Thông tin kế hoạch</h2>
