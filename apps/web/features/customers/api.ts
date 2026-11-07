@@ -26,6 +26,7 @@ export async function loadCustomerDetail(id: number, signal?: AbortSignal): Prom
       state: row.status === "Clicked" || row.status === "Dismissed" ? row.status : "None",
     })),
   };
+}
 
 export const createCustomer = (body: CreateCustomerBody) => apiRequest<CustomerCreated>("/customers", { method: "POST", json: body });
 export const lockCustomer = (id: number) => apiRequest<void>(`/customers/${id}/lock`, { method: "POST" });

@@ -47,7 +47,8 @@ test("shared section excludes the viewed product, shows real details and records
     return Response.json([row, { ...row, id: 72, product: { ...row.product, id: 13, name: "Sản phẩm đang xem" } }]);
   };
   render(inAccount(<RecommendationSection excludeProductId={13} />));
-  const link = await screen.findByRole("link", { name: row.product.name });
+  // Under the full suite the first render can take over the default 1s.
+  const link = await screen.findByRole("link", { name: row.product.name }, { timeout: 5000 });
   assert.equal(link.getAttribute("href"), "/account/products/12");
   assert.equal(screen.queryByText("Sản phẩm đang xem"), null);
   assert.ok(screen.getByText(/162\.000/));
