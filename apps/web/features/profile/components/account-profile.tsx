@@ -1,28 +1,61 @@
 "use client";
 
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
-import { CircleCheck, KeyRound, LoaderCircle, ShieldAlert, UserRound } from "lucide-react";
+import { CircleCheck, Info, KeyRound, LoaderCircle, ShieldAlert } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api/client";
 import { roleLabels } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
-import { changeMyPassword, loadMyProfile, saveMyProfile } from "../api";
+import { changeMyPassword, loadLastLogin, loadManagerStats, loadMyProfile, loadStaffStats, saveMyProfile } from "../api";
 import { validatePasswordDraft, validateProfileDraft } from "../schemas";
 import type { PasswordDraft, ProfileDraft, StaffProfile } from "../types";
 
-const fieldClass = "min-h-12 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-destructive read-only:bg-muted read-only:text-muted-foreground";
+export type ProfileVariant = "staff" | "manager" | "admin";
+
+const fieldClass = "min-h-12 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-destructive read-only:cursor-not-allowed read-only:bg-muted read-only:text-muted-foreground";
 const labelClass = "font-label text-sm uppercase tracking-wider";
 const card = "min-w-0 rounded-lg border border-border bg-card p-4 sm:p-6";
 const emptyPassword: PasswordDraft = { currentPassword: "", newPassword: "", confirmPassword: "" };
+const dateTime = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" });
+
+/** Copy from the Stitch S3, M15 and A4 screens. */
+const variants = {
+  staff: {
+    code: "S3", loginHref: "/login", prefix: "STF",
+    title: "Hồ sơ Nhân viên Chăm sóc khách hàng", description: "Thông tin cá nhân và liên hệ công vụ của nhân viên Cocoon.",
+    notice: "Màn hình hồ sơ phục vụ xác nhận thông tin liên lạc. Hệ thống không cung cấp chức năng đổi mật khẩu tại đây nhằm đảm bảo tính toàn vẹn quản trị nội bộ.",
+    section: "Thông tin định danh nhân sự", note: "Cập nhật họ tên và số điện thoại liên lạc",
+    codeLabel: "Mã nhân viên", emailLabel: "Email nội bộ", phoneLabel: "Số điện thoại liên lạc", reset: "Hủy thay đổi", save: "Lưu thông tin hồ sơ",
+  },
+  manager: {
+    code: "M15", loginHref: "/login", prefix: "MGR",
+    title: "Hồ sơ Quản lý CRM", description: "Thông tin trưởng nhóm điều phối chăm sóc khách hàng và giám sát chất lượng.",
+    notice: "Tính năng đổi mật khẩu không hỗ trợ tại giao diện này. Nếu cần thay đổi thông tin định danh, vui lòng liên hệ Ban Quản trị viên (Admin Console) để xác minh nội bộ.",
+    section: "Thông tin cá nhân & Liên hệ công vụ", note: "Cập nhật thông tin phối hợp liên bộ phận",
+    codeLabel: "Mã quản lý", emailLabel: "Email công tác", phoneLabel: "Số điện thoại trực", reset: "Hủy chỉnh sửa", save: "Cập nhật hồ sơ",
+  },
+  admin: {
+    code: "A4", loginHref: "/admin/login", prefix: "ADM",
+    title: "Hồ sơ quản trị viên", description: "Thông tin tài khoản công vụ của quản trị viên hệ thống Cocoon CRM.",
+    notice: "Hệ thống không kích hoạt tính năng tự đổi mật khẩu trực tiếp tại màn hình này. Mọi thay đổi định danh bảo mật được kiểm soát qua quy trình cấp tài khoản nội bộ.",
+    section: "Thông tin công vụ", note: "Chỉ cập nhật thông tin liên hệ hành chính",
+    codeLabel: "Mã cán bộ quản trị", emailLabel: "Email công vụ", phoneLabel: "Số điện thoại nội bộ", reset: "Khôi phục mặc định", save: "Lưu cập nhật thông tin",
+  },
+} satisfies Record<ProfileVariant, Record<string, string>>;
+
+type Copy = (typeof variants)[ProfileVariant];
+type Stat = { label: string; value: number | null };
 
 const initials = (name: string) => name.trim().split(/\s+/).filter(Boolean).slice(-2).map((part) => part[0]).join("").toUpperCase() || "?";
 const failure = (reason: unknown) => reason instanceof ApiError ? reason.message : "Chưa kết nối được máy chủ. Kiểm tra mạng rồi thử lại.";
+/** Display code derived from the account id, like the API's KH-0001 for customers; accounts have no stored staff code. */
+export const staffCode = (prefix: string, id: number) => `${prefix}-${String(id).padStart(4, "0")}`;
 
-function Field({ id, label, error, hint, children }: { id: string; label: string; error?: string; hint?: string; children: ReactNode }) {
+function Field({ id, label, error, hint, className, children }: { id: string; label: string; error?: string; hint?: string; className?: string; children: ReactNode }) {
   return (
-    <div className="space-y-2">
+    <div className={cn("min-w-0 space-y-2", className)}>
       <label htmlFor={id} className={labelClass}>{label}</label>
       {children}
       {hint && !error && <p id={`${id}-hint`} className="text-xs text-muted-foreground">{hint}</p>}
@@ -31,7 +64,31 @@ function Field({ id, label, error, hint, children }: { id: string; label: string
   );
 }
 
-function ProfileForm({ profile, onSaved }: { profile: StaffProfile; onSaved: (draft: ProfileDraft) => void }) {
+function SummaryCard({ profile, code, rows, stats }: { profile: StaffProfile; code: string; rows: [string, string][]; stats: Stat[] }) {
+  return (
+    <section aria-label="Tóm tắt tài khoản" className={cn(card, "flex flex-col items-center text-center")}>
+      <span aria-hidden="true" className="mb-4 flex size-20 items-center justify-center rounded-full border-2 border-border bg-primary font-heading text-3xl text-primary-foreground">{initials(profile.fullName)}</span>
+      <p className="font-heading text-xl break-words">{profile.fullName || "Chưa đặt tên"}</p>
+      <span className="mt-1 rounded-sm bg-status-beige-bg px-3 py-0.5 font-label text-sm uppercase tracking-wider text-status-beige-fg">{roleLabels[profile.role]}</span>
+      <dl className="mt-4 w-full space-y-2 border-t border-border pt-4 text-left text-sm">
+        <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Mã:</dt><dd className="font-semibold">#{code}</dd></div>
+        {rows.map(([label, value]) => <div key={label} className="flex justify-between gap-3"><dt className="shrink-0 text-muted-foreground">{label}:</dt><dd className="min-w-0 text-right font-semibold wrap-anywhere">{value}</dd></div>)}
+      </dl>
+      {stats.length > 0 && (
+        <dl className="mt-4 grid w-full grid-cols-2 gap-3 border-t border-dashed border-border pt-4">
+          {stats.map((stat) => (
+            <div key={stat.label} className="rounded-md border border-border bg-muted p-3">
+              <dd className="font-heading text-xl lining-nums tabular-nums">{stat.value ?? "—"}</dd>
+              <dt className="mt-0.5 font-label text-xs uppercase tracking-wider text-muted-foreground">{stat.label}</dt>
+            </div>
+          ))}
+        </dl>
+      )}
+    </section>
+  );
+}
+
+function ProfileForm({ profile, code, copy, onSaved }: { profile: StaffProfile; code: string; copy: Copy; onSaved: (draft: ProfileDraft) => void }) {
   const id = useId();
   const saved: ProfileDraft = { fullName: profile.fullName, phone: profile.phone ?? "" };
   const [draft, setDraft] = useState(saved);
@@ -64,33 +121,37 @@ function ProfileForm({ profile, onSaved }: { profile: StaffProfile; onSaved: (dr
 
   return (
     <form onSubmit={submit} noValidate aria-labelledby={`${id}-title`} className={cn(card, "space-y-5")}>
-      <h2 id={`${id}-title`} className="flex items-center gap-2 border-b border-border pb-3 font-heading text-xl"><UserRound className="size-5 text-gold-strong" aria-hidden="true" />Thông tin cá nhân</h2>
-      <Field id={`${id}-fullName`} label="Họ và tên" error={errors.fullName}>
-        <input id={`${id}-fullName`} value={draft.fullName} maxLength={150} required autoComplete="name" onChange={(event) => update({ fullName: event.target.value })} aria-invalid={!!errors.fullName} aria-describedby={describedBy("fullName")} className={fieldClass} />
-      </Field>
-      <Field id={`${id}-phone`} label="Số điện thoại" error={errors.phone} hint="Không bắt buộc.">
-        <input id={`${id}-phone`} type="tel" inputMode="tel" value={draft.phone} maxLength={32} autoComplete="tel" onChange={(event) => update({ phone: event.target.value })} aria-invalid={!!errors.phone} aria-describedby={describedBy("phone", true)} className={fieldClass} />
-      </Field>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border pb-3">
+        <h2 id={`${id}-title`} className="font-heading text-xl">{copy.section}</h2>
+        <p className="text-xs text-muted-foreground">* {copy.note}</p>
+      </div>
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field id={`${id}-email`} label="Email đăng nhập" hint="Liên hệ quản trị viên để đổi email.">
+        <Field id={`${id}-fullName`} label="Họ và tên" error={errors.fullName}>
+          <input id={`${id}-fullName`} value={draft.fullName} maxLength={150} required autoComplete="name" onChange={(event) => update({ fullName: event.target.value })} aria-invalid={!!errors.fullName} aria-describedby={describedBy("fullName")} className={fieldClass} />
+        </Field>
+        <Field id={`${id}-code`} label={copy.codeLabel}>
+          <input id={`${id}-code`} value={code} readOnly className={fieldClass} />
+        </Field>
+        <Field id={`${id}-email`} label={copy.emailLabel} hint="Liên hệ quản trị viên để đổi email.">
           <input id={`${id}-email`} value={profile.email} readOnly aria-describedby={`${id}-email-hint`} className={fieldClass} />
         </Field>
-        <Field id={`${id}-role`} label="Vai trò" hint="Vai trò do quản trị viên phân quyền.">
-          <input id={`${id}-role`} value={roleLabels[profile.role]} readOnly aria-describedby={`${id}-role-hint`} className={fieldClass} />
+        <Field id={`${id}-phone`} label={copy.phoneLabel} error={errors.phone} hint="Không bắt buộc.">
+          <input id={`${id}-phone`} type="tel" inputMode="tel" value={draft.phone} maxLength={32} autoComplete="tel" onChange={(event) => update({ phone: event.target.value })} aria-invalid={!!errors.phone} aria-describedby={describedBy("phone", true)} className={fieldClass} />
         </Field>
       </div>
       <div aria-live="polite" className="text-sm empty:hidden">
-        {problem ? <p role="alert" className="text-destructive">{problem}</p> : status === "saved" ? <p className="flex items-center gap-2 text-status-sage-fg"><CircleCheck className="size-4" aria-hidden="true" />Đã lưu thông tin cá nhân.</p> : null}
+        {problem ? <p role="alert" className="text-destructive">{problem}</p> : status === "saved" ? <p className="flex items-center gap-2 text-status-sage-fg"><CircleCheck className="size-4" aria-hidden="true" />Đã lưu thông tin hồ sơ.</p> : null}
       </div>
       <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-4">
-        <Button type="button" variant="ghost" className="h-12 px-4" onClick={() => { setDraft(saved); setErrors({}); setProblem(null); setStatus("idle"); }}>Hoàn tác</Button>
-        <Button type="submit" className="h-12 px-6" aria-busy={status === "saving"}>{status === "saving" ? <><LoaderCircle className="animate-spin" aria-hidden="true" />Đang lưu…</> : "Lưu thay đổi"}</Button>
+        <Button type="button" variant="outline" className="h-12 px-4" onClick={() => { setDraft(saved); setErrors({}); setProblem(null); setStatus("idle"); }}>{copy.reset}</Button>
+        <Button type="submit" className="h-12 px-6" aria-busy={status === "saving"}>{status === "saving" ? <><LoaderCircle className="animate-spin" aria-hidden="true" />Đang lưu…</> : copy.save}</Button>
       </div>
     </form>
   );
 }
 
-function PasswordForm({ loginHref, required }: { loginHref: string; required: boolean }) {
+/** Only shown while the account still has the temporary password an admin issued (Stitch keeps password changes off this screen). */
+function PasswordForm({ loginHref }: { loginHref: string }) {
   const id = useId();
   const [draft, setDraft] = useState(emptyPassword);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -134,12 +195,14 @@ function PasswordForm({ loginHref, required }: { loginHref: string; required: bo
   );
 
   return (
-    <form onSubmit={submit} noValidate aria-labelledby={`${id}-title`} className={cn(card, "space-y-5", required && "border-status-danger-fg")}>
-      <h2 id={`${id}-title`} className="flex items-center gap-2 border-b border-border pb-3 font-heading text-xl"><KeyRound className="size-5 text-gold-strong" aria-hidden="true" />Đổi mật khẩu</h2>
-      <Field id={`${id}-currentPassword`} label="Mật khẩu hiện tại" error={errors.currentPassword}>{input("currentPassword", "current-password")}</Field>
-      <Field id={`${id}-newPassword`} label="Mật khẩu mới" error={errors.newPassword} hint="8–128 ký tự, có cả chữ và số.">{input("newPassword", "new-password", true)}</Field>
-      <Field id={`${id}-confirmPassword`} label="Nhập lại mật khẩu mới" error={errors.confirmPassword}>{input("confirmPassword", "new-password")}</Field>
-      <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">Sau khi đổi, bạn sẽ được đăng xuất khỏi mọi thiết bị và cần đăng nhập lại.</p>
+    <form onSubmit={submit} noValidate aria-labelledby={`${id}-title`} className={cn(card, "space-y-5 border-status-danger-fg")}>
+      <h2 id={`${id}-title`} className="flex items-center gap-2 border-b border-border pb-3 font-heading text-xl"><KeyRound className="size-5 text-gold-strong" aria-hidden="true" />Đổi mật khẩu tạm</h2>
+      <div className="grid gap-5 sm:grid-cols-3">
+        <Field id={`${id}-currentPassword`} label="Mật khẩu hiện tại" error={errors.currentPassword}>{input("currentPassword", "current-password")}</Field>
+        <Field id={`${id}-newPassword`} label="Mật khẩu mới" error={errors.newPassword} hint="8–128 ký tự, có cả chữ và số.">{input("newPassword", "new-password", true)}</Field>
+        <Field id={`${id}-confirmPassword`} label="Nhập lại mật khẩu mới" error={errors.confirmPassword}>{input("confirmPassword", "new-password")}</Field>
+      </div>
+      <p className="text-sm text-muted-foreground">Sau khi đổi, bạn sẽ được đăng xuất khỏi mọi thiết bị và cần đăng nhập lại.</p>
       {problem && <p role="alert" className="text-sm text-destructive">{problem}</p>}
       <div className="flex justify-end border-t border-border pt-4">
         <Button type="submit" className="h-12 px-6" aria-busy={pending}>{pending ? <><LoaderCircle className="animate-spin" aria-hidden="true" />Đang đổi…</> : "Đổi mật khẩu"}</Button>
@@ -148,20 +211,44 @@ function PasswordForm({ loginHref, required }: { loginHref: string; required: bo
   );
 }
 
+/** Extra figures for the summary card; each fails on its own and shows "—" rather than blocking the page. */
+const statLabels: Record<ProfileVariant, string[]> = {
+  staff: ["Đã giải quyết", "Đang xử lý"],
+  manager: ["Phản hồi đã đóng", "Khảo sát đang mở"],
+  admin: [],
+};
+
+function useSummary(variant: ProfileVariant, profile: StaffProfile | null) {
+  const [values, setValues] = useState<(number | null)[]>([null, null]);
+  const [lastLogin, setLastLogin] = useState<string | null | undefined>(undefined);
+  const accountId = profile?.id;
+  const email = profile?.email;
+  useEffect(() => {
+    if (accountId === undefined || email === undefined) return;
+    const controller = new AbortController();
+    const live = () => !controller.signal.aborted;
+    if (variant === "staff") loadStaffStats(controller.signal).then((data) => live() && setValues([data.resolved, data.inProgress])).catch(() => {});
+    else if (variant === "manager") loadManagerStats(controller.signal).then((data) => live() && setValues([data.closedFeedback, data.openSurveys])).catch(() => {});
+    else loadLastLogin({ id: accountId, email }, controller.signal).then((value) => live() && setLastLogin(value)).catch(() => live() && setLastLogin(null));
+    return () => controller.abort();
+  }, [variant, accountId, email]);
+  const stats: Stat[] = statLabels[variant].map((label, index) => ({ label, value: values[index] ?? null }));
+  return { stats, lastLogin };
+}
+
 export interface AccountProfileProps {
-  /** Screen code shown as the page eyebrow. */
-  code: string;
-  /** Where to sign in again after a password change: /admin/login for admins, /login otherwise. */
-  loginHref: string;
+  variant: ProfileVariant;
   /** Passed in by the route because features/profile must not import features/auth. */
   logout?: ReactNode;
 }
 
-/** Profile for internal accounts (Admin, Manager, Staff): edit name and phone, change password, sign out. */
-export function AccountProfile({ code, loginHref, logout }: AccountProfileProps) {
+/** Profile for internal accounts (Stitch S3, M15, A4): summary card, contact form, and a temporary-password form when required. */
+export function AccountProfile({ variant, logout }: AccountProfileProps) {
+  const copy = variants[variant];
   const [profile, setProfile] = useState<StaffProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const { stats, lastLogin } = useSummary(variant, profile);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -171,41 +258,44 @@ export function AccountProfile({ code, loginHref, logout }: AccountProfileProps)
     return () => controller.abort();
   }, [attempt]);
 
+  const header = <PageHeader eyebrow={copy.code} title={copy.title} description={copy.description} actions={profile ? logout : undefined} />;
+
   if (!profile) {
     return (
       <>
-        <PageHeader eyebrow={code} title="Hồ sơ cá nhân" />
+        {header}
         {error ? (
           <div role="alert" className={cn(card, "space-y-3")}>
             <p className="font-semibold">Chưa tải được hồ sơ.</p>
             <p className="text-sm text-muted-foreground">{error}</p>
             <Button type="button" variant="outline" className="h-12 px-4" onClick={() => { setError(null); setAttempt((value) => value + 1); }}>Thử lại</Button>
           </div>
-        ) : <div role="status" className="space-y-4"><span className="sr-only">Đang tải hồ sơ</span><Skeleton className="h-28 w-full" /><Skeleton className="h-80 w-full" /></div>}
+        ) : <div role="status" className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]"><span className="sr-only">Đang tải hồ sơ</span><Skeleton className="h-80 w-full" /><Skeleton className="h-80 w-full" /></div>}
       </>
     );
   }
 
+  const code = staffCode(copy.prefix, profile.id);
+  const rows: [string, string][] = variant === "admin"
+    ? [["Đăng nhập gần nhất", lastLogin === undefined ? "Đang tải…" : lastLogin ? dateTime.format(new Date(lastLogin)) : "—"]]
+    : [["Email", profile.email]];
+
   return (
     <>
-      <PageHeader eyebrow={code} title="Hồ sơ cá nhân" description="Cập nhật thông tin liên hệ và mật khẩu đăng nhập của bạn." actions={logout} />
-      <section aria-label="Tài khoản" className={cn(card, "mb-6 flex flex-wrap items-center gap-4")}>
-        <span aria-hidden="true" className="flex size-16 shrink-0 items-center justify-center rounded-full bg-secondary font-heading text-2xl text-secondary-foreground">{initials(profile.fullName)}</span>
-        {/* min-w-48 wraps the role badge onto its own line on phones instead of squeezing the email. */}
-        <div className="min-w-48 flex-1">
-          <p className="font-heading text-2xl break-words">{profile.fullName || "Chưa đặt tên"}</p>
-          <p className="text-sm break-all text-muted-foreground">{profile.email}</p>
-        </div>
-        <span className="rounded-sm bg-status-beige-bg px-3 py-1 font-label text-sm uppercase tracking-wider text-status-beige-fg">{roleLabels[profile.role]}</span>
-      </section>
-      {profile.mustChangePassword && (
+      {header}
+      {profile.mustChangePassword ? (
         <p role="alert" className="mb-6 flex gap-2 rounded-md border border-status-danger-fg bg-status-danger-bg p-4 text-sm text-status-danger-fg">
-          <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Bạn đang dùng mật khẩu tạm do quản trị viên cấp. Hãy đổi mật khẩu ngay bên dưới.
+          <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Bạn đang dùng mật khẩu tạm do quản trị viên cấp. Hãy đổi mật khẩu ở cuối trang trước khi tiếp tục làm việc.
         </p>
+      ) : (
+        <p className="mb-6 flex gap-2 rounded-r-md border-l-4 border-gold bg-card p-4 text-sm text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0 text-gold-strong" aria-hidden="true" />{copy.notice}</p>
       )}
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <ProfileForm profile={profile} onSaved={(draft) => setProfile((current) => current && { ...current, fullName: draft.fullName, phone: draft.phone || null })} />
-        <PasswordForm loginHref={loginHref} required={profile.mustChangePassword} />
+      <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <SummaryCard profile={profile} code={code} rows={rows} stats={stats} />
+        <div className="min-w-0 space-y-6">
+          <ProfileForm profile={profile} code={code} copy={copy} onSaved={(draft) => setProfile((current) => current && { ...current, fullName: draft.fullName, phone: draft.phone || null })} />
+          {profile.mustChangePassword && <PasswordForm loginHref={copy.loginHref} />}
+        </div>
       </div>
     </>
   );
