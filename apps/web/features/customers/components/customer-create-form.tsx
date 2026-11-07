@@ -27,7 +27,7 @@ export function CustomerCreateForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const update = (patch: Partial<CustomerDraft>) => { setDraft((current) => ({ ...current, ...patch })); setCreated(null); setSubmitError(null); };
-
+  
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (submitting) return;
@@ -95,7 +95,7 @@ export function CustomerCreateForm() {
             </div>
           </div>
         </section>
-
+        
         <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
           <div aria-live="polite" className="min-w-0 text-sm">
             {Object.keys(errors).length > 0 ? <p className="text-destructive">Chưa lưu được: còn {Object.keys(errors).length} lỗi. Sửa các ô được đánh dấu rồi lưu lại.</p>

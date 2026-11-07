@@ -160,6 +160,7 @@ test("reply validation and request trim the content", () => {
   assert.deepEqual(toReplyRequest("  Nội dung đủ dài.  "), { content: "Nội dung đủ dài." });
 });
 
+
 test("M3 reports invalid fields and posts the customer without preferences", async () => {
   const user = userEvent.setup();
   stubFetch(() => json({ id: 120, email: "ha@example.com", role: "Customer", temporaryPassword: "Tam!1234", mustChangePassword: true }, 201));
@@ -170,7 +171,9 @@ test("M3 reports invalid fields and posts the customer without preferences", asy
   await user.type(screen.getByLabelText(/Họ và tên/), "Nguyễn Thu Hà");
   await user.type(screen.getByLabelText(/^Email/), "ha@example.com");
   await user.type(screen.getByLabelText(/Số điện thoại/), "0912 345 678");
+
   assert.equal(screen.queryByText(/Sở thích và nhu cầu ban đầu/), null);
+
   await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }));
   assert.ok(await screen.findByText(/Đã lưu hồ sơ Nguyễn Thu Hà/));
   assert.ok(screen.getByText("Tam!1234"));
@@ -182,6 +185,7 @@ test("M3 reports invalid fields and posts the customer without preferences", asy
 
 test("M3 shows the API conflict on the email field", async () => {
   const user = userEvent.setup();
+
   stubFetch(() => json({ status: 409, code: "EMAIL_TAKEN", detail: "Email này đã được dùng." }, 409));
   render(<CustomerCreateForm />);
   await user.type(screen.getByLabelText(/Họ và tên/), "Nguyễn Thu Hà");
