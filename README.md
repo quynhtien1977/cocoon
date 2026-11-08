@@ -11,8 +11,9 @@ Monorepo đồ án HTTTDN 841065: Next.js chạy trên host, ASP.NET Core .NET 1
 | `src/Cocoon.Domain` | Entity và enum |
 | `src/Cocoon.Infrastructure` | `AppDbContext`, EF migration, dữ liệu seed (`Seeding/`) |
 | `tests/Cocoon.Tests` | Test backend (xUnit, database `cocoon_tests`) |
-| `db` | `schema.sql` xuất từ migration, `openapi.json`, tài liệu và SQL kiểm chứng seed, `create-app-role.sh` (mount vào container `db` tại `/workspace/db`) |
-| `scripts` | `init-local-env.ps1`, `start-api.sh`, `ef.sh` |
+| `db` | `schema.sql` xuất từ migration, `openapi.json`, tài liệu và SQL kiểm chứng seed, `create-app-role.sh`, `backup.sh`/`restore.sh`/`verify-restore.sql` (mount vào container `db` tại `/workspace/db`) |
+| `scripts` | `init-local-env.ps1`, `start-api.sh`, `ef.sh`, `backup-db.sh`/`.ps1`, `restore-db.sh`/`.ps1` |
+| `backups` | File `.dump` do sao lưu tạo ra, giữ 7 bản gần nhất; không theo dõi trong Git |
 
 ## Trạng thái
 
@@ -136,6 +137,21 @@ rtk docker compose exec api dotnet test
 `db/schema.sql` được xuất từ migration, dùng để dựng **database mới trống**, không chạy đè database đã migrate. Không sửa trực tiếp schema SQL để tạo lịch sử schema khác với EF.
 
 COC-42 bổ sung [bốn view phân tích](db/ANALYTICS_VIEWS.md) qua migration `AddAnalyticsViews`. Sau khi thay đổi dữ liệu đơn/seed, COC-43 cần refresh `mv_product_copurchase` trước khi tính lại gợi ý. Dùng `rtk docker compose exec -T db sh /workspace/db/verify-analytics.sh` để đối chiếu các view với dữ liệu nguồn; không cần thêm service Docker.
+
+## Sao lưu và phục hồi
+
+```powershell
+rtk powershell -File scripts\backup-db.ps1
+rtk powershell -File scripts\restore-db.ps1
+```
+
+Trên Git Bash hoặc Linux dùng `rtk sh scripts/backup-db.sh` và `rtk sh scripts/restore-db.sh` với cùng tham số.
+
+Sao lưu chạy `pg_dump --format=custom` trong container `db`, ghi file `cocoon-<YYYYMMDD>-<HHMMSS>.dump` theo giờ UTC kèm file kiểm kê `.inventory` vào `./backups` và giữ **7 bản gần nhất**. Thư mục `backups/` nằm trong `.gitignore` và `.dockerignore`.
+
+Phục hồi luôn tạo **database mới** rồi tự đối chiếu với kiểm kê lưu lúc sao lưu trên bảng, view, số dòng, index, ràng buộc, sequence và lịch sử migration, kết thúc bằng PASS hoặc FAIL, nên vẫn dùng được khi database chính đã hỏng hoặc không còn. Script từ chối ghi lên database chính và từ chối một database đích đã tồn tại; không có cờ bỏ qua. Service `db` cần mount ghi được `./backups:/workspace/backups`, nên lần đầu phải `rtk docker compose up -d db` để container được tạo lại; volume dữ liệu không bị ảnh hưởng.
+
+Phương án đầy đủ, các chốt an toàn và kết quả đã chạy: [db/BACKUP_RESTORE.md](db/BACKUP_RESTORE.md).
 
 ## Tài khoản demo và giới hạn
 
