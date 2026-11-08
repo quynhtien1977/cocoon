@@ -59,19 +59,24 @@ public sealed class AuthController(AppDbContext db, TokenService tokens, IPasswo
         var email = request.Email.Trim().ToLowerInvariant();
         var account = await db.Set<Account>().SingleOrDefaultAsync(a => a.Email == email, cancellationToken);
         if (account is null) return InvalidCredentials();
-        if (account.LockoutEnd > DateTime.UtcNow)
-            return Fail(StatusCodes.Status403Forbidden, "ACCOUNT_LOCKED", "Tài khoản tạm khóa do đăng nhập sai nhiều lần. Hãy thử lại sau 15 phút.");
-        if (!account.IsActive)
-            return Fail(StatusCodes.Status403Forbidden, "ACCOUNT_DISABLED", "Tài khoản đã bị khóa. Hãy liên hệ Cocoon để được hỗ trợ.");
 
+        // Check the password before revealing lock state, so a wrong password always gets the
+        // same generic 401 and cannot be used to probe which emails exist or are locked.
+        var lockedOut = account.LockoutEnd > DateTime.UtcNow;
         var result = hasher.VerifyHashedPassword(account, account.PasswordHash, request.Password);
         if (result == PasswordVerificationResult.Failed)
         {
-            if (++account.FailedLoginCount >= MaxFailedLogins)
+            // While locked out, further failures neither count nor extend the lockout window.
+            if (!lockedOut && ++account.FailedLoginCount >= MaxFailedLogins)
                 (account.FailedLoginCount, account.LockoutEnd) = (0, DateTime.UtcNow + LockoutDuration);
             await db.SaveChangesAsync(cancellationToken);
             return InvalidCredentials();
         }
+        // A correct password during the lockout is still refused, so guessing cannot continue.
+        if (lockedOut)
+            return Fail(StatusCodes.Status403Forbidden, "ACCOUNT_LOCKED", "Tài khoản tạm khóa do đăng nhập sai nhiều lần. Hãy thử lại sau 15 phút.");
+        if (!account.IsActive)
+            return Fail(StatusCodes.Status403Forbidden, "ACCOUNT_DISABLED", "Tài khoản đã bị khóa. Hãy liên hệ Cocoon để được hỗ trợ.");
         if (result == PasswordVerificationResult.SuccessRehashNeeded)
             account.PasswordHash = hasher.HashPassword(account, request.Password);
         (account.FailedLoginCount, account.LockoutEnd, account.LastLoginAt) = (0, null, DateTime.UtcNow);
