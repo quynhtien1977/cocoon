@@ -16,7 +16,7 @@ namespace Cocoon.Api.Controllers;
 /// </summary>
 [Route("api/v1")]
 [Authorize(Policy = "RequireManager")]
-public sealed class SurveysController(AppDbContext db, CustomerFactsService facts) : ApiStubController
+public sealed class SurveysController(AppDbContext db, CustomerFactsService facts, RecommendationService recommendations) : ApiStubController
 {
     private const string DeletedCustomer = "Khách đã xóa";
 
@@ -198,12 +198,17 @@ public sealed class SurveysController(AppDbContext db, CustomerFactsService fact
             }).ToList()));
     }
 
-    /// <summary>M9: how many active customers a segment reaches, with five of them as a sample.</summary>
+    /// <summary>
+    /// M9/M12: how many active customers a segment reaches, with five of them as a sample. Recommendation plans pass
+    /// consentOnly=true because they only reach customers who consented to personal data use.
+    /// </summary>
     [HttpPost("segments/preview")]
-    public async Task<IActionResult> PreviewSegment(SegmentFilter filter, CancellationToken cancellationToken)
+    public async Task<IActionResult> PreviewSegment(SegmentFilter filter, CancellationToken cancellationToken, [FromQuery] bool consentOnly = false)
     {
         if (SegmentMatcher.Validate(filter) is { } problem) return Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR", problem);
-        var matched = await facts.MatchAsync(filter, cancellationToken);
+        var matched = consentOnly
+            ? (await recommendations.ConsentingFactsAsync(cancellationToken)).Where(c => SegmentMatcher.Matches(c, filter)).ToList()
+            : await facts.MatchAsync(filter, cancellationToken);
         return Ok(new SegmentPreview(matched.Count, matched.OrderBy(c => c.Id).Take(5)
             .Select(c => new SegmentSample(c.Id, $"KH-{c.Id:D4}", c.FullName, c.Email, c.Age, c.Gender)).ToList()));
     }

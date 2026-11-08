@@ -105,6 +105,44 @@ public sealed class RecommendationsApiTests : IClassFixture<DatabaseFixture>, ID
         Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Post, "/api/v1/recommendations/rebuild", customer)).StatusCode);
     }
 
+    [Fact]
+    public async Task Withdrawing_consent_removes_recommendations_and_keeps_the_customer_out_of_plans()
+    {
+        var shop = await Seed();
+        var customer = FoundationFactory.Token("Customer", shop.CustomerId);
+        var manager = FoundationFactory.Token("Manager", shop.ManagerId);
+        await Send(HttpMethod.Put, "/api/v1/me/preferences", customer, new { preferenceIds = new[] { shop.PreferenceId } });
+        Assert.Equal([shop.TaggedId], await ProductIds(customer));
+        object Profile(bool consent) => new { fullName = "Khách A", phone = (string?)null, dateOfBirth = (string?)null, gender = (string?)null,
+            address = (string?)null, consentPersonalData = consent };
+
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Put, "/api/v1/me", customer, Profile(false))).StatusCode);
+        Assert.Empty(await ProductIds(customer));
+        // A full rebuild and the home screen must not bring them back.
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Post, "/api/v1/recommendations/rebuild", manager)).StatusCode);
+        Assert.Empty(await ProductIds(customer));
+        Assert.Equal(0, (await Json(await Send(HttpMethod.Get, "/api/v1/me/home", customer))).GetProperty("recommendations").GetArrayLength());
+
+        // Surveys still reach the customer; recommendation plans do not.
+        var segment = new { preferenceIds = new[] { shop.PreferenceId } };
+        Assert.Equal(1, (await Json(await Send(HttpMethod.Post, "/api/v1/segments/preview", manager, segment))).GetProperty("count").GetInt32());
+        Assert.Equal(0, (await Json(await Send(HttpMethod.Post, "/api/v1/segments/preview?consentOnly=true", manager, segment))).GetProperty("count").GetInt32());
+        var plan = await Json(await Send(HttpMethod.Post, "/api/v1/recommendation-plans", manager, new
+        {
+            name = "Ra mắt", goal = (string?)null, startAt = DateTime.UtcNow.AddDays(-1), endAt = DateTime.UtcNow.AddDays(30), segment, productIds = new[] { shop.HalfTaggedId }
+        }));
+        Assert.Equal(0, plan.GetProperty("recipientCount").GetInt32());
+        Assert.Equal(0, (await Json(await Send(HttpMethod.Post, $"/api/v1/recommendation-plans/{plan.GetProperty("id").GetInt32()}/activate", manager)))
+            .GetProperty("audienceCount").GetInt32());
+
+        // Granting consent again builds them at once; a manager withdrawing it on M3/M4 removes them again.
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Put, "/api/v1/me", customer, Profile(true))).StatusCode);
+        Assert.Contains(shop.TaggedId, await ProductIds(customer));
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Put, $"/api/v1/customers/{shop.CustomerId}", manager,
+            new { fullName = "Khách A", consentPersonalData = false })).StatusCode);
+        Assert.Empty(await ProductIds(customer));
+    }
+
     private async Task<List<int>> ProductIds(string customer) =>
         (await Json(await Send(HttpMethod.Get, "/api/v1/me/recommendations", customer))).EnumerateArray()
         .Select(x => x.GetProperty("product").GetProperty("id").GetInt32()).ToList();
@@ -120,8 +158,10 @@ public sealed class RecommendationsApiTests : IClassFixture<DatabaseFixture>, ID
         var (manager, customer, other) = (Account(AccountRole.Manager), Account(AccountRole.Customer), Account(AccountRole.Customer));
         var (preference, second) = (new Preference { Name = $"Da dầu {tag}" }, new Preference { Name = $"Da khô {tag}" });
         var category = new Category { Name = $"Danh mục {tag}" };
-        db.AddRange(new StaffProfile { Account = manager, FullName = "Quản lý" }, new CustomerProfile { Account = customer, FullName = "Khách A" },
-            new CustomerProfile { Account = other, FullName = "Khách B" }, preference, second, category);
+        // Both customers consented: recommendations are built only for customers who did.
+        db.AddRange(new StaffProfile { Account = manager, FullName = "Quản lý" },
+            new CustomerProfile { Account = customer, FullName = "Khách A", ConsentPersonalData = true },
+            new CustomerProfile { Account = other, FullName = "Khách B", ConsentPersonalData = true }, preference, second, category);
         await db.SaveChangesAsync();
         Product Product(string name, ProductStatus status = ProductStatus.Active) =>
             new() { Name = $"{name} {tag}", NameNormalized = $"{name} {tag}", CategoryId = category.Id, Status = status };

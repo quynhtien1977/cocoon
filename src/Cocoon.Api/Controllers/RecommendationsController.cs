@@ -16,7 +16,7 @@ namespace Cocoon.Api.Controllers;
 /// </summary>
 [Route("api/v1")]
 [Authorize(Policy = "RequireManager")]
-public sealed class RecommendationsController(AppDbContext db, RecommendationService recommendations, CustomerFactsService facts)
+public sealed class RecommendationsController(AppDbContext db, RecommendationService recommendations)
     : ApiStubController
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -163,7 +163,7 @@ public sealed class RecommendationsController(AppDbContext db, RecommendationSer
         var runs = await db.Set<Recommendation>().Where(r => r.PlanId != null && ids.Contains(r.PlanId.Value)).GroupBy(r => r.PlanId!.Value)
             .Select(g => new { PlanId = g.Key, Total = g.Count(), Clicked = g.Count(r => r.Status == RecommendationStatus.Clicked) })
             .ToDictionaryAsync(x => x.PlanId, cancellationToken);
-        var customers = plans.Count == 0 ? [] : await facts.LoadAsync(null, cancellationToken);
+        var customers = plans.Count == 0 ? [] : await recommendations.ConsentingFactsAsync(cancellationToken);
         return plans.Select(p =>
         {
             var segment = RecommendationService.ReadSegment(p.Segment) ?? new SegmentFilter(null, null, null, null, null, null, null);
