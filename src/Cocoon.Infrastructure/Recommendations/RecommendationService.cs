@@ -24,8 +24,15 @@ public sealed class RecommendationService(AppDbContext db, CustomerFactsService 
         var now = DateTime.UtcNow;
         if (customerIds is null)
             await db.Database.ExecuteSqlRawAsync("REFRESH MATERIALIZED VIEW mv_product_copurchase", ct);
-        var customers = await facts.LoadAsync(customerIds, ct);
+        // Recommendations read preferences, purchases and ratings, so only customers who consented get them. Customers in
+        // scope who withdrew consent lose their Active rows below and receive none.
+        var consenting = await ConsentingIdsAsync(customerIds, ct);
+        var customers = (await facts.LoadAsync(customerIds, ct)).Where(c => consenting.Contains(c.Id)).ToList();
         var ids = customers.Select(c => c.Id).ToArray();
+        var withdrawn = await db.Set<CustomerProfile>()
+            .Where(c => !c.ConsentPersonalData && (customerIds == null || customerIds.Contains(c.AccountId)))
+            .Select(c => c.AccountId).ToListAsync(ct);
+        var expire = ids.Concat(withdrawn).ToArray();
 
         var tags = (await db.Set<ProductPreference>().ToListAsync(ct)).ToLookup(x => x.ProductId, x => x.PreferenceId);
         var ratings = await db.Set<Feedback>().GroupBy(f => f.ProductId)
@@ -89,7 +96,7 @@ public sealed class RecommendationService(AppDbContext db, CustomerFactsService 
 
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         // Older Active rows are expired first: a unique index allows one Active row per customer and product.
-        await db.Set<Recommendation>().Where(r => ids.Contains(r.CustomerId) && r.Status == RecommendationStatus.Active)
+        await db.Set<Recommendation>().Where(r => expire.Contains(r.CustomerId) && r.Status == RecommendationStatus.Active)
             .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, RecommendationStatus.Expired), ct);
         db.AddRange(rows);
         await db.SaveChangesAsync(ct);
@@ -129,7 +136,19 @@ public sealed class RecommendationService(AppDbContext db, CustomerFactsService 
 
     /// <summary>Customers matching a plan's segment, for activation notices and targeted rebuilds.</summary>
     public async Task<List<int>> PlanAudienceAsync(RecommendationPlan plan, CancellationToken ct) =>
-        (await facts.MatchAsync(ReadSegment(plan.Segment), ct)).Select(c => c.Id).ToList();
+        (await ConsentingFactsAsync(ct)).Where(c => SegmentMatcher.Matches(c, ReadSegment(plan.Segment))).Select(c => c.Id).ToList();
+
+    /// <summary>Segment facts of customers who consented: plans target them by preferences and purchases.</summary>
+    public async Task<List<CustomerFacts>> ConsentingFactsAsync(CancellationToken ct)
+    {
+        var consenting = await ConsentingIdsAsync(null, ct);
+        return (await facts.LoadAsync(null, ct)).Where(c => consenting.Contains(c.Id)).ToList();
+    }
+
+    private async Task<HashSet<int>> ConsentingIdsAsync(IReadOnlyCollection<int>? customerIds, CancellationToken ct) =>
+        (await db.Set<CustomerProfile>()
+            .Where(c => c.ConsentPersonalData && (customerIds == null || customerIds.Contains(c.AccountId)))
+            .Select(c => c.AccountId).ToListAsync(ct)).ToHashSet();
 
     public static SegmentFilter? ReadSegment(string json) => JsonSerializer.Deserialize<SegmentFilter>(json, Json);
 

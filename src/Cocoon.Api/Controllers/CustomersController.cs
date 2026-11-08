@@ -35,7 +35,12 @@ public sealed class CustomersController(AccountManagementService accounts, Recom
 
     [HttpPut("{id:int}"), ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Update(int id, CustomerInput request, CancellationToken ct)
-    { await accounts.UpdateCustomerAsync(AccountId, id, request, ct); return NoContent(); }
+    {
+        await accounts.UpdateCustomerAsync(AccountId, id, request, ct);
+        // Consent or preferences may have changed; recommendations must follow them (spec 7.3).
+        await recommendations.RebuildAsync([id], ct);
+        return NoContent();
+    }
 
     [HttpPost("{id:int}/lock"), ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Lock(int id, CancellationToken ct)

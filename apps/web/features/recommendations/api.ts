@@ -34,7 +34,7 @@ export async function loadPlanPage(id: number | undefined, signal?: AbortSignal)
   return { plan, products, ...options };
 }
 
-export const previewSegment = (segment: SegmentFilterValue, signal?: AbortSignal) => apiRequest<SegmentPreview>("/segments/preview", { method: "POST", json: segment, signal });
+export const previewSegment = (segment: SegmentFilterValue, signal?: AbortSignal) => apiRequest<SegmentPreview>("/segments/preview?consentOnly=true", { method: "POST", json: segment, signal });
 export const createPlan = (draft: PlanDraft) => apiRequest<RecommendationPlan>("/recommendation-plans", { method: "POST", json: toPlanUpsertRequest(draft) });
 export const updatePlan = (id: number, draft: PlanDraft) => apiRequest<RecommendationPlan>(`/recommendation-plans/${id}`, { method: "PUT", json: toPlanUpsertRequest(draft) });
 export const deletePlan = (id: number) => apiRequest<void>(`/recommendation-plans/${id}`, { method: "DELETE" });

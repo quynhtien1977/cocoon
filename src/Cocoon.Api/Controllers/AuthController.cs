@@ -149,6 +149,7 @@ public sealed class ProfileController(AppDbContext db, RecommendationService rec
         var name = request.FullName.Trim();
         var customer = User.IsInRole("Customer")
             ? await db.Set<CustomerProfile>().SingleOrDefaultAsync(x => x.AccountId == AccountId, cancellationToken) : null;
+        var consentChanged = customer is not null && customer.ConsentPersonalData != request.ConsentPersonalData;
         if (customer is not null)
         {
             (customer.FullName, customer.FullNameNormalized, customer.Phone, customer.DateOfBirth) =
@@ -163,6 +164,8 @@ public sealed class ProfileController(AppDbContext db, RecommendationService rec
             (staff.FullName, staff.Phone) = (name, request.Phone);
         }
         await db.SaveChangesAsync(cancellationToken);
+        // Withdrawing consent removes personal recommendations at once; granting it builds them.
+        if (consentChanged) await recommendations.RebuildAsync([AccountId], cancellationToken);
         return NoContent();
     }
 

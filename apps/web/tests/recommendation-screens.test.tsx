@@ -51,7 +51,7 @@ function stubFetch(respond: Respond = () => undefined) {
     } as Record<string, Response>)[path] ?? json({}, 404);
   }) as typeof fetch;
 }
-const writes = () => requests.filter((item) => item.method !== "GET" && item.url !== "/api/v1/segments/preview").map(({ url, method, body }) => [method, url, body]);
+const writes = () => requests.filter((item) => item.method !== "GET" && !item.url.startsWith("/api/v1/segments/preview")).map(({ url, method, body }) => [method, url, body]);
 const next = () => screen.getByRole("button", { name: "Tiếp tục" });
 const overview = async () => {
   render(withParams("plans.size=50", <RecommendationOverviewPage />));
@@ -152,7 +152,7 @@ test("M14 creates a plan with the chosen products in order, then activates it", 
     ["POST", "/api/v1/recommendation-plans", { name: "Kế hoạch mới", goal: null, startAt: "2026-11-06T00:00:00+07:00", endAt: "2026-12-15T23:59:59+07:00", segment: segment({ preferenceIds: [1] }), productIds: [1, 3, 2] }],
     ["POST", "/api/v1/recommendation-plans/77/activate", undefined],
   ]);
-  assert.ok(requests.some((item) => item.url === "/api/v1/segments/preview" && JSON.stringify(item.body) === JSON.stringify(segment({ preferenceIds: [1] }))));
+  assert.ok(requests.some((item) => item.url === "/api/v1/segments/preview?consentOnly=true" && JSON.stringify(item.body) === JSON.stringify(segment({ preferenceIds: [1] }))));
   assert.equal(window.location.pathname, "/manager/recommendations/plans/77");
 });
 
