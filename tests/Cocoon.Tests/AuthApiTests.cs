@@ -90,6 +90,49 @@ public sealed class AuthApiTests : IClassFixture<DatabaseFixture>, IDisposable
     }
 
     [Fact]
+    public async Task Locked_out_account_with_wrong_password_looks_like_an_unknown_email()
+    {
+        var email = NewEmail();
+        (await Register(email)).Dispose();
+        for (var i = 0; i < 5; i++)
+            (await Post("/api/v1/auth/login", new { email, password = "WrongPass9" })).Dispose();
+        DateTime? lockoutEnd;
+        await using (var db = _database.CreateContext())
+            lockoutEnd = (await db.Set<Account>().SingleAsync(x => x.Email == email)).LockoutEnd;
+
+        using var probe = await Post("/api/v1/auth/login", new { email, password = "WrongPass9" });
+        await AssertProblem(probe, HttpStatusCode.Unauthorized, "INVALID_CREDENTIALS");
+        using var unknown = await Post("/api/v1/auth/login", new { email = NewEmail(), password = "WrongPass9" });
+        await AssertProblem(unknown, HttpStatusCode.Unauthorized, "INVALID_CREDENTIALS");
+
+        await using (var db = _database.CreateContext())
+        {
+            var account = await db.Set<Account>().SingleAsync(x => x.Email == email);
+            Assert.Equal(lockoutEnd, account.LockoutEnd);
+            Assert.Equal(0, account.FailedLoginCount);
+        }
+        using var stillLocked = await Post("/api/v1/auth/login", new { email, password = Password });
+        await AssertProblem(stillLocked, HttpStatusCode.Forbidden, "ACCOUNT_LOCKED");
+    }
+
+    [Fact]
+    public async Task Disabled_account_reveals_its_state_only_to_the_right_password()
+    {
+        var email = NewEmail();
+        (await Register(email)).Dispose();
+        await using (var db = _database.CreateContext())
+        {
+            (await db.Set<Account>().SingleAsync(x => x.Email == email)).IsActive = false;
+            await db.SaveChangesAsync();
+        }
+        using var wrong = await Post("/api/v1/auth/login", new { email, password = "WrongPass9" });
+        await AssertProblem(wrong, HttpStatusCode.Unauthorized, "INVALID_CREDENTIALS");
+        using var right = await Post("/api/v1/auth/login", new { email, password = Password });
+        await AssertProblem(right, HttpStatusCode.Forbidden, "ACCOUNT_DISABLED");
+        Assert.False(right.Headers.Contains("Set-Cookie"));
+    }
+
+    [Fact]
     public async Task Refresh_rotates_token_and_rejects_the_old_one()
     {
         var email = NewEmail();
