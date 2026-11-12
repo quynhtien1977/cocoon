@@ -10,6 +10,7 @@ import { CustomerDetail, CustomerDetailPage } from "../features/customers/compon
 import { toCreateCustomerRequest, validateCustomerDraft } from "../features/customers/schemas";
 import { FeedbackInbox } from "../features/feedback/components/feedback-inbox";
 import { FeedbackProcessing, FeedbackProcessingPage } from "../features/feedback/components/feedback-processing";
+import { FeedbackTimeline } from "../features/feedback/components/feedback-case";
 import { StaffFeedbackList } from "../features/feedback/components/staff-feedback-list";
 import { StaffFeedbackReply } from "../features/feedback/components/staff-feedback-reply";
 import type { FeedbackDetail, FeedbackListItem, FeedbackStatus } from "../features/feedback/types";
@@ -180,6 +181,10 @@ test("M6 displays correct closing label in history according to closedBy", () =>
   assert.ok(screen.getByText("Tự đóng khi hết hạn"));
   u2();
 
+  const { unmount: u3 } = render(<FeedbackProcessing initial={{ ...base, closedBy: "Customer" }} staff={staff} />);
+  assert.ok(screen.getByText("Khách đóng phản hồi"));
+  u3();
+
   render(<FeedbackProcessing initial={{ ...base, closedBy: "Manager" }} staff={staff} />);
   assert.ok(screen.getByText("Quản lý đóng phản hồi"));
 });
@@ -320,4 +325,20 @@ test("M4 keeps the account unlocked when the lock call fails", async () => {
   await user.click(within(dialog).getByRole("button", { name: "Khóa tài khoản" }));
   assert.ok(await within(dialog).findByText("Không thể khóa tài khoản này."));
   assert.equal(screen.queryByRole("button", { name: "Mở khóa", hidden: true }), null);
+});
+
+test("FeedbackTimeline only marks completed steps that have a timestamp", () => {
+  render(
+    <FeedbackTimeline
+      status="Closed"
+      times={{
+        New: "2026-10-20T03:00:00Z",
+        Closed: "2026-10-20T05:00:00Z",
+      }}
+    />
+  );
+  // Unreached steps when closed directly from New show "Chưa tới bước này"
+  assert.equal(screen.getAllByText("Chưa tới bước này").length, 3);
+  assert.ok(screen.getByText("Mới"));
+  assert.ok(screen.getByText("Đã đóng"));
 });

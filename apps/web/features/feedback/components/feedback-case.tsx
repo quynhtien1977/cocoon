@@ -20,11 +20,11 @@ export function FeedbackTimeline({ status, times }: { status: FeedbackStatus; ti
       <h2 id="timeline-title" className="mb-4 font-label text-sm uppercase tracking-wider text-muted-foreground">Tiến trình xử lý (5 bước)</h2>
       <ol className="grid gap-2 sm:grid-cols-5">
         {steps.map((step, index) => {
-          const done = index < current || status === "Closed";
-          const active = index === current && status !== "Closed";
           const time = times[step];
+          const active = index === current && status !== "Closed";
+          const done = Boolean(time) && !active;
           return (
-            <li key={step} aria-current={active ? "step" : undefined} className={cn("flex items-center gap-3 rounded-md border p-3 sm:flex-col sm:items-start", active ? "border-gold bg-status-beige-bg" : "border-border bg-muted", index > current && "opacity-70")}>
+            <li key={step} aria-current={active ? "step" : undefined} className={cn("flex items-center gap-3 rounded-md border p-3 sm:flex-col sm:items-start", active ? "border-gold bg-status-beige-bg" : "border-border bg-muted", !time && !active && "opacity-70")}>
               <span aria-hidden="true" className={cn("flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold", done ? "bg-status-sage-bg text-status-sage-fg" : active ? "bg-primary text-primary-foreground" : "border border-input text-muted-foreground")}>{done ? <Check className="size-4" /> : index + 1}</span>
               <span className="min-w-0 text-sm">
                 <span className="block font-semibold">{statusMap.feedback[step][0]}</span>

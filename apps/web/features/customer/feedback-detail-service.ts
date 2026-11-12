@@ -3,6 +3,7 @@ import { previewOrders } from "./orders-preview";
 
 export type FeedbackReply = { id: number; staffName: string; content: string; createdAt: string; round?: number };
 export type FeedbackFollowUp = { content: string; createdAt: string };
+export type FeedbackEdits = { originalRating: number | null; ratingEditedAt: string | null; contentEditedAt: string | null };
 export type FeedbackDetail = {
   id: number; rating: number; content: string; createdAt: string;
   status: "New" | "Accepted" | "Assigned" | "Replied" | "Closed";
@@ -11,6 +12,11 @@ export type FeedbackDetail = {
   followUp: FeedbackFollowUp | null;
   autoCloseAt: string | null;
   canFollowUp: boolean;
+  edits?: FeedbackEdits;
+  canEditRating?: boolean;
+  ratingEditableUntil?: string | null;
+  canEditContent?: boolean;
+  canClose?: boolean;
 };
 const statuses = ["New", "Accepted", "Assigned", "Replied", "Closed"] as const;
 const validId = (id: unknown): id is number => typeof id === "number" && Number.isInteger(id) && id > 0 && id <= 2147483647;
@@ -40,7 +46,20 @@ export function parseFeedbackDetail(response: unknown, expectedId: number): Feed
   const autoCloseAt = typeof item.autoCloseAt === "string" && validDate(item.autoCloseAt) ? item.autoCloseAt : null;
   const canFollowUp = Boolean(item.canFollowUp);
 
-  return { ...item, status: status!, replies, followUp, autoCloseAt, canFollowUp };
+  let edits: FeedbackEdits = { originalRating: null, ratingEditedAt: null, contentEditedAt: null };
+  if (item.edits && typeof item.edits === "object") {
+    edits = {
+      originalRating: typeof item.edits.originalRating === "number" && Number.isInteger(item.edits.originalRating) && item.edits.originalRating >= 1 && item.edits.originalRating <= 5 ? item.edits.originalRating : null,
+      ratingEditedAt: typeof item.edits.ratingEditedAt === "string" && validDate(item.edits.ratingEditedAt) ? item.edits.ratingEditedAt : null,
+      contentEditedAt: typeof item.edits.contentEditedAt === "string" && validDate(item.edits.contentEditedAt) ? item.edits.contentEditedAt : null,
+    };
+  }
+  const canEditRating = Boolean(item.canEditRating);
+  const ratingEditableUntil = typeof item.ratingEditableUntil === "string" && validDate(item.ratingEditableUntil) ? item.ratingEditableUntil : null;
+  const canEditContent = Boolean(item.canEditContent);
+  const canClose = Boolean(item.canClose);
+
+  return { ...item, status: status!, replies, followUp, autoCloseAt, canFollowUp, edits, canEditRating, ratingEditableUntil, canEditContent, canClose };
 }
 
 function previewFeedback(id: number): FeedbackDetail {
@@ -61,6 +80,15 @@ function previewFeedback(id: number): FeedbackDetail {
     followUp: sampleFollowUp,
     autoCloseAt: autoClose,
     canFollowUp: id === 2,
+    edits: {
+      originalRating: id === 3 ? 4 : null,
+      ratingEditedAt: id === 3 ? created : null,
+      contentEditedAt: id === 2 ? created : null,
+    },
+    canEditRating: id === 4 || id === 2,
+    ratingEditableUntil: new Date(Date.now() + 25 * 86400000).toISOString(),
+    canEditContent: id === 4,
+    canClose: id !== 4,
   };
 }
 
@@ -73,6 +101,33 @@ export async function loadFeedbackDetail(value: string, preview = false, signal?
 
 export async function sendFollowUp(id: number, content: string): Promise<void> {
   await apiRequest<void>(`/me/feedback/${id}/follow-up`, { method: "POST", json: { content } });
+}
+
+export async function editFeedback(id: number, rating: number, content: string): Promise<void> {
+  await apiRequest<void>(`/me/feedback/${id}`, { method: "PUT", json: { rating, content } });
+}
+
+export async function closeFeedback(id: number): Promise<void> {
+  await apiRequest<void>(`/me/feedback/${id}/close`, { method: "POST" });
+}
+
+export function editFeedbackError(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.message) return error.message;
+    if (error.status === 400) return "Nội dung phản hồi cần từ 20 đến 1.000 ký tự.";
+    if (error.status === 404) return "Không tìm thấy phản hồi này.";
+    if (error.status === 409) return "Không thể chỉnh sửa đánh giá vào lúc này.";
+  }
+  return error instanceof Error && error.message ? error.message : "Chưa lưu được đánh giá. Vui lòng thử lại.";
+}
+
+export function closeFeedbackError(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.message) return error.message;
+    if (error.status === 404) return "Không tìm thấy phản hồi này.";
+    if (error.status === 409) return "Phản hồi đã đóng.";
+  }
+  return error instanceof Error && error.message ? error.message : "Chưa đóng được phản hồi. Vui lòng thử lại.";
 }
 
 export function followUpError(error: unknown): string {

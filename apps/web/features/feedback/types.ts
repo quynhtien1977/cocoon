@@ -1,7 +1,13 @@
 // Matches FeedbackListItem and FeedbackDetail in FeedbackController.cs; the API declares no response types, so schema.d.ts has none.
 
 export type FeedbackStatus = "New" | "Accepted" | "Assigned" | "Replied" | "Closed";
-export type FeedbackClosedBy = "Manager" | "SecondReply" | "AutoClose" | null;
+export type FeedbackClosedBy = "Manager" | "SecondReply" | "AutoClose" | "Customer" | null;
+
+export interface FeedbackEdits {
+  originalRating: number | null;
+  ratingEditedAt: string | null;
+  contentEditedAt: string | null;
+}
 
 export interface FeedbackListItem {
   id: number;
@@ -55,4 +61,5 @@ export interface FeedbackDetail extends FeedbackListItem {
   autoCloseAt: string | null;
   closedBy?: FeedbackClosedBy;
   canFollowUp?: boolean;
+  edits?: FeedbackEdits;
 }

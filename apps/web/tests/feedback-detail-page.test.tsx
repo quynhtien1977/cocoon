@@ -97,3 +97,89 @@ test("C5 displays thread with follow-up and round 2 reply in chronological order
   assert.ok(screen.getByText("Cocoon đã tiếp nhận và xử lý xong cho bạn."));
   assert.equal(screen.queryByRole("region", { name: "Gửi thêm ý kiến" }), null);
 });
+
+test("C5 handles edit review with locking when canEditContent is false, rating confirmation, and API errors", async () => {
+  const requests: { url: string; method: string; body: unknown }[] = [];
+  globalThis.fetch = async (url, options) => {
+    requests.push({ url: String(url), method: options?.method ?? "GET", body: options?.body ? JSON.parse(String(options.body)) : undefined });
+    if (options?.method === "PUT") {
+      return new Response(null, { status: 204 });
+    }
+    return Response.json({
+      ...detail,
+      canEditRating: true,
+      ratingEditableUntil: "2026-11-20T10:00:00Z",
+      canEditContent: false,
+    });
+  };
+
+  render(<FeedbackDetailPage id="12" />);
+  const editBtn = await screen.findByRole("button", { name: "Sửa đánh giá" });
+  fireEvent.click(editBtn);
+
+  assert.ok(screen.getByRole("region", { name: "Chỉnh sửa đánh giá" }));
+  const textarea = screen.getByLabelText(/Nội dung nhận xét/);
+  assert.equal((textarea as HTMLTextAreaElement).disabled, true);
+  assert.ok(screen.getByText("Cocoon đã trả lời, bạn có thể gửi thêm ý kiến."));
+  assert.ok(screen.getByText(/Bạn được sửa số sao một lần/));
+
+  const fiveStarRadio = screen.getByRole("radio", { name: "5 sao" });
+  fireEvent.click(fiveStarRadio);
+
+  const saveBtn = screen.getByRole("button", { name: "Lưu thay đổi" });
+  fireEvent.click(saveBtn);
+
+  // Rating confirmation dialog
+  assert.ok(screen.getByText("Xác nhận đổi số sao"));
+  assert.ok(screen.getByText(/Bạn chỉ được sửa số sao một lần duy nhất/));
+  const confirmBtn = screen.getByRole("button", { name: "Xác nhận lưu" });
+  fireEvent.click(confirmBtn);
+
+  assert.ok(await screen.findByText("Đã cập nhật đánh giá thành công."));
+  assert.ok(screen.getByText("Đã sửa từ 4★"));
+  assert.equal(screen.queryByRole("region", { name: "Chỉnh sửa đánh giá" }), null);
+  assert.deepEqual(requests.filter(r => r.method === "PUT"), [
+    { url: "/api/v1/me/feedback/12", method: "PUT", body: { rating: 5, content: detail.content } },
+  ]);
+});
+
+test("C5 handles customer self-close with confirmation and switches to Closed", async () => {
+  const requests: { url: string; method: string }[] = [];
+  globalThis.fetch = async (url, options) => {
+    requests.push({ url: String(url), method: options?.method ?? "GET" });
+    if (options?.method === "POST" && String(url).endsWith("/close")) {
+      return new Response(null, { status: 204 });
+    }
+    return Response.json({
+      ...detail,
+      canClose: true,
+      canFollowUp: true,
+      canEditRating: true,
+      canEditContent: true,
+    });
+  };
+
+  render(<FeedbackDetailPage id="12" />);
+  const closeBtn = await screen.findByRole("button", { name: "Tôi không cần hỗ trợ thêm" });
+  fireEvent.click(closeBtn);
+
+  assert.ok(screen.getByText("Đóng cuộc trao đổi"));
+  assert.ok(screen.getByText(/Đánh giá của bạn vẫn được giữ lại/));
+
+  const confirmCloseBtn = screen.getByRole("button", { name: "Xác nhận đóng" });
+  fireEvent.click(confirmCloseBtn);
+
+  assert.ok(await screen.findByText("Bạn đã hoàn tất cuộc trao đổi. Cảm ơn bạn đã phản hồi cùng Cocoon!"));
+  assert.equal(screen.queryByRole("button", { name: "Tôi không cần hỗ trợ thêm" }), null);
+  assert.equal(screen.queryByRole("region", { name: "Gửi thêm ý kiến" }), null);
+  assert.deepEqual(requests.filter(r => r.method === "POST"), [
+    { url: "/api/v1/me/feedback/12/close", method: "POST" },
+  ]);
+
+  // After close, review content is locked: opening edit form shows disabled textarea
+  const editBtn = screen.getByRole("button", { name: "Sửa đánh giá" });
+  fireEvent.click(editBtn);
+  const contentTextarea = screen.getByLabelText(/Nội dung nhận xét/) as HTMLTextAreaElement;
+  assert.equal(contentTextarea.disabled, true);
+  assert.ok(screen.getByText("Phản hồi đã đóng nên không sửa được nội dung."));
+});
