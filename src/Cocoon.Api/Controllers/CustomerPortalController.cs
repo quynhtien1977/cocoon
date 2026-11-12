@@ -3,12 +3,14 @@ using Cocoon.Application.Recommendations;
 using Cocoon.Application.Surveys;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
+using Cocoon.Infrastructure.Feedbacks;
 using Cocoon.Infrastructure.Persistence;
 using Cocoon.Infrastructure.Recommendations;
 using Cocoon.Infrastructure.Surveys;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace Cocoon.Api.Controllers;
@@ -16,7 +18,8 @@ namespace Cocoon.Api.Controllers;
 /// <summary>Customer self-service. Customer id always comes from the token, never from the URL.</summary>
 [Route("api/v1/me")]
 [Authorize(Policy = "RequireCustomer")]
-public sealed class CustomerPortalController(AppDbContext db, RecommendationService recommendations, CustomerSurveyService surveys) : ApiStubController
+public sealed class CustomerPortalController(AppDbContext db, RecommendationService recommendations, CustomerSurveyService surveys,
+    IOptions<FeedbackOptions> feedbackOptions) : ApiStubController
 {
     [HttpGet("home")]
     public async Task<IActionResult> Home(CancellationToken cancellationToken)
@@ -78,16 +81,94 @@ public sealed class CustomerPortalController(AppDbContext db, RecommendationServ
     {
         var row = await MyFeedback(AccountId).SingleOrDefaultAsync(x => x.F.Id == id, cancellationToken);
         if (row is null) return NotFound();
-        var f = row.F;
+        var (f, now) = (row.F, DateTime.UtcNow);
         var autoCloseAt = f.Status == FeedbackStatus.Replied ? f.AutoCloseAt : null;
+        var ratingUntil = f.CreatedAt.AddDays(feedbackOptions.Value.RatingEditDays);
+        var canEditRating = f.OriginalRating == null && ratingUntil > now;
         return Ok(new MyFeedbackDetail(f.Id, f.Rating, f.Content, f.Status, f.CreatedAt, row.O?.Code ?? "",
             new FeedbackProduct(row.P.Id, row.P.Name, row.V?.Name ?? "", row.V?.ImageUrl),
             await FeedbackController.StatusTimes(db, f, cancellationToken), await FeedbackController.Replies(db, id, cancellationToken))
         {
             FollowUp = FeedbackController.FollowUpOf(f),
             AutoCloseAt = autoCloseAt,
-            CanFollowUp = f.Status == FeedbackStatus.Replied && f.FollowUpAt == null && (autoCloseAt == null || autoCloseAt > DateTime.UtcNow)
+            CanFollowUp = f.Status == FeedbackStatus.Replied && f.FollowUpAt == null && (autoCloseAt == null || autoCloseAt > now),
+            Edits = FeedbackController.EditsOf(f),
+            CanEditRating = canEditRating,
+            RatingEditableUntil = canEditRating ? ratingUntil : null,
+            CanEditContent = ContentEditable(f.Status, f.RepliedAt),
+            CanClose = f.Status != FeedbackStatus.Closed
         });
+    }
+
+    /// <summary>Content is the question staff answer, so it can be rewritten only until the first reply.</summary>
+    private static bool ContentEditable(FeedbackStatus status, DateTime? repliedAt) =>
+        repliedAt == null && status is FeedbackStatus.New or FeedbackStatus.Accepted or FeedbackStatus.Assigned;
+
+    /// <summary>
+    /// The customer's own changes. The rating (a product review) may change once within RatingEditDays of sending, in
+    /// any status; the original is kept. The content (the support question) may change only before the first reply.
+    /// The update is conditional on the state that was checked, so a reply landing in between cannot be overwritten.
+    /// </summary>
+    [HttpPut("feedback/{id:int}")]
+    public async Task<IActionResult> EditFeedback(int id, EditFeedbackRequest request, CancellationToken cancellationToken)
+    {
+        var (me, now) = (AccountId, DateTime.UtcNow);
+        var content = request.Content.Trim();
+        if (content.Length is < 20 or > 1000)
+            return Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Nội dung phản hồi cần từ 20 đến 1.000 ký tự.");
+        var current = await db.Set<Feedback>().AsNoTracking().Where(f => f.Id == id && f.CustomerId == me)
+            .Select(f => new { f.Rating, f.Content, f.Status, f.RepliedAt, f.OriginalRating, f.CreatedAt }).SingleOrDefaultAsync(cancellationToken);
+        if (current is null) return NotFound();
+        var (ratingChanged, contentChanged) = (request.Rating != current.Rating, content != current.Content);
+        if (!ratingChanged && !contentChanged) return NoContent();
+
+        var days = feedbackOptions.Value.RatingEditDays;
+        var ratingFrom = now.AddDays(-days);
+        if (contentChanged && !ContentEditable(current.Status, current.RepliedAt))
+            return EditRefused(current.Status == FeedbackStatus.Closed && current.RepliedAt == null
+                ? "Phản hồi đã đóng nên không sửa được nội dung."
+                : "Cocoon đã trả lời nên không sửa được nội dung. Bạn có thể gửi thêm ý kiến.");
+        if (ratingChanged && current.OriginalRating is not null) return EditRefused("Bạn đã sửa số sao một lần cho đánh giá này.");
+        if (ratingChanged && current.CreatedAt <= ratingFrom) return EditRefused($"Chỉ sửa được số sao trong {days} ngày kể từ khi gửi đánh giá.");
+
+        var target = db.Set<Feedback>().Where(f => f.Id == id && f.CustomerId == me && f.Rating == current.Rating && f.Content == current.Content);
+        if (contentChanged)
+            target = target.Where(f => f.RepliedAt == null
+                && (f.Status == FeedbackStatus.New || f.Status == FeedbackStatus.Accepted || f.Status == FeedbackStatus.Assigned));
+        if (ratingChanged) target = target.Where(f => f.OriginalRating == null && f.CreatedAt > ratingFrom);
+        var updated = await target.ExecuteUpdateAsync(s =>
+        {
+            if (ratingChanged)
+                s.SetProperty(f => f.Rating, request.Rating).SetProperty(f => f.OriginalRating, (int?)current.Rating)
+                    .SetProperty(f => f.RatingEditedAt, (DateTime?)now);
+            if (contentChanged) s.SetProperty(f => f.Content, content).SetProperty(f => f.ContentEditedAt, (DateTime?)now);
+        }, cancellationToken);
+        if (updated != 1)
+            return Fail(StatusCodes.Status409Conflict, "FEEDBACK_CHANGED", "Phản hồi vừa thay đổi. Hãy tải lại trang.");
+        // Spec 7.3: the rating decides which categories are ruled out, so refresh suggestions as on create.
+        if (ratingChanged) await recommendations.RebuildAsync([me], cancellationToken);
+        return NoContent();
+    }
+
+    private IActionResult EditRefused(string message) =>
+        Fail(StatusCodes.Status409Conflict, "FEEDBACK_EDIT_NOT_ALLOWED", message);
+
+    /// <summary>
+    /// "Tôi không cần hỗ trợ thêm": ends the conversation from any open status. The rating and content stay and still
+    /// count in reports and recommendations, so closing is not a way to withdraw a review.
+    /// </summary>
+    [HttpPost("feedback/{id:int}/close")]
+    public async Task<IActionResult> CloseFeedback(int id, CancellationToken cancellationToken)
+    {
+        var (me, now) = (AccountId, DateTime.UtcNow);
+        var updated = await db.Set<Feedback>().Where(f => f.Id == id && f.CustomerId == me && f.Status != FeedbackStatus.Closed)
+            .ExecuteUpdateAsync(s => s.SetProperty(f => f.Status, FeedbackStatus.Closed).SetProperty(f => f.ClosedAt, now)
+                .SetProperty(f => f.ClosedBy, (FeedbackClosedBy?)FeedbackClosedBy.Customer)
+                .SetProperty(f => f.AutoCloseAt, (DateTime?)null), cancellationToken);
+        if (updated == 1) return NoContent();
+        return await db.Set<Feedback>().AnyAsync(f => f.Id == id && f.CustomerId == me, cancellationToken)
+            ? Fail(StatusCodes.Status409Conflict, "FEEDBACK_ALREADY_CLOSED", "Phản hồi đã đóng.")
+            : NotFound();
     }
 
     /// <summary>
@@ -309,7 +390,16 @@ public sealed record MyFeedbackDetail(int Id, int Rating, string Content, Feedba
     public DateTime? AutoCloseAt { get; init; }
     /// <summary>True while the customer may still send their one follow-up.</summary>
     public bool CanFollowUp { get; init; }
+    public FeedbackEdits Edits { get; init; } = new(null, null, null);
+    /// <summary>True while the one rating change is unused and within RatingEditDays of sending.</summary>
+    public bool CanEditRating { get; init; }
+    public DateTime? RatingEditableUntil { get; init; }
+    /// <summary>True until the first reply; afterwards the customer adds a follow-up instead.</summary>
+    public bool CanEditContent { get; init; }
+    /// <summary>True while open: the customer may end the conversation ("Tôi không cần hỗ trợ thêm").</summary>
+    public bool CanClose { get; init; }
 }
 public sealed record FollowUpRequest([Required] string Content);
+public sealed record EditFeedbackRequest([Range(1, 5)] int Rating, [Required] string Content);
 public sealed record CreatedFeedback(int Id);
 public sealed record NotificationItem(int Id, string Type, string Title, string RefType, int RefId, bool IsRead, DateTime CreatedAt);
