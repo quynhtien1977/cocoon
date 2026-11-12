@@ -97,7 +97,8 @@ public sealed class AuthController(AppDbContext db, TokenService tokens, IPasswo
             TokenService.SignOut(Response);
             return Fail(StatusCodes.Status401Unauthorized, "UNAUTHENTICATED", "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.");
         }
-        token.RevokedAt = DateTime.UtcNow;
+        // Keep the first rotation time: a token reused inside the overlap must not restart its own window.
+        token.RevokedAt ??= DateTime.UtcNow;
         tokens.SignIn(Response, account);
         await db.SaveChangesAsync(cancellationToken);
         return NoContent();
@@ -109,7 +110,7 @@ public sealed class AuthController(AppDbContext db, TokenService tokens, IPasswo
         var token = await tokens.FindActiveAsync(Request.Cookies[TokenService.RefreshCookie], cancellationToken);
         if (token is not null)
         {
-            token.RevokedAt = DateTime.UtcNow;
+            TokenService.Expire(token);
             await db.SaveChangesAsync(cancellationToken);
         }
         TokenService.SignOut(Response);
