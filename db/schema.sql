@@ -533,3 +533,25 @@ VALUES ('20261101061301_AddAnalyticsViews', '10.0.12');
 
 COMMIT;
 
+START TRANSACTION;
+DROP INDEX "IX_FeedbackReply_FeedbackId";
+
+ALTER TABLE "FeedbackReply" ADD "Round" integer NOT NULL DEFAULT 1;
+
+ALTER TABLE "Feedback" ADD "AutoCloseAt" timestamp with time zone;
+
+ALTER TABLE "Feedback" ADD "FollowUpAt" timestamp with time zone;
+
+ALTER TABLE "Feedback" ADD "FollowUpContent" character varying(1000);
+
+CREATE UNIQUE INDEX "IX_FeedbackReply_FeedbackId_Round" ON "FeedbackReply" ("FeedbackId", "Round");
+
+ALTER TABLE "FeedbackReply" ADD CONSTRAINT "CK_FeedbackReply_Round" CHECK ("Round" IN (1, 2));
+
+ALTER TABLE "Feedback" ADD CONSTRAINT "CK_Feedback_FollowUp" CHECK (("FollowUpContent" IS NULL) = ("FollowUpAt" IS NULL));
+
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20261112055955_AddFeedbackFollowUpAndAutoClose', '10.0.12');
+
+COMMIT;
+

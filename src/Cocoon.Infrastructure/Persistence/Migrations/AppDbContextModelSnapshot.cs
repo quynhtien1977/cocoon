@@ -217,6 +217,9 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.Property<int?>("AssignedStaffId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("AutoCloseAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("ClosedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -230,6 +233,13 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("CustomerId")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("FollowUpAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FollowUpContent")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<int?>("OrderItemId")
                         .HasColumnType("integer");
@@ -267,6 +277,8 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
 
                     b.ToTable("Feedback", t =>
                         {
+                            t.HasCheckConstraint("CK_Feedback_FollowUp", "(\"FollowUpContent\" IS NULL) = (\"FollowUpAt\" IS NULL)");
+
                             t.HasCheckConstraint("CK_Feedback_Rating", "\"Rating\" BETWEEN 1 AND 5");
                         });
                 });
@@ -321,17 +333,25 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.Property<int>("FeedbackId")
                         .HasColumnType("integer");
 
+                    b.Property<int>("Round")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<int>("StaffId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("FeedbackId")
-                        .IsUnique();
-
                     b.HasIndex("StaffId");
 
-                    b.ToTable("FeedbackReply");
+                    b.HasIndex("FeedbackId", "Round")
+                        .IsUnique();
+
+                    b.ToTable("FeedbackReply", t =>
+                        {
+                            t.HasCheckConstraint("CK_FeedbackReply_Round", "\"Round\" IN (1, 2)");
+                        });
                 });
 
             modelBuilder.Entity("Cocoon.Domain.Entities.Notification", b =>
@@ -1155,8 +1175,8 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Cocoon.Domain.Entities.FeedbackReply", b =>
                 {
                     b.HasOne("Cocoon.Domain.Entities.Feedback", null)
-                        .WithOne()
-                        .HasForeignKey("Cocoon.Domain.Entities.FeedbackReply", "FeedbackId")
+                        .WithMany()
+                        .HasForeignKey("FeedbackId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
