@@ -165,7 +165,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         order.Property(x => x.Channel).HasConversion<string>().HasMaxLength(32);
         order.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
         order.Property(x => x.TotalAmount).HasPrecision(12, 0);
+        order.Property(x => x.ShippingAddress).HasMaxLength(1000);
+        order.HasOne<Account>().WithMany().HasForeignKey(x => x.ConfirmedBy);
+        order.ToTable(table => table.HasCheckConstraint("CK_Order_Confirmed", "(\"ConfirmedAt\" IS NULL) = (\"ConfirmedBy\" IS NULL)"));
         order.HasIndex(x => new { x.CustomerId, x.OrderedAt }).IsDescending(false, true);
+        // The back-office queue lists orders by status, newest first.
+        order.HasIndex(x => new { x.Status, x.OrderedAt }).IsDescending(false, true);
         var orderItem = model.Entity<OrderItem>();
         orderItem.HasKey(x => x.Id);
         orderItem.HasOne<Order>().WithMany().HasForeignKey(x => x.OrderId);
