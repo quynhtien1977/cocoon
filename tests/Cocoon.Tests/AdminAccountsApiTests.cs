@@ -158,7 +158,10 @@ public sealed class AdminAccountsApiTests : AccountApiTestBase
         db.ChangeTracker.Clear();
         Assert.True(await db.Set<CustomerProfile>().AnyAsync(p => p.AccountId == staff));
         Assert.True(await db.Set<StaffProfile>().AnyAsync(p => p.AccountId == staff));
-        Assert.NotNull((await db.Set<RefreshToken>().SingleAsync(t => t.AccountId == staff)).RevokedAt);
+        var roleChanged = await db.Set<RefreshToken>().SingleAsync(t => t.AccountId == staff);
+        Assert.NotNull(roleChanged.RevokedAt);
+        // Expired too, so the refresh rotation overlap cannot keep a re-roled session alive for a few more seconds.
+        Assert.True(roleChanged.ExpiresAt <= DateTime.UtcNow);
         Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Patch, $"/api/v1/admin/accounts/{staff}/status", "Admin", admin, new { isActive = false })).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await Send(HttpMethod.Get, "/api/v1/me", "Customer", staff)).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Delete, $"/api/v1/admin/accounts/{staff}", "Admin", admin)).StatusCode);
@@ -186,6 +189,10 @@ public sealed class AdminAccountsApiTests : AccountApiTestBase
         Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, "/api/v1/me/orders", "Customer", id)).StatusCode);
         await using var db = Database.CreateContext();
         Assert.False((await db.Set<Account>().SingleAsync(a => a.Id == id)).MustChangePassword);
-        Assert.All(await db.Set<RefreshToken>().Where(t => t.AccountId == id).ToListAsync(), t => Assert.NotNull(t.RevokedAt));
+        Assert.All(await db.Set<RefreshToken>().Where(t => t.AccountId == id).ToListAsync(), t =>
+        {
+            Assert.NotNull(t.RevokedAt);
+            Assert.True(t.ExpiresAt <= DateTime.UtcNow);
+        });
     }
 }

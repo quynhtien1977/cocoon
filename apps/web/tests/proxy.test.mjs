@@ -69,3 +69,47 @@ test("prefetch/RSC headers and admin login subpaths cannot bypass guards", async
   denied(await proxy(new NextRequest('http://localhost:3000/admin/activity?_rsc=123', { headers: { cookie: 'access_token=test', rsc: '1', 'next-router-prefetch': '1', 'x-role': 'Admin' } })), '/admin');
   denied(await proxy(request('/admin/login/hidden', 'access_token=test')), '/admin');
 });
+
+const renewedCookies = ["access_token=new-access; expires=Thu, 13 Nov 2026 10:15:00 GMT; path=/; samesite=lax; httponly", "refresh_token=new-refresh; expires=Thu, 20 Nov 2026 10:00:00 GMT; path=/; samesite=lax; httponly"];
+const refreshApi = (refreshResponse, profileRole) => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push([url, options.method, options.headers.Cookie]);
+    if (url.endsWith("/api/v1/auth/refresh")) return refreshResponse();
+    if (options.headers.Cookie === "access_token=new-access") return Response.json({ role: profileRole });
+    return new Response(null, { status: 401 });
+  };
+  return calls;
+};
+
+test("an expired access cookie is renewed with the refresh token and the new pair reaches the browser", async () => {
+  process.env.API_URL = "http://backend.test:5080";
+  const ok = () => new Response(null, { status: 204, headers: renewedCookies.map((value) => ["set-cookie", value]) });
+  for (const cookie of ["refresh_token=old-refresh", "access_token=expired; refresh_token=old-refresh"]) {
+    const calls = refreshApi(ok, "Manager");
+    const response = await proxy(request("/manager/feedback/9", cookie));
+    assert.equal(response.headers.get("x-middleware-next"), "1");
+    assert.deepEqual(response.headers.getSetCookie(), renewedCookies);
+    assert.match(response.headers.get("cache-control"), /no-store/);
+    assert.deepEqual(calls.filter(([url]) => url.endsWith("/auth/refresh")), [["http://backend.test:5080/api/v1/auth/refresh", "POST", "refresh_token=old-refresh"]]);
+    assert.deepEqual(calls.at(-1), ["http://backend.test:5080/api/v1/me", "GET", "access_token=new-access"]);
+  }
+});
+
+test("a failed refresh redirects to login and forwards the API's cookie deletions", async () => {
+  const deletions = ["access_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; httponly", "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; httponly"];
+  refreshApi(() => new Response(null, { status: 401, headers: deletions.map((value) => ["set-cookie", value]) }), "Manager");
+  const response = await proxy(request("/manager", "refresh_token=stolen-or-expired"));
+  denied(response, "/manager");
+  assert.deepEqual(response.headers.getSetCookie(), deletions);
+  // A 204 without a new access cookie is not a session either.
+  refreshApi(() => new Response(null, { status: 204 }), "Manager");
+  denied(await proxy(request("/manager", "refresh_token=odd")), "/manager");
+});
+
+test("a renewed session still needs the portal's role, but keeps its new cookies", async () => {
+  refreshApi(() => new Response(null, { status: 204, headers: renewedCookies.map((value) => ["set-cookie", value]) }), "Customer");
+  const response = await proxy(request("/manager", "refresh_token=customer-refresh"));
+  denied(response, "/manager");
+  assert.deepEqual(response.headers.getSetCookie(), renewedCookies);
+});

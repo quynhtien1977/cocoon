@@ -133,30 +133,62 @@ public sealed class AuthApiTests : IClassFixture<DatabaseFixture>, IDisposable
     }
 
     [Fact]
-    public async Task Refresh_rotates_token_and_rejects_the_old_one()
+    public async Task Refresh_cookie_is_site_wide_and_replaces_the_legacy_path()
     {
-        var email = NewEmail();
-        (await Register(email)).Dispose();
+        using var login = await Post("/api/v1/auth/login", new { email = await Registered(), password = Password });
+        var setCookies = login.Headers.GetValues("Set-Cookie").Select(h => h.ToLowerInvariant()).ToList();
+        // The Next.js proxy reads it on page requests, so it cannot stay scoped to /api/v1/auth.
+        Assert.Contains(setCookies, h => h.StartsWith("refresh_token=") && !h.StartsWith("refresh_token=;") && h.Contains("path=/;") && h.Contains("httponly"));
+        Assert.Contains(setCookies, h => h.StartsWith("refresh_token=;") && h.Contains("path=/api/v1/auth"));
+    }
+
+    [Fact]
+    public async Task Refresh_rotates_and_tolerates_a_concurrent_reuse_but_not_a_late_replay()
+    {
+        var email = await Registered();
         using var login = await Post("/api/v1/auth/login", new { email, password = Password });
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         var first = Cookies(login);
 
         using var refreshed = await Send(HttpMethod.Post, "/api/v1/auth/refresh", first);
         Assert.Equal(HttpStatusCode.NoContent, refreshed.StatusCode);
-        Assert.NotEqual(first["refresh_token"], Cookies(refreshed)["refresh_token"]);
+        var second = Cookies(refreshed);
+        Assert.NotEqual(first["refresh_token"], second["refresh_token"]);
 
-        using var reused = await Send(HttpMethod.Post, "/api/v1/auth/refresh", first);
-        await AssertProblem(reused, HttpStatusCode.Unauthorized, "UNAUTHENTICATED");
+        // A parallel prefetch or a second tab sends the same token before the new cookie lands: still a valid session.
+        using var concurrent = await Send(HttpMethod.Post, "/api/v1/auth/refresh", first);
+        Assert.Equal(HttpStatusCode.NoContent, concurrent.StatusCode);
+
+        // After the overlap window the same replay means the token was copied: refused, and every session ends.
+        await using (var db = _database.CreateContext())
+        {
+            var id = (await db.Set<Account>().SingleAsync(a => a.Email == email)).Id;
+            var past = DateTime.UtcNow - TokenService.RotationOverlap - TimeSpan.FromSeconds(1);
+            await db.Set<RefreshToken>().Where(t => t.AccountId == id && t.RevokedAt != null)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, past));
+        }
+        using var replay = await Send(HttpMethod.Post, "/api/v1/auth/refresh", first);
+        await AssertProblem(replay, HttpStatusCode.Unauthorized, "UNAUTHENTICATED");
+        using var afterTheft = await Send(HttpMethod.Post, "/api/v1/auth/refresh", second);
+        await AssertProblem(afterTheft, HttpStatusCode.Unauthorized, "UNAUTHENTICATED");
     }
 
     [Fact]
-    public async Task Logout_revokes_the_refresh_token()
+    public async Task Logout_revokes_the_refresh_token_without_an_overlap()
     {
         var cookies = Cookies(await Register(NewEmail()));
         using var logout = await Send(HttpMethod.Post, "/api/v1/auth/logout", cookies);
         Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
+        // Immediately, inside what would be the rotation overlap: a logged-out token must not come back.
         using var refresh = await Send(HttpMethod.Post, "/api/v1/auth/refresh", cookies);
         Assert.Equal(HttpStatusCode.Unauthorized, refresh.StatusCode);
+    }
+
+    private async Task<string> Registered()
+    {
+        var email = NewEmail();
+        (await Register(email)).Dispose();
+        return email;
     }
 
     [Fact]

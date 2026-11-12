@@ -150,9 +150,16 @@ public sealed partial class AccountManagementService(AppDbContext db, IAccountPa
             throw new AccountOperationException(409, "LAST_ADMIN", "Phải giữ ít nhất một Admin đang hoạt động.");
     }
 
-    private Task<int> Revoke(int id, CancellationToken ct) => db.Set<RefreshToken>()
-        .Where(t => t.AccountId == id && t.RevokedAt == null)
-        .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, DateTime.UtcNow), ct);
+    /// <summary>
+    /// Ends every session of a locked, deleted or re-roled account. Expiring the rows (not only revoking them) also closes
+    /// the short rotation overlap TokenService grants to concurrent refreshes.
+    /// </summary>
+    private Task<int> Revoke(int id, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        return db.Set<RefreshToken>().Where(t => t.AccountId == id && t.ExpiresAt > now)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, t => t.RevokedAt ?? now).SetProperty(t => t.ExpiresAt, now), ct);
+    }
 
     private void Audit(int actor, int id, string action) => db.Add(new ActivityLog
         { AccountId = actor, EntityId = id, EntityType = "Account", Action = action });
