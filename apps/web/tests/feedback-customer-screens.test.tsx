@@ -21,7 +21,7 @@ afterEach(cleanup);
 const withParams = (search: string, node: ReactNode) => <SearchParamsContext.Provider value={new URLSearchParams(search)}>{node}</SearchParamsContext.Provider>;
 const row = (id: number, status: FeedbackStatus, assigneeId: number | null, rating = 4): FeedbackListItem => ({ id, customerName: `Khách ${id}`, customerCode: `KH-${id}`, orderCode: null, productName: "Gel bí đao", categoryName: "Làm sạch", rating, content: "Nội dung phản hồi", status, assigneeId, assigneeName: assigneeId === 3 ? "Ngô Thị Thu" : assigneeId === 4 ? "Lâm Quốc Bảo" : null, verifiedPurchase: false, createdAt: "2026-10-20T03:00:00Z" });
 const rows = [row(41, "New", null, 2), row(40, "Accepted", null), row(39, "Assigned", 3), row(38, "Assigned", 4), row(37, "Replied", 3), row(36, "Closed", 4)];
-const detail = (item: FeedbackListItem): FeedbackDetail => ({ ...item, customerEmail: "khach@example.com", customerPhone: null, customerOrderCount: 1, customerPreferences: [], sku: "", price: 0, orderCompletedAt: null, statusTimes: { New: item.createdAt }, replies: [] });
+const detail = (item: FeedbackListItem): FeedbackDetail => ({ ...item, customerEmail: "khach@example.com", customerPhone: null, customerOrderCount: 1, customerPreferences: [], sku: "", price: 0, orderCompletedAt: null, statusTimes: { New: item.createdAt }, replies: [], followUp: null, autoCloseAt: null });
 const withStatus = (status: FeedbackStatus) => detail(rows.find((item) => item.status === status)!);
 const staff = [{ id: 3, name: "Ngô Thị Thu" }, { id: 4, name: "Lâm Quốc Bảo" }];
 
@@ -118,6 +118,72 @@ test("M6 closes replied feedback after confirmation and then offers no moves", a
   assert.deepEqual(requests.map(({ url }) => url), ["/api/v1/feedback/37/close"]);
 });
 
+test("M6 displays auto-close deadline and updates days when Replied", async () => {
+  stubFetch((url, init) => {
+    if (init?.method === "PUT" && url.endsWith("/auto-close")) {
+      return json({ autoCloseAt: "2026-11-25T10:00:00Z" });
+    }
+    return new Response(null, { status: 204 });
+  });
+  const user = userEvent.setup();
+  const initial = {
+    ...withStatus("Replied"),
+    autoCloseAt: "2026-11-18T10:00:00Z",
+    followUp: null,
+  };
+  render(<FeedbackProcessing initial={initial} staff={staff} />);
+  assert.ok(screen.getByLabelText("Đổi thời hạn đóng"));
+  assert.ok(screen.getByText(/Thời hạn đóng dự kiến/));
+  const input = screen.getByLabelText("Đổi thời hạn đóng");
+  await user.clear(input);
+  await user.type(input, "14");
+  await user.click(screen.getByRole("button", { name: "Cập nhật" }));
+  assert.ok(await screen.findByText(/Đã cập nhật thời hạn đóng dự kiến/));
+  assert.deepEqual(requests.filter((r) => r.method === "PUT"), [
+    { url: "/api/v1/feedback/37/auto-close", method: "PUT", body: { days: 14 } },
+  ]);
+});
+
+test("M6 reports error when updating auto-close fails and keeps the input", async () => {
+  stubFetch(() => json({ detail: "Trạng thái phản hồi đã thay đổi. Hãy tải lại trang." }, 409));
+  const user = userEvent.setup();
+  const initial = {
+    ...withStatus("Replied"),
+    autoCloseAt: "2026-11-18T10:00:00Z",
+    followUp: null,
+  };
+  render(<FeedbackProcessing initial={initial} staff={staff} />);
+  const input = screen.getByLabelText("Đổi thời hạn đóng");
+  await user.clear(input);
+  await user.type(input, "10");
+  await user.click(screen.getByRole("button", { name: "Cập nhật" }));
+  assert.ok(await screen.findByRole("alert"));
+  assert.ok(screen.getByText("Trạng thái phản hồi đã thay đổi. Hãy tải lại trang."));
+  assert.equal(screen.queryByText(/Đã cập nhật thời hạn đóng dự kiến/), null);
+});
+
+test("M6 displays correct closing label in history according to closedBy", () => {
+  const base = {
+    ...withStatus("Closed"),
+    statusTimes: { ...withStatus("Closed").statusTimes, Closed: "2026-11-05T10:00:00Z" },
+    replies: [
+      { id: 1, staffName: "Lan", content: "Lần 1", createdAt: "2026-10-21T09:00:00Z", round: 1 },
+      { id: 2, staffName: "Lan", content: "Lần 2", createdAt: "2026-10-22T10:00:00Z", round: 2 },
+    ],
+  };
+
+  const { unmount: u1 } = render(<FeedbackProcessing initial={{ ...base, closedBy: "SecondReply" }} staff={staff} />);
+  assert.ok(screen.getByText("Đóng sau câu trả lời lần 2"));
+  u1();
+
+  const { unmount: u2 } = render(<FeedbackProcessing initial={{ ...base, closedBy: "AutoClose" }} staff={staff} />);
+  assert.ok(screen.getByText("Tự đóng khi hết hạn"));
+  u2();
+
+  render(<FeedbackProcessing initial={{ ...base, closedBy: "Manager" }} staff={staff} />);
+  assert.ok(screen.getByText("Quản lý đóng phản hồi"));
+});
+
 test("S1 lists what the staff endpoint returns and links to S2", async () => {
   const mine = rows.filter((item) => item.assigneeId === 3);
   stubFetch(() => page(mine));
@@ -151,6 +217,23 @@ test("S2 keeps the draft and shows the API message when sending fails", async ()
   await user.click(screen.getByRole("button", { name: "Gửi trả lời" }));
   assert.ok(await screen.findByText(/đã thay đổi/));
   assert.equal((screen.getByLabelText(/Câu trả lời/) as HTMLTextAreaElement).value, "Nội dung đủ dài để gửi.");
+});
+
+test("S2 displays follow-up and reply round 2 closes feedback", async () => {
+  stubFetch(() => json({ id: 10, staffName: "Ngô Thị Thu", content: "Cocoon đã giải đáp thắc mắc bổ sung.", createdAt: "2026-11-01T03:00:00Z", round: 2 }, 201));
+  const user = userEvent.setup();
+  const initial = {
+    ...withStatus("Assigned"),
+    followUp: { content: "Khách hỏi thêm về hạn sử dụng.", createdAt: "2026-10-31T10:00:00Z" },
+    replies: [{ id: 9, staffName: "Ngô Thị Thu", content: "Lần 1", createdAt: "2026-10-31T03:00:00Z", round: 1 }],
+  };
+  render(<StaffFeedbackReply initial={initial} />);
+  assert.ok(screen.getAllByText("Khách hỏi thêm về hạn sử dụng.").length >= 1);
+  assert.ok(screen.getByText(/Khách hàng gửi thêm ý kiến phản hồi/));
+  await user.type(screen.getByLabelText(/Câu trả lời/), "Cocoon đã giải đáp thắc mắc bổ sung.");
+  await user.click(screen.getByRole("button", { name: "Gửi trả lời" }));
+  assert.ok(await screen.findByText(/Đã gửi câu trả lời đến khách hàng thành công! Hoàn tất phản hồi/));
+  assert.equal(screen.queryByRole("button", { name: "Gửi trả lời" }), null);
 });
 
 test("reply validation and request trim the content", () => {

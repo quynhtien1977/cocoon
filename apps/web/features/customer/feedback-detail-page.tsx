@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, LoaderCircle, MessageSquare, ShoppingBag } from "lucide-react";
+import { ArrowLeft, CircleCheck, Clock, LoaderCircle, MessageSquare, Send, ShoppingBag } from "lucide-react";
 import { FeedbackThread } from "../../components/brand/feedback-thread";
 import { StatusBadge } from "../../components/brand/status-badge";
-import { feedbackDetailError, loadFeedbackDetail, type FeedbackDetail } from "./feedback-detail-service";
+import { feedbackDetailError, followUpError, loadFeedbackDetail, sendFollowUp, type FeedbackDetail } from "./feedback-detail-service";
+
+const formatDateTime = (value: string) =>
+  new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value));
 
 export function FeedbackDetailPage({ id, preview = false }: { id: string; preview?: boolean }) {
   const [detail, setDetail] = useState<FeedbackDetail | null>(null);
@@ -13,6 +16,12 @@ export function FeedbackDetailPage({ id, preview = false }: { id: string; previe
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [failedImage, setFailedImage] = useState<string | null>(null);
+
+  const [followUpContent, setFollowUpContent] = useState("");
+  const [followUpErrorMsg, setFollowUpErrorMsg] = useState("");
+  const [followUpPending, setFollowUpPending] = useState(false);
+  const [followUpNotice, setFollowUpNotice] = useState<string | null>(null);
+
   useEffect(() => {
     const controller = new AbortController();
     loadFeedbackDetail(id, preview, AbortSignal.any([controller.signal, AbortSignal.timeout(12000)]))
@@ -21,6 +30,50 @@ export function FeedbackDetailPage({ id, preview = false }: { id: string; previe
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [id, preview, attempt]);
+
+  async function handleFollowUpSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const content = followUpContent.trim();
+    if (content.length < 20) {
+      setFollowUpErrorMsg("Nội dung ý kiến cần từ 20 đến 1.000 ký tự.");
+      return;
+    }
+    if (content.length > 1000) {
+      setFollowUpErrorMsg("Nội dung ý kiến tối đa 1.000 ký tự.");
+      return;
+    }
+    setFollowUpErrorMsg("");
+    setFollowUpPending(true);
+    try {
+      if (preview) {
+        setDetail((curr) => curr ? {
+          ...curr,
+          status: "Assigned",
+          canFollowUp: false,
+          autoCloseAt: null,
+          followUp: { content, createdAt: new Date().toISOString() },
+        } : null);
+        setFollowUpNotice("Cocoon đã nhận được ý kiến của bạn.");
+        setFollowUpContent("");
+      } else {
+        await sendFollowUp(detail!.id, content);
+        setDetail((curr) => curr ? {
+          ...curr,
+          status: "Assigned",
+          canFollowUp: false,
+          autoCloseAt: null,
+          followUp: { content, createdAt: new Date().toISOString() },
+        } : null);
+        setFollowUpNotice("Cocoon đã nhận được ý kiến của bạn và sẽ phản hồi trong thời gian sớm nhất.");
+        setFollowUpContent("");
+      }
+    } catch (err) {
+      setFollowUpErrorMsg(followUpError(err));
+    } finally {
+      setFollowUpPending(false);
+    }
+  }
+
   return <div className="pb-8 text-[#302b23]">
     <Link href={`/account/orders?tab=reviewed${preview ? "&preview=1" : ""}`} className="mb-6 inline-flex min-h-11 items-center gap-2 text-sm text-[#806439] hover:underline"><ArrowLeft size={17} />Quay lại đơn hàng đã đánh giá</Link>
     <header className="mb-8"><p className="font-label text-sm uppercase tracking-widest text-[#977c4d]">Cocoon lắng nghe bạn</p><h1 className="mt-3 font-heading text-4xl sm:text-5xl">Chi tiết phản hồi</h1><p className="mt-3 text-sm leading-7 text-[#887c68]">Cảm nhận của bạn và những lời hồi đáp từ Cocoon, trong cùng một cuộc trò chuyện.</p></header>
@@ -35,7 +88,72 @@ export function FeedbackDetailPage({ id, preview = false }: { id: string; previe
         <p className="text-xs uppercase tracking-wide text-[#977c4d]">Sản phẩm đã đánh giá</p><h2 className="mt-3 break-words font-heading text-2xl">{detail.product.name}</h2><p className="mt-2 text-sm text-[#887c68]">{detail.product.variant}</p>
         <dl className="my-6 grid gap-3 border-t border-[#e4dbc9] pt-6 text-sm"><div className="flex flex-wrap justify-between gap-2"><dt className="text-[#887c68]">Đơn hàng</dt><dd>{detail.orderCode || "—"}</dd></div><div className="flex justify-between gap-2"><dt className="text-[#887c68]">Mã phản hồi</dt><dd>#{detail.id}</dd></div></dl><StatusBadge kind="feedback" status={detail.status} />
       </aside>
-      <FeedbackThread rating={detail.rating} content={detail.content} createdAt={detail.createdAt} replies={detail.replies} />
+      <div className="grid min-w-0 gap-6">
+        <FeedbackThread rating={detail.rating} content={detail.content} createdAt={detail.createdAt} replies={detail.replies} followUp={detail.followUp} />
+        {detail.status === "Replied" && detail.autoCloseAt && (
+          <div className="flex items-center gap-2 rounded-md border border-[#dcc9a5] bg-[#fbf8f2] p-4 text-sm text-[#826438]">
+            <Clock size={18} className="shrink-0 text-[#977c4d]" aria-hidden="true" />
+            <span>Thời hạn gửi thêm câu hỏi đến {formatDateTime(detail.autoCloseAt)}</span>
+          </div>
+        )}
+        <div aria-live="polite">
+          {followUpNotice && (
+            <p className="flex items-center gap-2 rounded-md border border-[#c2d7b5] bg-[#f2f7ef] p-4 text-sm text-[#3d652f]">
+              <CircleCheck size={18} className="shrink-0" aria-hidden="true" />
+              {followUpNotice}
+            </p>
+          )}
+        </div>
+        {detail.canFollowUp && (
+          <section aria-label="Gửi thêm ý kiến" className="rounded border border-[#e4dbc9] bg-[#fffcf7] p-4 sm:p-6">
+            <h2 className="font-heading text-xl text-[#302b23]">Gửi thêm ý kiến</h2>
+            <p className="mt-2 text-sm text-[#887c68]">
+              Bạn có thể gửi thêm ý kiến hoặc câu hỏi nếu cần Cocoon hỗ trợ thêm.
+            </p>
+            <form onSubmit={handleFollowUpSubmit} noValidate className="mt-4 space-y-4">
+              <div>
+                <div className="mb-2 flex items-baseline justify-between">
+                  <label htmlFor="follow-up-content" className="text-xs font-semibold uppercase tracking-wide text-[#977c4d]">
+                    Nội dung ý kiến <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-xs tabular-nums text-[#887c68]">
+                    {followUpContent.trim().length}/1.000 ký tự
+                  </span>
+                </div>
+                <textarea
+                  id="follow-up-content"
+                  value={followUpContent}
+                  onChange={(e) => {
+                    setFollowUpContent(e.target.value);
+                    if (followUpErrorMsg) setFollowUpErrorMsg("");
+                  }}
+                  rows={4}
+                  maxLength={1000}
+                  placeholder="Nhập nội dung bạn muốn chia sẻ thêm với Cocoon (từ 20 đến 1.000 ký tự)…"
+                  className="w-full rounded border border-[#d7c9af] bg-white p-3 text-sm focus:border-[#806439] focus:outline-none"
+                  aria-invalid={Boolean(followUpErrorMsg)}
+                  aria-describedby={followUpErrorMsg ? "follow-up-error" : undefined}
+                />
+                {followUpErrorMsg && (
+                  <p id="follow-up-error" role="alert" className="mt-1 text-sm text-red-600">
+                    {followUpErrorMsg}
+                  </p>
+                )}
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={followUpPending}
+                  className="inline-flex min-h-11 items-center gap-2 rounded bg-[#806439] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#69522e] disabled:opacity-50"
+                >
+                  <Send size={16} aria-hidden="true" />
+                  {followUpPending ? "Đang gửi…" : "Gửi ý kiến"}
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
+      </div>
     </div>}
   </div>;
 }
