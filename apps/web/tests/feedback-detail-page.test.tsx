@@ -93,7 +93,7 @@ test("C5 displays thread with follow-up and round 2 reply in chronological order
   render(<FeedbackDetailPage id="12" />);
   assert.ok(await screen.findByText("Mình muốn hỏi thêm về cách bảo quản sản phẩm."));
   assert.ok(screen.getByText("Ý kiến bổ sung của bạn"));
-  assert.ok(screen.getByText("Trả lời lần 2"));
+  assert.ok(screen.getByText("Giải đáp từ Cocoon"));
   assert.ok(screen.getByText("Cocoon đã tiếp nhận và xử lý xong cho bạn."));
   assert.equal(screen.queryByRole("region", { name: "Gửi thêm ý kiến" }), null);
 });
