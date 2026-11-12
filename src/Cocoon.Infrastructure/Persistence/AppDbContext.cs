@@ -87,10 +87,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         feedback.Property(x => x.Content).HasMaxLength(1000);
         feedback.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
         feedback.Property(x => x.FollowUpContent).HasMaxLength(1000);
+        feedback.Property(x => x.ClosedBy).HasConversion<string>().HasMaxLength(32);
         feedback.ToTable(table =>
         {
             table.HasCheckConstraint("CK_Feedback_Rating", "\"Rating\" BETWEEN 1 AND 5");
             table.HasCheckConstraint("CK_Feedback_FollowUp", "(\"FollowUpContent\" IS NULL) = (\"FollowUpAt\" IS NULL)");
+            table.HasCheckConstraint("CK_Feedback_ClosedBy", "\"ClosedBy\" IS NULL OR \"Status\" = 'Closed'");
+            table.HasCheckConstraint("CK_Feedback_RatingEdit",
+                "(\"OriginalRating\" IS NULL) = (\"RatingEditedAt\" IS NULL) AND (\"OriginalRating\" IS NULL OR \"OriginalRating\" BETWEEN 1 AND 5)");
         });
         feedback.HasIndex(x => x.Status);
         feedback.HasIndex(x => x.CustomerId);
