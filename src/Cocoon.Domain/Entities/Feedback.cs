@@ -16,6 +16,11 @@ public sealed class Feedback
     public int? AssignedStaffId { get; set; }
     public DateTime? RepliedAt { get; set; }
     public DateTime? ClosedAt { get; set; }
+    /// <summary>The customer's one follow-up after the first reply; it sends the feedback back to its staff.</summary>
+    public string? FollowUpContent { get; set; }
+    public DateTime? FollowUpAt { get; set; }
+    /// <summary>A Replied feedback closes itself at this time; null means it waits for a manager.</summary>
+    public DateTime? AutoCloseAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 

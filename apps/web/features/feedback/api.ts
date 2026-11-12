@@ -12,4 +12,5 @@ export const loadStaff = (signal?: AbortSignal) => apiRequest<StaffOption[]>("/s
 export const acceptFeedback = (id: number) => apiRequest<void>(`/feedback/${id}/accept`, { method: "POST" });
 export const assignFeedback = (id: number, staffId: number) => apiRequest<void>(`/feedback/${id}/assign`, { method: "POST", json: { staffId } });
 export const closeFeedback = (id: number) => apiRequest<void>(`/feedback/${id}/close`, { method: "POST" });
+export const setAutoClose = (id: number, days: number) => apiRequest<{ autoCloseAt: string }>(`/feedback/${id}/auto-close`, { method: "PUT", json: { days } });
 export const replyToFeedback = (id: number, content: string) => apiRequest<FeedbackReply>(`/feedback/${id}/replies`, { method: "POST", json: toReplyRequest(content) });

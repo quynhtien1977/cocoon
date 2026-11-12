@@ -86,7 +86,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         feedback.HasIndex(x => x.OrderItemId).IsUnique();
         feedback.Property(x => x.Content).HasMaxLength(1000);
         feedback.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
-        feedback.ToTable(table => table.HasCheckConstraint("CK_Feedback_Rating", "\"Rating\" BETWEEN 1 AND 5"));
+        feedback.Property(x => x.FollowUpContent).HasMaxLength(1000);
+        feedback.ToTable(table =>
+        {
+            table.HasCheckConstraint("CK_Feedback_Rating", "\"Rating\" BETWEEN 1 AND 5");
+            table.HasCheckConstraint("CK_Feedback_FollowUp", "(\"FollowUpContent\" IS NULL) = (\"FollowUpAt\" IS NULL)");
+        });
         feedback.HasIndex(x => x.Status);
         feedback.HasIndex(x => x.CustomerId);
         feedback.HasIndex(x => x.AssignedStaffId);
@@ -100,9 +105,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         assignment.HasOne<StaffProfile>().WithMany().HasForeignKey(x => x.AssignedBy);
         var reply = model.Entity<FeedbackReply>();
         reply.HasKey(x => x.Id);
-        reply.HasOne<Feedback>().WithOne().HasForeignKey<FeedbackReply>(x => x.FeedbackId);
+        // At most two replies: one to the feedback, one to the customer's follow-up.
+        reply.HasOne<Feedback>().WithMany().HasForeignKey(x => x.FeedbackId);
+        reply.HasIndex(x => new { x.FeedbackId, x.Round }).IsUnique();
         reply.HasOne<StaffProfile>().WithMany().HasForeignKey(x => x.StaffId);
         reply.Property(x => x.Content).HasMaxLength(4000);
+        reply.Property(x => x.Round).HasDefaultValue(1);
+        reply.ToTable(table => table.HasCheckConstraint("CK_FeedbackReply_Round", "\"Round\" IN (1, 2)"));
 
         var survey = model.Entity<Survey>();
         survey.HasKey(x => x.Id);

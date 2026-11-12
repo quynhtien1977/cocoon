@@ -1,6 +1,7 @@
 // Matches FeedbackListItem and FeedbackDetail in FeedbackController.cs; the API declares no response types, so schema.d.ts has none.
 
 export type FeedbackStatus = "New" | "Accepted" | "Assigned" | "Replied" | "Closed";
+export type FeedbackClosedBy = "Manager" | "SecondReply" | "AutoClose" | null;
 
 export interface FeedbackListItem {
   id: number;
@@ -23,7 +24,18 @@ export interface FeedbackListItem {
 
 export interface StaffOption { id: number; name: string }
 
-export interface FeedbackReply { id: number; staffName: string; content: string; createdAt: string }
+export interface FeedbackReply {
+  id: number;
+  staffName: string;
+  content: string;
+  createdAt: string;
+  round?: number;
+}
+
+export interface FeedbackFollowUp {
+  content: string;
+  createdAt: string;
+}
 
 /** GET feedback/{id} for M6 and S2. */
 export interface FeedbackDetail extends FeedbackListItem {
@@ -39,4 +51,8 @@ export interface FeedbackDetail extends FeedbackListItem {
   /** When each step was reached; missing steps are still ahead. */
   statusTimes: Partial<Record<FeedbackStatus, string>>;
   replies: FeedbackReply[];
+  followUp: FeedbackFollowUp | null;
+  autoCloseAt: string | null;
+  closedBy?: FeedbackClosedBy;
+  canFollowUp?: boolean;
 }

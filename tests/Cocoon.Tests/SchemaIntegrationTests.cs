@@ -77,17 +77,37 @@ public sealed class SchemaIntegrationTests : IClassFixture<DatabaseFixture>
     });
 
     [Fact]
-    public Task Feedback_allows_only_one_official_reply() => InTransaction(async db =>
+    public Task Feedback_allows_one_reply_per_round() => InTransaction(async db =>
     {
         var (customer, staff, product, _) = await AddParents(db);
         var feedback = new Feedback { CustomerId = customer, ProductId = product, Rating = 4, Content = "Phản hồi thử nghiệm" };
         db.Add(feedback);
         await db.SaveChangesAsync();
         db.Add(new FeedbackReply { FeedbackId = feedback.Id, StaffId = staff, Content = "Trả lời 1" });
+        db.Add(new FeedbackReply { FeedbackId = feedback.Id, StaffId = staff, Round = 2, Content = "Trả lời phản hồi bổ sung" });
         await db.SaveChangesAsync();
         db.ChangeTracker.Clear(); // Simulate a second request; exercise the database unique index.
-        db.Add(new FeedbackReply { FeedbackId = feedback.Id, StaffId = staff, Content = "Trả lời 2" });
+        db.Add(new FeedbackReply { FeedbackId = feedback.Id, StaffId = staff, Content = "Trả lời 1 lần nữa" });
         await AssertConstraint(db, PostgresErrorCodes.UniqueViolation);
+    });
+
+    [Fact]
+    public Task Feedback_reply_round_is_one_or_two() => InTransaction(async db =>
+    {
+        var (customer, staff, product, _) = await AddParents(db);
+        var feedback = new Feedback { CustomerId = customer, ProductId = product, Rating = 4, Content = "Phản hồi thử nghiệm" };
+        db.Add(feedback);
+        await db.SaveChangesAsync();
+        db.Add(new FeedbackReply { FeedbackId = feedback.Id, StaffId = staff, Round = 3, Content = "Trả lời thứ ba" });
+        await AssertConstraint(db, PostgresErrorCodes.CheckViolation);
+    });
+
+    [Fact]
+    public Task Feedback_follow_up_needs_both_content_and_time() => InTransaction(async db =>
+    {
+        var (customer, _, product, _) = await AddParents(db);
+        db.Add(new Feedback { CustomerId = customer, ProductId = product, Rating = 4, Content = "Phản hồi thử nghiệm", FollowUpContent = "Thiếu thời gian" });
+        await AssertConstraint(db, PostgresErrorCodes.CheckViolation);
     });
 
     [Fact]

@@ -10,6 +10,8 @@ using Cocoon.Infrastructure.Accounts;
 using Cocoon.Application.Reports;
 using Cocoon.Infrastructure.Reports;
 using Cocoon.Infrastructure.Surveys;
+using Cocoon.Api.Feedbacks;
+using Cocoon.Infrastructure.Feedbacks;
 using Cocoon.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Cocoon.Infrastructure.Persistence;
@@ -55,6 +57,10 @@ builder.Services.AddScoped<CustomerFactsService>();
 builder.Services.AddScoped<RecommendationService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<CustomerSurveyService>();
+builder.Services.AddOptions<FeedbackOptions>().BindConfiguration("Feedback")
+    .Validate(o => o.AutoCloseDays is >= FeedbackOptions.MinDays and <= FeedbackOptions.MaxDays, "Feedback:AutoCloseDays must be 1-30.")
+    .ValidateOnStart();
+builder.Services.AddHostedService<FeedbackAutoCloseWorker>();
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     // Controller Problem(statusCode: x) sets Status before the response status is written.
     ApiProblems.Customize(context.ProblemDetails, context.ProblemDetails.Status ?? context.HttpContext.Response.StatusCode));
