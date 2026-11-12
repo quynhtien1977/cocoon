@@ -54,6 +54,7 @@ public sealed class FeedbackController(AppDbContext db, IOptions<FeedbackOptions
         if (row is null) return NotFound();
         var customerId = row.F.CustomerId;
         var deleted = IsDeleted(row);
+        var replies = await Replies(db, id, cancellationToken);
         return Ok(new FeedbackDetail(ToItem(row))
         {
             CustomerEmail = deleted ? "" : row.A!.Email,
@@ -65,14 +66,25 @@ public sealed class FeedbackController(AppDbContext db, IOptions<FeedbackOptions
             Price = row.I?.UnitPrice ?? row.V?.Price ?? 0,
             OrderCompletedAt = row.O is { Status: OrderStatus.Completed } ? row.O.OrderedAt : null,
             StatusTimes = await StatusTimes(db, row.F, cancellationToken),
-            Replies = await Replies(db, id, cancellationToken),
+            Replies = replies,
             FollowUp = FollowUpOf(row.F),
-            AutoCloseAt = row.F.Status == FeedbackStatus.Replied ? row.F.AutoCloseAt : null
+            AutoCloseAt = row.F.Status == FeedbackStatus.Replied ? row.F.AutoCloseAt : null,
+            ClosedBy = ClosedByOf(row.F, replies)
         });
     }
 
     internal static FeedbackFollowUp? FollowUpOf(Feedback f) =>
         f is { FollowUpContent: { } content, FollowUpAt: { } at } ? new FeedbackFollowUp(content, at) : null;
+
+    /// <summary>
+    /// How a Closed feedback was closed, derived without a stored column: a round-2 reply closes it; the sweep writes
+    /// ClosedAt = AutoCloseAt; anything else is a manager's close (a manual close keeps the deadline but at another time).
+    /// </summary>
+    internal static FeedbackClosedBy? ClosedByOf(Feedback f, IEnumerable<FeedbackReplyItem> replies) =>
+        f.Status != FeedbackStatus.Closed ? null
+        : replies.Any(r => r.Round == 2) ? FeedbackClosedBy.SecondReply
+        : f.AutoCloseAt is { } due && f.ClosedAt == due ? FeedbackClosedBy.AutoClose
+        : FeedbackClosedBy.Manager;
 
     [HttpPost("feedback/{id:int}/accept"), Authorize(Policy = "RequireManager")]
     public async Task<IActionResult> Accept(int id, CancellationToken cancellationToken)
@@ -277,6 +289,7 @@ public sealed record SetAutoCloseRequest(int Days);
 public sealed record AutoCloseResult(DateTime AutoCloseAt);
 /// <summary>The customer's single follow-up, sent after the first reply.</summary>
 public sealed record FeedbackFollowUp(string Content, DateTime CreatedAt);
+public enum FeedbackClosedBy { Manager, SecondReply, AutoClose }
 
 /// <summary>Row of M5 and S1. Matches apps/web/features/feedback/types.ts.</summary>
 public record FeedbackListItem(int Id, int CustomerId, string CustomerName, string? OrderCode, int ProductId, string ProductName,
@@ -303,4 +316,6 @@ public sealed record FeedbackDetail : FeedbackListItem
     public required FeedbackFollowUp? FollowUp { get; init; }
     /// <summary>When a Replied feedback closes itself; null when no deadline applies.</summary>
     public required DateTime? AutoCloseAt { get; init; }
+    /// <summary>Set only when Closed: Manager, SecondReply or AutoClose.</summary>
+    public required FeedbackClosedBy? ClosedBy { get; init; }
 }

@@ -159,6 +159,7 @@ public sealed class FeedbackApiTests : IClassFixture<DatabaseFixture>, IDisposab
         Assert.Equal("Assigned", waiting.GetProperty("status").GetString());
         Assert.Equal(FollowUp, waiting.GetProperty("followUp").GetProperty("content").GetString());
         Assert.Equal(JsonValueKind.Null, waiting.GetProperty("autoCloseAt").ValueKind);
+        Assert.Equal(JsonValueKind.Null, waiting.GetProperty("closedBy").ValueKind);
         Assert.False((await Json(await Send(HttpMethod.Get, $"/api/v1/me/feedback/{id}", customer))).GetProperty("canFollowUp").GetBoolean());
         await AssertProblem(await Send(HttpMethod.Post, $"/api/v1/feedback/{id}/close", manager), HttpStatusCode.Conflict, "INVALID_FEEDBACK_STATUS");
         Assert.Equal(HttpStatusCode.NotFound,
@@ -177,6 +178,7 @@ public sealed class FeedbackApiTests : IClassFixture<DatabaseFixture>, IDisposab
         Assert.False(closed.GetProperty("canFollowUp").GetBoolean());
         await AssertProblem(await Send(HttpMethod.Post, $"/api/v1/me/feedback/{id}/follow-up", customer, new { content = FollowUp }),
             HttpStatusCode.Conflict, "FOLLOW_UP_NOT_ALLOWED");
+        Assert.Equal("SecondReply", (await Json(await Send(HttpMethod.Get, $"/api/v1/feedback/{id}", manager))).GetProperty("closedBy").GetString());
         await using var db = _database.CreateContext();
         Assert.Equal(2, await db.Set<Notification>().CountAsync(n => n.RefType == nameof(Feedback) && n.RefId == id));
     }
@@ -204,6 +206,8 @@ public sealed class FeedbackApiTests : IClassFixture<DatabaseFixture>, IDisposab
         var row = await db.Set<Feedback>().AsNoTracking().SingleAsync(f => f.Id == id);
         Assert.Equal(FeedbackStatus.Closed, row.Status);
         Assert.Equal(due, row.ClosedAt!.Value, TimeSpan.FromMilliseconds(1));
+        Assert.Equal("AutoClose", (await Json(await Send(HttpMethod.Get, $"/api/v1/feedback/{id}",
+            FoundationFactory.Token("Manager", shop.ManagerId)))).GetProperty("closedBy").GetString());
     }
 
     [Fact]
@@ -249,7 +253,10 @@ public sealed class FeedbackApiTests : IClassFixture<DatabaseFixture>, IDisposab
         var detail = await Json(await Send(HttpMethod.Get, $"/api/v1/feedback/{id}", manager));
         Assert.Equal(moved, detail.GetProperty("autoCloseAt").GetDateTime(), TimeSpan.FromMilliseconds(1));
 
+        Assert.Equal(JsonValueKind.Null, detail.GetProperty("closedBy").ValueKind);
         Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Post, $"/api/v1/feedback/{id}/close", manager)).StatusCode);
+        // A manual close keeps the old deadline, so closedBy must not read it as an auto-close.
+        Assert.Equal("Manager", (await Json(await Send(HttpMethod.Get, $"/api/v1/feedback/{id}", manager))).GetProperty("closedBy").GetString());
         await AssertProblem(await Send(HttpMethod.Put, path, manager, new { days = 3 }), HttpStatusCode.Conflict, "INVALID_FEEDBACK_STATUS");
         Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Put, "/api/v1/feedback/2147483000/auto-close", manager, new { days = 3 })).StatusCode);
     }
