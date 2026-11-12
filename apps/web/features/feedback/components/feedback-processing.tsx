@@ -20,6 +20,7 @@ const dateTime = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-di
 const actionClass = "h-12 px-4";
 
 function closedByLabel(closedBy: FeedbackDetail["closedBy"], hasSecondReply: boolean) {
+  if (closedBy === "Customer") return "Khách đóng phản hồi";
   if (closedBy === "SecondReply") return "Đóng sau câu trả lời lần 2";
   if (closedBy === "AutoClose") return "Tự đóng khi hết hạn";
   if (closedBy === "Manager") return "Quản lý đóng phản hồi";
@@ -144,7 +145,7 @@ export function FeedbackProcessing({ initial, staff }: { initial: FeedbackDetail
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-6">
           <FeedbackTimeline status={status} times={feedback.statusTimes} />
-          <FeedbackThread rating={feedback.rating} content={feedback.content} createdAt={feedback.createdAt} replies={feedback.replies} followUp={feedback.followUp} customerHeading={`Phản hồi của ${feedback.customerName}`} emptyReplies="Chưa có câu trả lời nào cho khách." />
+          <FeedbackThread rating={feedback.rating} content={feedback.content} createdAt={feedback.createdAt} replies={feedback.replies} followUp={feedback.followUp} edits={feedback.edits} customerHeading={`Phản hồi của ${feedback.customerName}`} emptyReplies="Chưa có câu trả lời nào cho khách." />
           <p className="flex gap-2 rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Nhân viên được giao trả lời khách ở màn S2. Quản lý theo dõi và điều phối tại đây.</p>
         </div>
         <div className="min-w-0 space-y-6">

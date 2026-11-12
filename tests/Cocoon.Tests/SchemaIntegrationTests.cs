@@ -111,6 +111,22 @@ public sealed class SchemaIntegrationTests : IClassFixture<DatabaseFixture>
     });
 
     [Fact]
+    public Task Feedback_closed_by_is_set_only_on_closed_feedback() => InTransaction(async db =>
+    {
+        var (customer, _, product, _) = await AddParents(db);
+        db.Add(new Feedback { CustomerId = customer, ProductId = product, Rating = 4, Content = "Phản hồi thử nghiệm", ClosedBy = FeedbackClosedBy.Customer });
+        await AssertConstraint(db, PostgresErrorCodes.CheckViolation);
+    });
+
+    [Fact]
+    public Task Feedback_rating_edit_keeps_original_and_time_together() => InTransaction(async db =>
+    {
+        var (customer, _, product, _) = await AddParents(db);
+        db.Add(new Feedback { CustomerId = customer, ProductId = product, Rating = 5, Content = "Phản hồi thử nghiệm", OriginalRating = 2 });
+        await AssertConstraint(db, PostgresErrorCodes.CheckViolation);
+    });
+
+    [Fact]
     public Task Soft_delete_hides_customer_but_preserves_feedback_and_history() => InTransaction(async db =>
     {
         var (customer, _, product, _) = await AddParents(db);

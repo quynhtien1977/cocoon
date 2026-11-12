@@ -69,19 +69,23 @@ public sealed class FeedbackController(AppDbContext db, IOptions<FeedbackOptions
             Replies = replies,
             FollowUp = FollowUpOf(row.F),
             AutoCloseAt = row.F.Status == FeedbackStatus.Replied ? row.F.AutoCloseAt : null,
-            ClosedBy = ClosedByOf(row.F, replies)
+            ClosedBy = ClosedByOf(row.F, replies),
+            Edits = EditsOf(row.F)
         });
     }
+
+    internal static FeedbackEdits EditsOf(Feedback f) => new(f.OriginalRating, f.RatingEditedAt, f.ContentEditedAt);
 
     internal static FeedbackFollowUp? FollowUpOf(Feedback f) =>
         f is { FollowUpContent: { } content, FollowUpAt: { } at } ? new FeedbackFollowUp(content, at) : null;
 
     /// <summary>
-    /// How a Closed feedback was closed, derived without a stored column: a round-2 reply closes it; the sweep writes
-    /// ClosedAt = AutoCloseAt; anything else is a manager's close (a manual close keeps the deadline but at another time).
+    /// How a Closed feedback was closed. Every close path stores it since 13/11/2026; rows closed earlier are inferred:
+    /// a round-2 reply closes it; the sweep writes ClosedAt = AutoCloseAt; anything else is a manager's close.
     /// </summary>
     internal static FeedbackClosedBy? ClosedByOf(Feedback f, IEnumerable<FeedbackReplyItem> replies) =>
         f.Status != FeedbackStatus.Closed ? null
+        : f.ClosedBy is { } stored ? stored
         : replies.Any(r => r.Round == 2) ? FeedbackClosedBy.SecondReply
         : f.AutoCloseAt is { } due && f.ClosedAt == due ? FeedbackClosedBy.AutoClose
         : FeedbackClosedBy.Manager;
@@ -126,7 +130,8 @@ public sealed class FeedbackController(AppDbContext db, IOptions<FeedbackOptions
         var now = DateTime.UtcNow;
         var updated = await db.Set<Feedback>()
             .Where(f => f.Id == id && (f.Status == FeedbackStatus.Accepted || f.Status == FeedbackStatus.Replied))
-            .ExecuteUpdateAsync(s => s.SetProperty(f => f.Status, FeedbackStatus.Closed).SetProperty(f => f.ClosedAt, now), cancellationToken);
+            .ExecuteUpdateAsync(s => s.SetProperty(f => f.Status, FeedbackStatus.Closed).SetProperty(f => f.ClosedAt, now)
+                .SetProperty(f => f.ClosedBy, (FeedbackClosedBy?)FeedbackClosedBy.Manager), cancellationToken);
         return updated == 1 ? NoContent() : await TransitionFailed(id, cancellationToken);
     }
 
@@ -156,7 +161,8 @@ public sealed class FeedbackController(AppDbContext db, IOptions<FeedbackOptions
             round = 2;
             updated = await answerable.Where(f => f.FollowUpAt != null)
                 .ExecuteUpdateAsync(s => s.SetProperty(f => f.Status, FeedbackStatus.Closed).SetProperty(f => f.ClosedAt, now)
-                    .SetProperty(f => f.AutoCloseAt, (DateTime?)null), cancellationToken);
+                    .SetProperty(f => f.AutoCloseAt, (DateTime?)null)
+                    .SetProperty(f => f.ClosedBy, (FeedbackClosedBy?)FeedbackClosedBy.SecondReply), cancellationToken);
         }
         if (updated != 1)
             return staffOnly && !await db.Set<Feedback>().AnyAsync(f => f.Id == id && f.AssignedStaffId == me, cancellationToken)
@@ -289,7 +295,8 @@ public sealed record SetAutoCloseRequest(int Days);
 public sealed record AutoCloseResult(DateTime AutoCloseAt);
 /// <summary>The customer's single follow-up, sent after the first reply.</summary>
 public sealed record FeedbackFollowUp(string Content, DateTime CreatedAt);
-public enum FeedbackClosedBy { Manager, SecondReply, AutoClose }
+/// <summary>The customer's own changes: the rating before its one change, and when rating or content were changed.</summary>
+public sealed record FeedbackEdits(int? OriginalRating, DateTime? RatingEditedAt, DateTime? ContentEditedAt);
 
 /// <summary>Row of M5 and S1. Matches apps/web/features/feedback/types.ts.</summary>
 public record FeedbackListItem(int Id, int CustomerId, string CustomerName, string? OrderCode, int ProductId, string ProductName,
@@ -316,6 +323,7 @@ public sealed record FeedbackDetail : FeedbackListItem
     public required FeedbackFollowUp? FollowUp { get; init; }
     /// <summary>When a Replied feedback closes itself; null when no deadline applies.</summary>
     public required DateTime? AutoCloseAt { get; init; }
-    /// <summary>Set only when Closed: Manager, SecondReply or AutoClose.</summary>
+    /// <summary>Set only when Closed: Manager, SecondReply, AutoClose or Customer.</summary>
     public required FeedbackClosedBy? ClosedBy { get; init; }
+    public required FeedbackEdits Edits { get; init; }
 }

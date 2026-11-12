@@ -223,10 +223,17 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("ClosedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ClosedBy")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("ContentEditedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -244,11 +251,17 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.Property<int?>("OrderItemId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("OriginalRating")
+                        .HasColumnType("integer");
+
                     b.Property<int>("ProductId")
                         .HasColumnType("integer");
 
                     b.Property<int>("Rating")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("RatingEditedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("RepliedAt")
                         .HasColumnType("timestamp with time zone");
@@ -277,9 +290,13 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
 
                     b.ToTable("Feedback", t =>
                         {
+                            t.HasCheckConstraint("CK_Feedback_ClosedBy", "\"ClosedBy\" IS NULL OR \"Status\" = 'Closed'");
+
                             t.HasCheckConstraint("CK_Feedback_FollowUp", "(\"FollowUpContent\" IS NULL) = (\"FollowUpAt\" IS NULL)");
 
                             t.HasCheckConstraint("CK_Feedback_Rating", "\"Rating\" BETWEEN 1 AND 5");
+
+                            t.HasCheckConstraint("CK_Feedback_RatingEdit", "(\"OriginalRating\" IS NULL) = (\"RatingEditedAt\" IS NULL) AND (\"OriginalRating\" IS NULL OR \"OriginalRating\" BETWEEN 1 AND 5)");
                         });
                 });
 

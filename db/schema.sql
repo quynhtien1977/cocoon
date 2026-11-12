@@ -555,3 +555,21 @@ VALUES ('20261112055955_AddFeedbackFollowUpAndAutoClose', '10.0.12');
 
 COMMIT;
 
+START TRANSACTION;
+ALTER TABLE "Feedback" ADD "ClosedBy" character varying(32);
+
+ALTER TABLE "Feedback" ADD "ContentEditedAt" timestamp with time zone;
+
+ALTER TABLE "Feedback" ADD "OriginalRating" integer;
+
+ALTER TABLE "Feedback" ADD "RatingEditedAt" timestamp with time zone;
+
+ALTER TABLE "Feedback" ADD CONSTRAINT "CK_Feedback_ClosedBy" CHECK ("ClosedBy" IS NULL OR "Status" = 'Closed');
+
+ALTER TABLE "Feedback" ADD CONSTRAINT "CK_Feedback_RatingEdit" CHECK (("OriginalRating" IS NULL) = ("RatingEditedAt" IS NULL) AND ("OriginalRating" IS NULL OR "OriginalRating" BETWEEN 1 AND 5));
+
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20261112115534_AddFeedbackCustomerEdits', '10.0.12');
+
+COMMIT;
+

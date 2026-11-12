@@ -261,6 +261,100 @@ public sealed class FeedbackApiTests : IClassFixture<DatabaseFixture>, IDisposab
         Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Put, "/api/v1/feedback/2147483000/auto-close", manager, new { days = 3 })).StatusCode);
     }
 
+    [Fact]
+    public async Task Customer_rewrites_the_content_only_until_the_first_reply()
+    {
+        var shop = await Seed();
+        var customer = FoundationFactory.Token("Customer", shop.CustomerId);
+        await using var db = _database.CreateContext();
+        var feedback = new Feedback { CustomerId = shop.CustomerId, ProductId = shop.ProductId, Rating = 2, Content = Review };
+        db.Add(feedback);
+        await db.SaveChangesAsync();
+        var path = $"/api/v1/me/feedback/{feedback.Id}";
+
+        var fresh = await Json(await Send(HttpMethod.Get, path, customer));
+        Assert.True(fresh.GetProperty("canEditContent").GetBoolean());
+        Assert.True(fresh.GetProperty("canEditRating").GetBoolean());
+        Assert.True(fresh.GetProperty("canClose").GetBoolean());
+        Assert.Equal(feedback.CreatedAt.AddDays(30), fresh.GetProperty("ratingEditableUntil").GetDateTime(), TimeSpan.FromSeconds(1));
+
+        await AssertProblem(await Send(HttpMethod.Put, path, customer, new { rating = 2, content = "Quá ngắn" }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await Send(HttpMethod.Put, path, FoundationFactory.Token("Customer", shop.OtherCustomerId), new { rating = 2, content = Rewritten })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Put, path, customer, new { rating = 2, content = Rewritten })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Put, path, customer, new { rating = 2, content = Rewritten + " Thêm ý." })).StatusCode);
+
+        var edited = await Json(await Send(HttpMethod.Get, path, customer));
+        Assert.Equal(Rewritten + " Thêm ý.", edited.GetProperty("content").GetString());
+        Assert.Equal(2, edited.GetProperty("rating").GetInt32());
+        Assert.NotEqual(JsonValueKind.Null, edited.GetProperty("edits").GetProperty("contentEditedAt").ValueKind);
+        Assert.Equal(JsonValueKind.Null, edited.GetProperty("edits").GetProperty("originalRating").ValueKind);
+        Assert.True(edited.GetProperty("canEditRating").GetBoolean()); // rewriting the content does not use up the rating change
+    }
+
+    [Fact]
+    public async Task Customer_changes_the_rating_once_within_thirty_days_and_keeps_the_original()
+    {
+        var shop = await Seed();
+        var (customer, manager) = (FoundationFactory.Token("Customer", shop.CustomerId), FoundationFactory.Token("Manager", shop.ManagerId));
+        var id = await RepliedFeedback(shop);
+        var path = $"/api/v1/me/feedback/{id}";
+        Assert.False((await Json(await Send(HttpMethod.Get, path, customer))).GetProperty("canEditContent").GetBoolean());
+
+        await AssertProblem(await Send(HttpMethod.Put, path, customer, new { rating = 2, content = Rewritten }), HttpStatusCode.Conflict, "FEEDBACK_EDIT_NOT_ALLOWED");
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Put, path, customer, new { rating = 5, content = Review })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Put, path, customer, new { rating = 5, content = Review })).StatusCode); // unchanged: no-op
+        await AssertProblem(await Send(HttpMethod.Put, path, customer, new { rating = 4, content = Review }), HttpStatusCode.Conflict, "FEEDBACK_EDIT_NOT_ALLOWED");
+
+        var detail = await Json(await Send(HttpMethod.Get, $"/api/v1/feedback/{id}", manager));
+        Assert.Equal(5, detail.GetProperty("rating").GetInt32());
+        Assert.Equal(2, detail.GetProperty("edits").GetProperty("originalRating").GetInt32());
+        Assert.NotEqual(JsonValueKind.Null, detail.GetProperty("edits").GetProperty("ratingEditedAt").ValueKind);
+        var mine = await Json(await Send(HttpMethod.Get, path, customer));
+        Assert.False(mine.GetProperty("canEditRating").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, mine.GetProperty("ratingEditableUntil").ValueKind);
+
+        await using var db = _database.CreateContext();
+        var old = new Feedback { CustomerId = shop.CustomerId, ProductId = shop.ProductId, Rating = 2, Content = Review, CreatedAt = DateTime.UtcNow.AddDays(-31) };
+        db.Add(old);
+        await db.SaveChangesAsync();
+        await AssertProblem(await Send(HttpMethod.Put, $"/api/v1/me/feedback/{old.Id}", customer, new { rating = 5, content = Review }),
+            HttpStatusCode.Conflict, "FEEDBACK_EDIT_NOT_ALLOWED");
+    }
+
+    [Fact]
+    public async Task Customer_closes_an_open_feedback_but_the_review_still_counts()
+    {
+        var shop = await Seed();
+        var (customer, manager) = (FoundationFactory.Token("Customer", shop.CustomerId), FoundationFactory.Token("Manager", shop.ManagerId));
+        await using var db = _database.CreateContext();
+        var waiting = new Feedback { CustomerId = shop.CustomerId, ProductId = shop.ProductId, Rating = 1, Content = Review };
+        db.Add(waiting);
+        await db.SaveChangesAsync();
+
+        Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Post, $"/api/v1/me/feedback/{waiting.Id}/close",
+            FoundationFactory.Token("Customer", shop.OtherCustomerId))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Post, $"/api/v1/me/feedback/{waiting.Id}/close", manager)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Post, $"/api/v1/me/feedback/{waiting.Id}/close", customer)).StatusCode);
+        await AssertProblem(await Send(HttpMethod.Post, $"/api/v1/me/feedback/{waiting.Id}/close", customer), HttpStatusCode.Conflict, "FEEDBACK_ALREADY_CLOSED");
+        var closed = await Json(await Send(HttpMethod.Get, $"/api/v1/feedback/{waiting.Id}", manager));
+        Assert.Equal("Closed", closed.GetProperty("status").GetString());
+        Assert.Equal("Customer", closed.GetProperty("closedBy").GetString());
+        Assert.Equal(1, closed.GetProperty("rating").GetInt32());
+        var mine = await Json(await Send(HttpMethod.Get, $"/api/v1/me/feedback/{waiting.Id}", customer));
+        Assert.False(mine.GetProperty("canClose").GetBoolean());
+        Assert.False(mine.GetProperty("canEditContent").GetBoolean());
+        await AssertProblem(await Send(HttpMethod.Put, $"/api/v1/me/feedback/{waiting.Id}", customer, new { rating = 1, content = Rewritten }),
+            HttpStatusCode.Conflict, "FEEDBACK_EDIT_NOT_ALLOWED");
+
+        // Closing a replied feedback drops its deadline; the rating can still change afterwards.
+        var replied = await RepliedFeedback(shop);
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Post, $"/api/v1/me/feedback/{replied}/close", customer)).StatusCode);
+        Assert.Null((await db.Set<Feedback>().AsNoTracking().SingleAsync(f => f.Id == replied)).AutoCloseAt);
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Put, $"/api/v1/me/feedback/{replied}", customer, new { rating = 4, content = Review })).StatusCode);
+        Assert.Equal("Customer", (await Json(await Send(HttpMethod.Get, $"/api/v1/feedback/{replied}", manager))).GetProperty("closedBy").GetString());
+    }
+
     /// <summary>Creates the customer's feedback and walks it to Replied through the API.</summary>
     private async Task<int> RepliedFeedback(Shop shop, Cocoon.Infrastructure.Persistence.AppDbContext? db = null)
     {
@@ -287,7 +381,8 @@ public sealed class FeedbackApiTests : IClassFixture<DatabaseFixture>, IDisposab
     }
 
     private const string Review = "Sản phẩm dịu nhẹ, da mềm hơn sau một tuần sử dụng.";
-    private const string FollowUp = "Mình đã nhận phản hồi nhưng sản phẩm thay thế vẫn chưa tới, nhờ Cocoon kiểm tra giúp.";
+    private const string Rewritten = "Mình đã tự tìm ra cách dùng, chỉ muốn góp ý thêm về bao bì sản phẩm.";
+    private const string FollowUp ="Mình đã nhận phản hồi nhưng sản phẩm thay thế vẫn chưa tới, nhờ Cocoon kiểm tra giúp.";
 
     private sealed record Shop(int CustomerId, int OtherCustomerId, int StaffId, int OtherStaffId, int ManagerId, int ProductId,
         int CompletedItemId, int CancelledItemId, int OtherCustomerItemId);

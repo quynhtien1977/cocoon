@@ -7,21 +7,48 @@ export type FeedbackThreadProps = {
   createdAt: string;
   replies: { id: number; staffName: string; content: string; createdAt: string; round?: number }[];
   followUp?: { content: string; createdAt: string } | null;
+  edits?: { originalRating: number | null; ratingEditedAt: string | null; contentEditedAt: string | null } | null;
+  canEdit?: boolean;
+  onEdit?: () => void;
+  isEditing?: boolean;
+  editForm?: React.ReactNode;
   /** Back-office screens name the customer; the defaults address the customer on C5. */
   customerHeading?: string;
   emptyReplies?: string;
 };
 const date = (value: string) => new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value));
 
-export function FeedbackThread({ rating, content, createdAt, replies, followUp, customerHeading = "Đánh giá của bạn", emptyReplies = "Cocoon đã nhận được đánh giá của bạn. Khi nhân viên trả lời, nội dung sẽ được hiển thị tại đây." }: FeedbackThreadProps) {
+export function FeedbackThread({ rating, content, createdAt, replies, followUp, edits, canEdit, onEdit, isEditing, editForm, customerHeading = "Đánh giá của bạn", emptyReplies = "Cocoon đã nhận được đánh giá của bạn. Khi nhân viên trả lời, nội dung sẽ được hiển thị tại đây." }: FeedbackThreadProps) {
   const round1Replies = replies.filter(r => (r.round ?? 1) === 1);
   const round2Replies = replies.filter(r => r.round === 2);
 
   return <div className="grid min-w-0 gap-6">
-    <section aria-label="Phản hồi của khách hàng" className="rounded border border-[#e4dbc9] bg-[#fffcf7] p-4 sm:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-full bg-[#eee6d5] text-[#826438]"><UserRound size={20} aria-hidden="true" /></span><div><h2 className="font-heading text-xl">{customerHeading}</h2><time dateTime={createdAt} className="text-xs text-[#81745e]">{date(createdAt)}</time></div></div><RatingStars value={rating} /></header>
-      <p className="mt-6 whitespace-pre-wrap break-words text-base leading-8 text-[#514837]">{content}</p>
-    </section>
+    {isEditing && editForm ? editForm : (
+      <section aria-label="Phản hồi của khách hàng" className="rounded border border-[#e4dbc9] bg-[#fffcf7] p-4 sm:p-6">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-full bg-[#eee6d5] text-[#826438]"><UserRound size={20} aria-hidden="true" /></span>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-heading text-xl">{customerHeading}</h2>
+                {edits?.contentEditedAt && <span className="rounded bg-[#eee6d5] px-2 py-0.5 text-xs text-[#826438]">Đã chỉnh sửa</span>}
+              </div>
+              <time dateTime={createdAt} className="text-xs text-[#81745e]">{date(createdAt)}</time>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {canEdit && onEdit && (
+              <button type="button" onClick={onEdit} className="inline-flex min-h-8 items-center gap-1 rounded border border-[#a18b66] px-3 py-1 text-xs font-semibold text-[#806439] hover:bg-[#eee7d5]">
+                Sửa đánh giá
+              </button>
+            )}
+            {edits?.originalRating != null && <span className="text-xs text-[#81745e]">Đã sửa từ {edits.originalRating}★</span>}
+            <RatingStars value={rating} />
+          </div>
+        </header>
+        <p className="mt-6 whitespace-pre-wrap break-words text-base leading-8 text-[#514837]">{content}</p>
+      </section>
+    )}
     <section aria-label="Phản hồi của nhân viên" className="rounded border border-[#e4dbc9] bg-[#f5f0e6] p-4 sm:p-6">
       <h2 className="flex items-center gap-3 font-heading text-2xl"><MessageSquare size={22} strokeWidth={1.5} aria-hidden="true" />Phản hồi từ Cocoon</h2>
       {round1Replies.length ? <ol className="mt-6 grid gap-6">

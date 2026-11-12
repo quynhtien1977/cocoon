@@ -67,7 +67,7 @@ export function StaffFeedbackReply({ initial }: { initial: FeedbackDetail }) {
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-6">
           <FeedbackTimeline status={feedback.status} times={feedback.statusTimes} />
-          <FeedbackThread rating={feedback.rating} content={feedback.content} createdAt={feedback.createdAt} replies={feedback.replies} followUp={feedback.followUp} customerHeading={`Phản hồi của ${feedback.customerName}`} emptyReplies="Bạn chưa trả lời phản hồi này." />
+          <FeedbackThread rating={feedback.rating} content={feedback.content} createdAt={feedback.createdAt} replies={feedback.replies} followUp={feedback.followUp} edits={feedback.edits} customerHeading={`Phản hồi của ${feedback.customerName}`} emptyReplies="Bạn chưa trả lời phản hồi này." />
           {feedback.status === "Assigned" && (
             <>
               {feedback.followUp && (
