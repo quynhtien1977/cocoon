@@ -78,9 +78,43 @@ public sealed class CustomerPortalController(AppDbContext db, RecommendationServ
     {
         var row = await MyFeedback(AccountId).SingleOrDefaultAsync(x => x.F.Id == id, cancellationToken);
         if (row is null) return NotFound();
-        return Ok(new MyFeedbackDetail(row.F.Id, row.F.Rating, row.F.Content, row.F.Status, row.F.CreatedAt, row.O?.Code ?? "",
+        var f = row.F;
+        var autoCloseAt = f.Status == FeedbackStatus.Replied ? f.AutoCloseAt : null;
+        return Ok(new MyFeedbackDetail(f.Id, f.Rating, f.Content, f.Status, f.CreatedAt, row.O?.Code ?? "",
             new FeedbackProduct(row.P.Id, row.P.Name, row.V?.Name ?? "", row.V?.ImageUrl),
-            await FeedbackController.StatusTimes(db, row.F, cancellationToken), await FeedbackController.Replies(db, id, cancellationToken)));
+            await FeedbackController.StatusTimes(db, f, cancellationToken), await FeedbackController.Replies(db, id, cancellationToken))
+        {
+            FollowUp = FeedbackController.FollowUpOf(f),
+            AutoCloseAt = autoCloseAt,
+            CanFollowUp = f.Status == FeedbackStatus.Replied && f.FollowUpAt == null && (autoCloseAt == null || autoCloseAt > DateTime.UtcNow)
+        });
+    }
+
+    /// <summary>
+    /// The customer's one follow-up after the first reply, allowed until the feedback closes. It sends the feedback back
+    /// to the staff who answered (Assigned); their next reply closes it.
+    /// </summary>
+    [HttpPost("feedback/{id:int}/follow-up")]
+    public async Task<IActionResult> FollowUp(int id, FollowUpRequest request, CancellationToken cancellationToken)
+    {
+        var (me, now) = (AccountId, DateTime.UtcNow);
+        var content = request.Content.Trim();
+        if (content.Length is < 20 or > 1000)
+            return Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Nội dung phản hồi cần từ 20 đến 1.000 ký tự.");
+        var updated = await db.Set<Feedback>()
+            .Where(f => f.Id == id && f.CustomerId == me && f.Status == FeedbackStatus.Replied && f.FollowUpAt == null
+                && (f.AutoCloseAt == null || f.AutoCloseAt > now))
+            .ExecuteUpdateAsync(s => s.SetProperty(f => f.Status, FeedbackStatus.Assigned).SetProperty(f => f.FollowUpContent, content)
+                .SetProperty(f => f.FollowUpAt, now).SetProperty(f => f.AutoCloseAt, (DateTime?)null), cancellationToken);
+        if (updated == 1) return NoContent();
+
+        var current = await db.Set<Feedback>().AsNoTracking().Where(f => f.Id == id && f.CustomerId == me)
+            .Select(f => new { f.Status, f.FollowUpAt, f.AutoCloseAt }).SingleOrDefaultAsync(cancellationToken);
+        if (current is null) return NotFound();
+        var message = current.FollowUpAt is not null ? "Bạn đã gửi phản hồi bổ sung cho phản hồi này."
+            : current.Status == FeedbackStatus.Closed || current.AutoCloseAt <= now ? "Phản hồi đã đóng, không gửi thêm được."
+            : "Chỉ gửi phản hồi bổ sung sau khi Cocoon đã trả lời.";
+        return Fail(StatusCodes.Status409Conflict, "FOLLOW_UP_NOT_ALLOWED", message);
     }
 
     /// <summary>Spec 5.6.1: only the customer's own line, in a Completed order, reviewed once.</summary>
@@ -268,6 +302,14 @@ public sealed record FeedbackProduct(int Id, string Name, string Variant, string
 public sealed record MyFeedbackItem(int Id, int Rating, string Content, FeedbackStatus Status, DateTime CreatedAt, string? OrderCode,
     FeedbackProduct Product, bool HasReply);
 public sealed record MyFeedbackDetail(int Id, int Rating, string Content, FeedbackStatus Status, DateTime CreatedAt, string OrderCode,
-    FeedbackProduct Product, IReadOnlyDictionary<FeedbackStatus, DateTime> StatusTimes, IReadOnlyList<FeedbackReplyItem> Replies);
+    FeedbackProduct Product, IReadOnlyDictionary<FeedbackStatus, DateTime> StatusTimes, IReadOnlyList<FeedbackReplyItem> Replies)
+{
+    public FeedbackFollowUp? FollowUp { get; init; }
+    /// <summary>When a Replied feedback closes itself; null when no deadline applies.</summary>
+    public DateTime? AutoCloseAt { get; init; }
+    /// <summary>True while the customer may still send their one follow-up.</summary>
+    public bool CanFollowUp { get; init; }
+}
+public sealed record FollowUpRequest([Required] string Content);
 public sealed record CreatedFeedback(int Id);
 public sealed record NotificationItem(int Id, string Type, string Title, string RefType, int RefId, bool IsRead, DateTime CreatedAt);

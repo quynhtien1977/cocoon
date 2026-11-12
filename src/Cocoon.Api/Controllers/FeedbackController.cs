@@ -2,7 +2,9 @@ using System.ComponentModel.DataAnnotations;
 using Cocoon.Domain;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
+using Cocoon.Infrastructure.Feedbacks;
 using Cocoon.Infrastructure.Persistence;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,11 +12,13 @@ using Microsoft.EntityFrameworkCore;
 namespace Cocoon.Api.Controllers;
 
 /// <summary>
-/// Spec 5.6.2: status only moves forward New → Accepted → Assigned → Replied → Closed; a manager may also close
-/// from Accepted. Every move is a conditional UPDATE on the expected status, so two managers cannot both win.
+/// Spec 5.6.2: New → Accepted → Assigned → Replied → Closed; a manager may also close from Accepted or Replied. While
+/// Replied and before its deadline, the customer may follow up once, which returns it to Assigned for the same staff; the
+/// reply to that follow-up closes it. A Replied feedback closes itself at AutoCloseAt. Every move is a conditional UPDATE
+/// on the expected state, so two requests cannot both win.
 /// </summary>
 [Route("api/v1")]
-public sealed class FeedbackController(AppDbContext db) : ApiStubController
+public sealed class FeedbackController(AppDbContext db, IOptions<FeedbackOptions> options) : ApiStubController
 {
     private const string DeletedCustomer = "Khách đã xóa";
 
@@ -61,9 +65,14 @@ public sealed class FeedbackController(AppDbContext db) : ApiStubController
             Price = row.I?.UnitPrice ?? row.V?.Price ?? 0,
             OrderCompletedAt = row.O is { Status: OrderStatus.Completed } ? row.O.OrderedAt : null,
             StatusTimes = await StatusTimes(db, row.F, cancellationToken),
-            Replies = await Replies(db, id, cancellationToken)
+            Replies = await Replies(db, id, cancellationToken),
+            FollowUp = FollowUpOf(row.F),
+            AutoCloseAt = row.F.Status == FeedbackStatus.Replied ? row.F.AutoCloseAt : null
         });
     }
+
+    internal static FeedbackFollowUp? FollowUpOf(Feedback f) =>
+        f is { FollowUpContent: { } content, FollowUpAt: { } at } ? new FeedbackFollowUp(content, at) : null;
 
     [HttpPost("feedback/{id:int}/accept"), Authorize(Policy = "RequireManager")]
     public async Task<IActionResult> Accept(int id, CancellationToken cancellationToken)
@@ -109,7 +118,10 @@ public sealed class FeedbackController(AppDbContext db) : ApiStubController
         return updated == 1 ? NoContent() : await TransitionFailed(id, cancellationToken);
     }
 
-    /// <summary>One reply per feedback (unique index). Staff reply only to feedback assigned to them.</summary>
+    /// <summary>
+    /// Round 1 answers the feedback (→ Replied, auto-close deadline starts). Round 2 answers the customer's follow-up and
+    /// closes the feedback. At most one reply per round (unique index). Staff reply only to feedback assigned to them.
+    /// </summary>
     [HttpPost("feedback/{id:int}/replies"), Authorize(Roles = "Manager,Staff")]
     public async Task<IActionResult> Reply(int id, ReplyFeedbackRequest request, CancellationToken cancellationToken)
     {
@@ -121,13 +133,23 @@ public sealed class FeedbackController(AppDbContext db) : ApiStubController
         await EnsureStaffProfile(cancellationToken);
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-        var updated = await db.Set<Feedback>()
-            .Where(f => f.Id == id && f.Status == FeedbackStatus.Assigned && (!staffOnly || f.AssignedStaffId == me))
-            .ExecuteUpdateAsync(s => s.SetProperty(f => f.Status, FeedbackStatus.Replied).SetProperty(f => f.RepliedAt, now), cancellationToken);
+        var answerable = db.Set<Feedback>()
+            .Where(f => f.Id == id && f.Status == FeedbackStatus.Assigned && (!staffOnly || f.AssignedStaffId == me));
+        var round = 1;
+        var updated = await answerable.Where(f => f.FollowUpAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(f => f.Status, FeedbackStatus.Replied).SetProperty(f => f.RepliedAt, now)
+                .SetProperty(f => f.AutoCloseAt, now.AddDays(options.Value.AutoCloseDays)), cancellationToken);
+        if (updated == 0)
+        {
+            round = 2;
+            updated = await answerable.Where(f => f.FollowUpAt != null)
+                .ExecuteUpdateAsync(s => s.SetProperty(f => f.Status, FeedbackStatus.Closed).SetProperty(f => f.ClosedAt, now)
+                    .SetProperty(f => f.AutoCloseAt, (DateTime?)null), cancellationToken);
+        }
         if (updated != 1)
             return staffOnly && !await db.Set<Feedback>().AnyAsync(f => f.Id == id && f.AssignedStaffId == me, cancellationToken)
                 ? NotFound() : await TransitionFailed(id, cancellationToken);
-        var reply = new FeedbackReply { FeedbackId = id, StaffId = me, Content = content, CreatedAt = now };
+        var reply = new FeedbackReply { FeedbackId = id, StaffId = me, Round = round, Content = content, CreatedAt = now };
         db.Add(reply);
         // C5 shows a toast for unread "feedback" notifications, so the customer learns about the reply.
         var customerId = await db.Set<Feedback>().Where(f => f.Id == id).Select(f => f.CustomerId).SingleAsync(cancellationToken);
@@ -138,7 +160,20 @@ public sealed class FeedbackController(AppDbContext db) : ApiStubController
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         var staffName = await db.Set<StaffProfile>().Where(s => s.AccountId == me).Select(s => s.FullName).SingleAsync(cancellationToken);
-        return StatusCode(StatusCodes.Status201Created, new FeedbackReplyItem(reply.Id, staffName, reply.Content, reply.CreatedAt));
+        return StatusCode(StatusCodes.Status201Created, new FeedbackReplyItem(reply.Id, staffName, reply.Content, reply.CreatedAt, round));
+    }
+
+    /// <summary>Moves the auto-close deadline of a Replied feedback to N days from now (1–30).</summary>
+    [HttpPut("feedback/{id:int}/auto-close"), Authorize(Policy = "RequireManager")]
+    public async Task<IActionResult> SetAutoClose(int id, SetAutoCloseRequest request, CancellationToken cancellationToken)
+    {
+        if (request.Days is < FeedbackOptions.MinDays or > FeedbackOptions.MaxDays)
+            return Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR",
+                $"Thời hạn tự đóng cần từ {FeedbackOptions.MinDays} đến {FeedbackOptions.MaxDays} ngày.");
+        var closeAt = DateTime.UtcNow.AddDays(request.Days);
+        var updated = await db.Set<Feedback>().Where(f => f.Id == id && f.Status == FeedbackStatus.Replied)
+            .ExecuteUpdateAsync(s => s.SetProperty(f => f.AutoCloseAt, closeAt), cancellationToken);
+        return updated == 1 ? Ok(new AutoCloseResult(closeAt)) : await TransitionFailed(id, cancellationToken);
     }
 
     [HttpGet("staff/feedback"), Authorize(Policy = "RequireStaff")]
@@ -164,8 +199,8 @@ public sealed class FeedbackController(AppDbContext db) : ApiStubController
         (from r in db.Set<FeedbackReply>()
          join s in db.Set<StaffProfile>().IgnoreQueryFilters() on r.StaffId equals s.AccountId
          where r.FeedbackId == feedbackId
-         orderby r.CreatedAt
-         select new FeedbackReplyItem(r.Id, s.FullName, r.Content, r.CreatedAt)).ToListAsync(cancellationToken);
+         orderby r.Round, r.CreatedAt
+         select new FeedbackReplyItem(r.Id, s.FullName, r.Content, r.CreatedAt, r.Round)).ToListAsync(cancellationToken);
 
     private async Task<IActionResult> Page(IQueryable<FeedbackRow> rows, ListQuery query, CancellationToken cancellationToken)
     {
@@ -237,7 +272,11 @@ public sealed class FeedbackController(AppDbContext db) : ApiStubController
 public sealed record StaffOption(int Id, string Name);
 public sealed record AssignFeedbackRequest(int StaffId);
 public sealed record ReplyFeedbackRequest([Required] string Content);
-public sealed record FeedbackReplyItem(int Id, string StaffName, string Content, DateTime CreatedAt);
+public sealed record FeedbackReplyItem(int Id, string StaffName, string Content, DateTime CreatedAt, int Round);
+public sealed record SetAutoCloseRequest(int Days);
+public sealed record AutoCloseResult(DateTime AutoCloseAt);
+/// <summary>The customer's single follow-up, sent after the first reply.</summary>
+public sealed record FeedbackFollowUp(string Content, DateTime CreatedAt);
 
 /// <summary>Row of M5 and S1. Matches apps/web/features/feedback/types.ts.</summary>
 public record FeedbackListItem(int Id, int CustomerId, string CustomerName, string? OrderCode, int ProductId, string ProductName,
@@ -261,4 +300,7 @@ public sealed record FeedbackDetail : FeedbackListItem
     public required DateTime? OrderCompletedAt { get; init; }
     public required Dictionary<FeedbackStatus, DateTime> StatusTimes { get; init; }
     public required List<FeedbackReplyItem> Replies { get; init; }
+    public required FeedbackFollowUp? FollowUp { get; init; }
+    /// <summary>When a Replied feedback closes itself; null when no deadline applies.</summary>
+    public required DateTime? AutoCloseAt { get; init; }
 }

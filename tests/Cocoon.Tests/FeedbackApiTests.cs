@@ -5,6 +5,7 @@ using System.Text.Json;
 using Cocoon.Api.Auth;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
+using Cocoon.Infrastructure.Feedbacks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -132,7 +133,154 @@ public sealed class FeedbackApiTests : IClassFixture<DatabaseFixture>, IDisposab
         Assert.Equal(1, await db.Set<FeedbackAssignment>().CountAsync(a => a.FeedbackId == id));
     }
 
+    [Fact]
+    public async Task Follow_up_returns_feedback_to_its_staff_and_the_second_reply_closes_it()
+    {
+        var shop = await Seed();
+        var (customer, staff, otherStaff, manager) = (FoundationFactory.Token("Customer", shop.CustomerId), FoundationFactory.Token("Staff", shop.StaffId),
+            FoundationFactory.Token("Staff", shop.OtherStaffId), FoundationFactory.Token("Manager", shop.ManagerId));
+        var id = await RepliedFeedback(shop);
+
+        var replied = await Json(await Send(HttpMethod.Get, $"/api/v1/me/feedback/{id}", customer));
+        Assert.True(replied.GetProperty("canFollowUp").GetBoolean());
+        var deadline = replied.GetProperty("autoCloseAt").GetDateTime();
+        Assert.InRange(deadline, DateTime.UtcNow.AddDays(7).AddMinutes(-5), DateTime.UtcNow.AddDays(7).AddMinutes(5));
+        Assert.Equal(1, replied.GetProperty("replies")[0].GetProperty("round").GetInt32());
+
+        await AssertProblem(await Send(HttpMethod.Post, $"/api/v1/me/feedback/{id}/follow-up", customer, new { content = "Quá ngắn" }),
+            HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+        Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Post, $"/api/v1/me/feedback/{id}/follow-up",
+            FoundationFactory.Token("Customer", shop.OtherCustomerId), new { content = FollowUp })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Post, $"/api/v1/me/feedback/{id}/follow-up", customer, new { content = FollowUp })).StatusCode);
+        await AssertProblem(await Send(HttpMethod.Post, $"/api/v1/me/feedback/{id}/follow-up", customer, new { content = FollowUp }),
+            HttpStatusCode.Conflict, "FOLLOW_UP_NOT_ALLOWED");
+
+        var waiting = await Json(await Send(HttpMethod.Get, $"/api/v1/feedback/{id}", staff));
+        Assert.Equal("Assigned", waiting.GetProperty("status").GetString());
+        Assert.Equal(FollowUp, waiting.GetProperty("followUp").GetProperty("content").GetString());
+        Assert.Equal(JsonValueKind.Null, waiting.GetProperty("autoCloseAt").ValueKind);
+        Assert.False((await Json(await Send(HttpMethod.Get, $"/api/v1/me/feedback/{id}", customer))).GetProperty("canFollowUp").GetBoolean());
+        await AssertProblem(await Send(HttpMethod.Post, $"/api/v1/feedback/{id}/close", manager), HttpStatusCode.Conflict, "INVALID_FEEDBACK_STATUS");
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await Send(HttpMethod.Post, $"/api/v1/feedback/{id}/replies", otherStaff, new { content = "Nhân viên khác trả lời." })).StatusCode);
+
+        using var second = await Send(HttpMethod.Post, $"/api/v1/feedback/{id}/replies", staff, new { content = "Cocoon đã gửi sản phẩm thay thế cho bạn." });
+        Assert.Equal(HttpStatusCode.Created, second.StatusCode);
+        Assert.Equal(2, (await Json(second)).GetProperty("round").GetInt32());
+        await AssertProblem(await Send(HttpMethod.Post, $"/api/v1/feedback/{id}/replies", staff, new { content = "Trả lời lần thứ ba." }),
+            HttpStatusCode.Conflict, "INVALID_FEEDBACK_STATUS");
+
+        var closed = await Json(await Send(HttpMethod.Get, $"/api/v1/me/feedback/{id}", customer));
+        Assert.Equal("Closed", closed.GetProperty("status").GetString());
+        Assert.Equal([1, 2], closed.GetProperty("replies").EnumerateArray().Select(r => r.GetProperty("round").GetInt32()));
+        Assert.Equal(FollowUp, closed.GetProperty("followUp").GetProperty("content").GetString());
+        Assert.False(closed.GetProperty("canFollowUp").GetBoolean());
+        await AssertProblem(await Send(HttpMethod.Post, $"/api/v1/me/feedback/{id}/follow-up", customer, new { content = FollowUp }),
+            HttpStatusCode.Conflict, "FOLLOW_UP_NOT_ALLOWED");
+        await using var db = _database.CreateContext();
+        Assert.Equal(2, await db.Set<Notification>().CountAsync(n => n.RefType == nameof(Feedback) && n.RefId == id));
+    }
+
+    [Fact]
+    public async Task Follow_up_is_refused_before_a_reply_and_after_the_deadline()
+    {
+        var shop = await Seed();
+        var customer = FoundationFactory.Token("Customer", shop.CustomerId);
+        using var created = await Send(HttpMethod.Post, "/api/v1/me/feedback", customer, new { orderItemId = shop.CompletedItemId, rating = 3, content = Review });
+        var fresh = (await Json(created)).GetProperty("id").GetInt32();
+        await AssertProblem(await Send(HttpMethod.Post, $"/api/v1/me/feedback/{fresh}/follow-up", customer, new { content = FollowUp }),
+            HttpStatusCode.Conflict, "FOLLOW_UP_NOT_ALLOWED");
+
+        await using var db = _database.CreateContext();
+        var id = await RepliedFeedback(shop, db);
+        var due = DateTime.UtcNow.AddMinutes(-1);
+        await db.Set<Feedback>().Where(f => f.Id == id).ExecuteUpdateAsync(s => s.SetProperty(f => f.AutoCloseAt, due));
+        await AssertProblem(await Send(HttpMethod.Post, $"/api/v1/me/feedback/{id}/follow-up", customer, new { content = FollowUp }),
+            HttpStatusCode.Conflict, "FOLLOW_UP_NOT_ALLOWED");
+        Assert.False((await Json(await Send(HttpMethod.Get, $"/api/v1/me/feedback/{id}", customer))).GetProperty("canFollowUp").GetBoolean());
+
+        // The hosted sweep may get there first; either way the feedback ends Closed at its deadline.
+        await FeedbackAutoClose.CloseExpiredAsync(db, DateTime.UtcNow, CancellationToken.None);
+        var row = await db.Set<Feedback>().AsNoTracking().SingleAsync(f => f.Id == id);
+        Assert.Equal(FeedbackStatus.Closed, row.Status);
+        Assert.Equal(due, row.ClosedAt!.Value, TimeSpan.FromMilliseconds(1));
+    }
+
+    [Fact]
+    public async Task Sweep_closes_only_replied_feedback_past_its_deadline()
+    {
+        var shop = await Seed();
+        await using var db = _database.CreateContext();
+        var past = DateTime.UtcNow.AddDays(-1);
+        Feedback Add(FeedbackStatus status, DateTime? autoCloseAt) => new()
+        {
+            CustomerId = shop.CustomerId, ProductId = shop.ProductId, Rating = 4, Content = Review, Status = status, AutoCloseAt = autoCloseAt,
+            FollowUpContent = status == FeedbackStatus.Assigned ? FollowUp : null, FollowUpAt = status == FeedbackStatus.Assigned ? past : null
+        };
+        var (due, later, legacy, waiting) = (Add(FeedbackStatus.Replied, past), Add(FeedbackStatus.Replied, DateTime.UtcNow.AddDays(2)),
+            Add(FeedbackStatus.Replied, null), Add(FeedbackStatus.Assigned, past));
+        db.AddRange(due, later, legacy, waiting);
+        await db.SaveChangesAsync();
+
+        await FeedbackAutoClose.CloseExpiredAsync(db, DateTime.UtcNow, CancellationToken.None);
+        var statuses = await db.Set<Feedback>().AsNoTracking().Where(f => new[] { due.Id, later.Id, legacy.Id, waiting.Id }.Contains(f.Id))
+            .ToDictionaryAsync(f => f.Id, f => f.Status);
+        Assert.Equal(FeedbackStatus.Closed, statuses[due.Id]);
+        Assert.Equal(FeedbackStatus.Replied, statuses[later.Id]);
+        Assert.Equal(FeedbackStatus.Replied, statuses[legacy.Id]);
+        Assert.Equal(FeedbackStatus.Assigned, statuses[waiting.Id]);
+    }
+
+    [Fact]
+    public async Task Manager_moves_the_deadline_of_replied_feedback_only()
+    {
+        var shop = await Seed();
+        var manager = FoundationFactory.Token("Manager", shop.ManagerId);
+        var id = await RepliedFeedback(shop);
+        var path = $"/api/v1/feedback/{id}/auto-close";
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Put, path, FoundationFactory.Token("Staff", shop.StaffId), new { days = 3 })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Put, path, FoundationFactory.Token("Customer", shop.CustomerId), new { days = 3 })).StatusCode);
+        await AssertProblem(await Send(HttpMethod.Put, path, manager, new { days = 0 }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+        await AssertProblem(await Send(HttpMethod.Put, path, manager, new { days = 31 }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+
+        var moved = (await Json(await Send(HttpMethod.Put, path, manager, new { days = 3 }))).GetProperty("autoCloseAt").GetDateTime();
+        Assert.InRange(moved, DateTime.UtcNow.AddDays(3).AddMinutes(-5), DateTime.UtcNow.AddDays(3).AddMinutes(5));
+        var detail = await Json(await Send(HttpMethod.Get, $"/api/v1/feedback/{id}", manager));
+        Assert.Equal(moved, detail.GetProperty("autoCloseAt").GetDateTime(), TimeSpan.FromMilliseconds(1));
+
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Post, $"/api/v1/feedback/{id}/close", manager)).StatusCode);
+        await AssertProblem(await Send(HttpMethod.Put, path, manager, new { days = 3 }), HttpStatusCode.Conflict, "INVALID_FEEDBACK_STATUS");
+        Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Put, "/api/v1/feedback/2147483000/auto-close", manager, new { days = 3 })).StatusCode);
+    }
+
+    /// <summary>Creates the customer's feedback and walks it to Replied through the API.</summary>
+    private async Task<int> RepliedFeedback(Shop shop, Cocoon.Infrastructure.Persistence.AppDbContext? db = null)
+    {
+        var (manager, staff) = (FoundationFactory.Token("Manager", shop.ManagerId), FoundationFactory.Token("Staff", shop.StaffId));
+        int id;
+        if (db is null)
+        {
+            using var created = await Send(HttpMethod.Post, "/api/v1/me/feedback", FoundationFactory.Token("Customer", shop.CustomerId),
+                new { orderItemId = shop.CompletedItemId, rating = 2, content = Review });
+            id = (await Json(created)).GetProperty("id").GetInt32();
+        }
+        else
+        {
+            // The order line is already reviewed; a feedback without an order line walks the same path.
+            var feedback = new Feedback { CustomerId = shop.CustomerId, ProductId = shop.ProductId, Rating = 2, Content = Review };
+            db.Add(feedback);
+            await db.SaveChangesAsync();
+            id = feedback.Id;
+        }
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Post, $"/api/v1/feedback/{id}/accept", manager)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Post, $"/api/v1/feedback/{id}/assign", manager, new { staffId = shop.StaffId })).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await Send(HttpMethod.Post, $"/api/v1/feedback/{id}/replies", staff, new { content = "Cocoon xin lỗi và sẽ hỗ trợ bạn." })).StatusCode);
+        return id;
+    }
+
     private const string Review = "Sản phẩm dịu nhẹ, da mềm hơn sau một tuần sử dụng.";
+    private const string FollowUp = "Mình đã nhận phản hồi nhưng sản phẩm thay thế vẫn chưa tới, nhờ Cocoon kiểm tra giúp.";
 
     private sealed record Shop(int CustomerId, int OtherCustomerId, int StaffId, int OtherStaffId, int ManagerId, int ProductId,
         int CompletedItemId, int CancelledItemId, int OtherCustomerItemId);
