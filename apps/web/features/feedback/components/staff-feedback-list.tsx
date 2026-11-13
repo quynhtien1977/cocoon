@@ -7,7 +7,6 @@ import { RatingStars } from "@/components/brand/rating-stars";
 import { StatTile } from "@/components/brand/stat-tile";
 import { StatusBadge } from "@/components/brand/status-badge";
 import { DataTable, type DataColumn, type DataFilter } from "@/components/data/data-table";
-import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { loadAssignedFeedback } from "../api";
 import { useApiData } from "@/lib/api/use-api-data";
@@ -28,7 +27,7 @@ const columns: DataColumn<FeedbackListItem>[] = [
   { id: "product", header: "Sản phẩm", value: (row) => `${row.productName} ${row.categoryName}`, cell: (row) => <span className="block w-44 whitespace-normal"><span className="block">{row.productName}</span><span className="block text-xs text-muted-foreground">{row.categoryName}</span></span> },
   { id: "rating", header: "Số sao", value: (row) => row.rating, sortable: true, searchable: false, cell: (row) => <span className="flex flex-col gap-1 whitespace-nowrap"><RatingStars value={row.rating} /><LowRating row={row} /></span> },
   { id: "content", header: "Trích đoạn", value: (row) => row.content, cell: (row) => <span className="line-clamp-3 w-56 whitespace-normal text-muted-foreground italic">“{row.content}”</span> },
-  { id: "status", header: "Trạng thái", value: (row) => row.status, searchable: false, cell: (row) => <StatusBadge kind="feedback" status={row.status} className="whitespace-nowrap" /> },
+  { id: "status", header: "Trạng thái", value: (row) => row.status, searchable: false, cell: (row) => <StatusBadge kind="feedback" status={row.status} /> },
   { id: "createdAt", header: "Ngày gửi", value: (row) => row.createdAt, sortable: true, searchable: false, cell: (row) => <time dateTime={row.createdAt} className="whitespace-nowrap">{date.format(new Date(row.createdAt))}</time> },
   { id: "actions", header: "Thao tác", value: () => null, searchable: false, cell: (row) => <ReplyAction row={row} label={`${needsAction(row) ? "Xử lý" : "Xem lại"} phản hồi #${row.id}`} /> },
 ];
@@ -39,14 +38,13 @@ const filters: DataFilter<FeedbackListItem>[] = [
 ];
 
 export function StaffFeedbackList() {
-  const s = screen("S1");
   const { data, loading, error, retry } = useApiData(loadAssignedFeedback, "Chưa tải được phản hồi. Kiểm tra kết nối rồi thử lại.");
   const assigned = data ?? [];
   const waiting = assigned.filter(needsAction).length;
 
   return (
     <>
-      <PageHeader eyebrow={s.code} title="Phản hồi được giao xử lý" description="Phản hồi quản lý giao cho bạn. Ưu tiên các phản hồi điểm thấp." />
+      <PageHeader title="Phản hồi được giao xử lý" description="Phản hồi quản lý giao cho bạn. Ưu tiên các phản hồi điểm thấp." />
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4">
         <StatTile label="Chờ trả lời" value={data ? waiting : "—"} />
         <StatTile label="Đã hoàn thành" value={data ? assigned.length - waiting : "—"} />

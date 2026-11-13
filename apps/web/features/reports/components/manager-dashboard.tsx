@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApiData } from "@/lib/api/use-api-data";
-import { screen } from "@/lib/screens";
 import { loadActivityReports, loadCustomerReports, periodRange, reportPeriods, type ReportPeriod } from "../api";
 import type { ActivityReports, CategoryPurchaseReport, CustomerReports } from "../types";
 
@@ -33,7 +32,6 @@ type Tab = "overview" | "customers" | "analytics";
 interface LoadState { loading: boolean; error: string | null; retry: () => void }
 
 export function ManagerDashboard() {
-  const s = screen("M1");
   const id = useId();
   const [tab, setTab] = useState<Tab>("overview");
   const [period, setPeriod] = useState<ReportPeriod>("all");
@@ -51,7 +49,7 @@ export function ManagerDashboard() {
 
   return (
     <>
-      <PageHeader eyebrow={s.code} title="Tổng quan quản trị CRM & Khách hàng" description="Dữ liệu khách hàng, phản hồi và khảo sát của Cocoon trong kỳ báo cáo." actions={
+      <PageHeader title="Tổng quan quản trị CRM & Khách hàng" description="Dữ liệu khách hàng, phản hồi và khảo sát của Cocoon trong kỳ báo cáo." actions={
         <>
           <label htmlFor={`${id}-period`} className="sr-only">Kỳ báo cáo</label>
           {/* Retry with the period change so the loading state shows and a previous error clears. */}
@@ -242,8 +240,11 @@ function RevenueHeatmap({ data, state }: { data: CategoryPurchaseReport | undefi
   const value = (category: string, ageGroup: string) => cells.find((cell) => cell.category === category && cell.ageGroup === ageGroup)?.revenue ?? 0;
   return (
     <section aria-labelledby="heatmap-title" className={`${card} lg:col-span-2`}>
-      <h2 id="heatmap-title" className="font-heading text-xl">Doanh số danh mục × nhóm tuổi</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Triệu đồng, đơn hoàn thành trong kỳ. Tuổi tính tại ngày xem báo cáo.</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h2 id="heatmap-title" className="font-heading text-xl">Doanh số danh mục × nhóm tuổi</h2>
+        <span className="rounded-sm bg-muted px-2 py-1 text-xs font-semibold whitespace-nowrap text-muted-foreground">Đơn vị: triệu đồng</span>
+      </div>
+      <p className="mt-1 text-sm text-muted-foreground">Đơn hoàn thành trong kỳ dựa theo độ tuổi.</p>
       {!data ? <div className="mt-4"><Pending state={state} label="doanh số" /></div>
         : cells.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">Chưa có đơn hoàn thành trong kỳ.</p> : (
           <div className="mt-4 overflow-x-auto">

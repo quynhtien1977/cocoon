@@ -6,7 +6,6 @@ import { CircleCheck, Info, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { AccountRole } from "@/lib/auth/roles";
-import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
 import { createAccount, type AccountCreated } from "../api";
@@ -19,7 +18,6 @@ const emptyDraft: AccountDraft = { fullName: "", email: "", role: "Staff" };
 const draftFields = new Set(["fullName", "email", "role"]);
 
 export function AccountCreateForm() {
-  const s = screen("A2");
   const id = useId();
   const [draft, setDraft] = useState(emptyDraft);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -57,7 +55,7 @@ export function AccountCreateForm() {
 
   return (
     <>
-      <PageHeader eyebrow={s.code} title="Tạo tài khoản người dùng mới" description="Khởi tạo thông tin người dùng và gán vai trò trên Cocoon CRM." />
+      <PageHeader title="Tạo tài khoản người dùng mới" description="Khởi tạo thông tin người dùng và gán vai trò trên Cocoon CRM." />
       <form onSubmit={submit} noValidate className="grid max-w-[880px] gap-5 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 sm:gap-x-6 sm:p-8">
         <div className="space-y-2 sm:col-span-2">
           <label htmlFor={`${id}-fullName`} className={labelClass}>Họ và tên <span aria-hidden="true" className="text-destructive">*</span></label>

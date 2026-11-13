@@ -18,7 +18,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
     <div data-portal="public" className="flex min-h-dvh flex-col">
       <a href="#main-content" className="skip-link">Đến nội dung chính</a>
       <p className="bg-primary px-4 py-2 text-center font-label text-xs uppercase tracking-wider text-primary-foreground">Cocoon · Mỹ phẩm thuần chay từ Việt Nam</p>
-      <header className="border-b border-border bg-background">
+      <header className="sticky top-0 z-30 border-b border-border bg-background">
         <div className="mx-auto flex h-16 max-w-[1080px] items-center justify-between gap-4 px-4">
           <Logo tagline="Vietnam" />
           <nav aria-label="Điều hướng chính" className="hidden md:block">

@@ -2,13 +2,12 @@
 
 import { useCallback, useId, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, CircleCheck, Info, Lock, UserCheck } from "lucide-react";
+import { ArrowLeft, Check, CircleCheck, Lock, UserCheck } from "lucide-react";
 import { ConfirmDialog } from "@/components/brand/confirm-dialog";
 import { FeedbackThread } from "@/components/brand/feedback-thread";
 import { PageHeader } from "@/components/brand/page-header";
 import { StatusBadge } from "@/components/brand/status-badge";
 import { Button } from "@/components/ui/button";
-import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { acceptFeedback, assignFeedback, closeFeedback, loadFeedbackDetail, loadStaff, setAutoClose } from "../api";
 import type { FeedbackDetail, FeedbackStatus, StaffOption } from "../types";
@@ -29,7 +28,6 @@ function closedByLabel(closedBy: FeedbackDetail["closedBy"], hasSecondReply: boo
 
 /** M6 shows only the moves valid from the current status (spec: no disabled buttons standing in for an error). */
 export function FeedbackProcessing({ initial, staff }: { initial: FeedbackDetail; staff: readonly StaffOption[] }) {
-  const s = screen("M6");
   const id = useId();
   const [feedback, setFeedback] = useState(initial);
   const [staffId, setStaffId] = useState(initial.assigneeId ?? staff[0]?.id ?? 0);
@@ -68,7 +66,7 @@ export function FeedbackProcessing({ initial, staff }: { initial: FeedbackDetail
   return (
     <>
       <Link href="/manager/feedback" className="mb-3 inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Hộp phản hồi</Link>
-      <PageHeader eyebrow={s.code} title={`Xử lý phản hồi #${feedback.id}`} description={`${feedback.customerName}${feedback.orderCode ? ` · Đơn #${feedback.orderCode}` : ""}`} actions={<StatusBadge kind="feedback" status={status} className="whitespace-nowrap" />} />
+      <PageHeader title={`Xử lý phản hồi #${feedback.id}`} description={`${feedback.customerName}${feedback.orderCode ? ` · Đơn #${feedback.orderCode}` : ""}`} actions={<StatusBadge kind="feedback" status={status} />} />
 
       {status !== "Closed" && (
         <section aria-label="Thao tác điều phối" className={cn(caseCard, "mb-6 flex flex-wrap items-end gap-3")}>
@@ -146,7 +144,6 @@ export function FeedbackProcessing({ initial, staff }: { initial: FeedbackDetail
         <div className="min-w-0 space-y-6">
           <FeedbackTimeline status={status} times={feedback.statusTimes} />
           <FeedbackThread rating={feedback.rating} content={feedback.content} createdAt={feedback.createdAt} replies={feedback.replies} followUp={feedback.followUp} edits={feedback.edits} customerHeading={`Phản hồi của ${feedback.customerName}`} emptyReplies="Chưa có câu trả lời nào cho khách." />
-          <p className="flex gap-2 rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Nhân viên được giao trả lời khách ở màn S2. Quản lý theo dõi và điều phối tại đây.</p>
         </div>
         <div className="min-w-0 space-y-6">
           <CustomerSummary feedback={feedback} />

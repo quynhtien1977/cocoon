@@ -12,7 +12,6 @@ import { DataTable, type DataColumn, type DataFilter } from "@/components/data/d
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useApiData } from "@/lib/api/use-api-data";
-import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { deletePlan, endPlan, loadOverview, loadReport, rebuildRecommendations, type OverviewData } from "../api";
 import { segmentSummary } from "../schemas";
@@ -43,7 +42,6 @@ export function RecommendationOverviewPage() {
 }
 
 export function RecommendationOverview({ initial }: { initial: OverviewData }) {
-  const s = screen("M13");
   const { preferences, categories } = initial;
   const [plans, setPlans] = useState(initial.plans);
   const [report, setReport] = useState(initial.report);
@@ -103,7 +101,7 @@ export function RecommendationOverview({ initial }: { initial: OverviewData }) {
     { id: "name", header: "Kế hoạch", value: (row) => `${row.name} ${planCode(row)}`, sortable: true, cell: (row) => <span className="block w-64 whitespace-normal"><span className="block font-mono text-xs text-gold-strong">{planCode(row)}</span><span className="block"><PlanLink plan={row} /></span><span className="block text-xs text-muted-foreground">{row.productIds.length} sản phẩm</span></span> },
     { id: "segment", header: "Phân khúc", value: (row) => segmentSummary(row.segment, preferences, categories), cell: (row) => <span className="block w-44 whitespace-normal text-sm">{segmentSummary(row.segment, preferences, categories)}</span> },
     { id: "period", header: "Thời gian", value: (row) => row.startAt, sortable: true, searchable: false, cell: (row) => <span className="block w-24 whitespace-normal text-sm">{period(row)}</span> },
-    { id: "status", header: "Trạng thái", value: (row) => row.status, searchable: false, cell: (row) => <StatusBadge kind="recommendationPlan" status={row.status} className="whitespace-nowrap" /> },
+    { id: "status", header: "Trạng thái", value: (row) => row.status, searchable: false, cell: (row) => <StatusBadge kind="recommendationPlan" status={row.status} /> },
     { id: "recipients", header: "Số khách", value: (row) => row.recipientCount, sortable: true, searchable: false, cell: (row) => <span className="tabular-nums">{row.status === "Draft" ? "—" : row.recipientCount}</span> },
     { id: "clickRate", header: "Tỷ lệ bấm", value: (row) => row.clickRate, sortable: true, searchable: false, cell: (row) => <span className="tabular-nums">{row.clickRate === null ? "—" : percent.format(row.clickRate)}</span> },
     { id: "actions", header: "Thao tác", value: () => null, searchable: false, cell: (row) => <Actions plan={row} /> },
@@ -111,7 +109,7 @@ export function RecommendationOverview({ initial }: { initial: OverviewData }) {
 
   return (
     <>
-      <PageHeader eyebrow={s.code} title="Tổng quan gợi ý & kế hoạch" description="Theo dõi hiệu quả gợi ý sản phẩm và các kế hoạch gợi ý theo phân khúc." actions={<>
+      <PageHeader title="Tổng quan gợi ý & kế hoạch" description="Theo dõi hiệu quả gợi ý sản phẩm và các kế hoạch gợi ý theo phân khúc." actions={<>
         <Button type="button" variant="outline" className="h-12 px-4" onClick={rebuild} disabled={rebuilding}><RefreshCw aria-hidden="true" />{rebuilding ? "Đang tính lại…" : "Tính lại gợi ý"}</Button>
         <Link href="/manager/recommendations/plans/new" className={cn(buttonVariants(), "h-12 px-4")}><Plus aria-hidden="true" />Tạo kế hoạch mới</Link>
       </>} />

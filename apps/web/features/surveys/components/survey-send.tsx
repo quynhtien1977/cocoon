@@ -11,7 +11,6 @@ import { emptySegmentFilter, SegmentFilterBuilder, segmentAgeError, type Segment
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { screen } from "@/lib/screens";
 import { ApiError } from "@/lib/api/client";
 import { useApiData } from "@/lib/api/use-api-data";
 import { cn } from "@/lib/utils";
@@ -117,7 +116,6 @@ export interface SurveySendProps {
 }
 
 export function SurveySend({ survey: loaded, preferences, categories, customers }: SurveySendProps) {
-  const s = screen("M9");
   // A published draft becomes Open here, so retrying a failed recipients call does not publish twice.
   const [survey, setSurvey] = useState(loaded);
   const [mode, setMode] = useState<"segment" | "manual">("segment");
@@ -131,14 +129,14 @@ export function SurveySend({ survey: loaded, preferences, categories, customers 
   const back = <Link href="/manager/surveys" className="mb-3 inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Danh sách khảo sát</Link>;
 
   if (survey.status === "Closed") {
-    return <>{back}<PageHeader eyebrow={`${s.code} · ${code}`} title={survey.title} /><EmptyState title="Khảo sát đã đóng" description="Khảo sát đã đóng nên không gửi thêm được. Bạn vẫn xem được kết quả đã thu." action={<Link href={`/manager/surveys/${survey.id}/results`} className={cn(buttonVariants(), "h-12 px-4")}>Xem kết quả</Link>} /></>;
+    return <>{back}<PageHeader eyebrow={code} title={survey.title} /><EmptyState title="Khảo sát đã đóng" description="Khảo sát đã đóng nên không gửi thêm được. Bạn vẫn xem được kết quả đã thu." action={<Link href={`/manager/surveys/${survey.id}/results`} className={cn(buttonVariants(), "h-12 px-4")}>Xem kết quả</Link>} /></>;
   }
 
   if (sent !== null) {
     return (
       <>
         {back}
-        <PageHeader eyebrow={`${s.code} · ${code}`} title="Đã gửi khảo sát" description={survey.title} actions={<StatusBadge kind="survey" status="Open" />} />
+        <PageHeader eyebrow={code} title="Đã gửi khảo sát" description={survey.title} actions={<StatusBadge kind="survey" status="Open" />} />
         <section role="status" className="rounded-lg border border-border bg-card p-4 sm:p-6">
           <p className="flex gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" />Đã gửi cho {sent.added} khách hàng. Khảo sát hiện có {sent.total} người nhận.</p>
           <p className="mt-2 text-sm text-muted-foreground">Khảo sát xuất hiện trong Hộp khảo sát của khách và tạo một thông báo trong ứng dụng.</p>
@@ -174,7 +172,7 @@ export function SurveySend({ survey: loaded, preferences, categories, customers 
   return (
     <>
       {back}
-      <PageHeader eyebrow={`${s.code} · ${code}`} title="Gửi khảo sát" description="Chọn khách nhận khảo sát theo phân khúc hoặc chọn tay. Khảo sát được gửi trong ứng dụng." actions={<StatusBadge kind="survey" status={survey.status} />} />
+      <PageHeader eyebrow={code} title="Gửi khảo sát" description="Chọn khách nhận khảo sát theo phân khúc hoặc chọn tay. Khảo sát được gửi trong ứng dụng." actions={<StatusBadge kind="survey" status={survey.status} />} />
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
         <Tabs value={mode} onValueChange={(next) => { setMode(next as "segment" | "manual"); setProblem(null); }} className="min-w-0 gap-6">
           <TabsList variant="line" className="w-full justify-start overflow-x-auto border-b border-border">
@@ -188,7 +186,7 @@ export function SurveySend({ survey: loaded, preferences, categories, customers 
           <TabsContent value="manual"><ManualPicker customers={customers} selected={picked} onChange={(ids) => { setPicked(ids); setProblem(null); }} /></TabsContent>
         </Tabs>
 
-        <aside aria-labelledby="send-summary" className="space-y-4 rounded-lg border border-border bg-card p-4 sm:p-6 xl:sticky xl:top-6">
+        <aside aria-labelledby="send-summary" className="space-y-4 rounded-lg border border-border bg-card p-4 sm:p-6 xl:sticky xl:top-22">
           <div className="border-b border-border pb-4">
             <p className="font-label text-sm uppercase tracking-wider text-gold-strong">Hồ sơ phát hành</p>
             <h2 id="send-summary" className="mt-1 font-heading text-xl">{survey.title}</h2>
@@ -202,7 +200,7 @@ export function SurveySend({ survey: loaded, preferences, categories, customers 
           </dl>
           {survey.status === "Draft" && <p className="flex gap-2 rounded-md bg-muted p-3 text-sm text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Gửi sẽ mở khảo sát; từ đó câu hỏi bị khóa, không sửa được nữa.</p>}
           {problem && <p role="alert" className="text-sm text-destructive">{problem}</p>}
-          <Button type="button" className="h-12 w-full" onClick={review}><Send aria-hidden="true" />Xem lại và gửi khảo sát</Button>
+          <Button type="button" className="h-12 w-full" onClick={review}><Send aria-hidden="true" />Gửi khảo sát</Button>
           <p className="text-xs text-muted-foreground">Khảo sát hiện trong Hộp khảo sát của khách ngay sau khi gửi. Không gửi qua email hay SMS.</p>
         </aside>
       </div>

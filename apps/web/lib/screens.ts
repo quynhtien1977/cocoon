@@ -31,7 +31,7 @@ export const screens = {
   S1: { portal: "staff", href: "/staff/feedback", nav: true, title: "Phản hồi được giao", description: "Phản hồi Manager giao cho bạn xử lý." },
   S2: { portal: "staff", href: "/staff/feedback/[id]", title: "Trả lời phản hồi", description: "Đọc phản hồi và gửi trả lời cho khách." },
   // Profile screens for internal accounts are not in spec 8.1; codes continue each portal's numbering.
-  S3: { portal: "staff", href: "/staff/profile", nav: true, title: "Hồ sơ", description: "Thông tin cá nhân và đổi mật khẩu." },
+  S3: { portal: "staff", href: "/staff/profile", title: "Hồ sơ", description: "Thông tin cá nhân và đổi mật khẩu." },
 
   M1: { portal: "manager", href: "/manager", nav: true, title: "Tổng quan", description: "KPI, báo cáo khách hàng và phân tích." },
   M2: { portal: "manager", href: "/manager/customers", nav: true, title: "Khách hàng", description: "Tìm, lọc, sắp xếp khách hàng." },
@@ -47,12 +47,12 @@ export const screens = {
   M10: { portal: "manager", href: "/manager/surveys/[id]/results", title: "Kết quả khảo sát", description: "Tỷ lệ hoàn thành và thống kê từng câu." },
   M12: { portal: "manager", href: "/manager/products/[id]", title: "Chi tiết sản phẩm", description: "Tag sở thích, trạng thái và insights." },
   M14: { portal: "manager", href: "/manager/recommendations/plans/new", title: "Soạn kế hoạch gợi ý", description: "Phân khúc, sản phẩm và thời gian chạy." },
-  M15: { portal: "manager", href: "/manager/profile", nav: true, title: "Hồ sơ", description: "Thông tin cá nhân và đổi mật khẩu." },
+  M15: { portal: "manager", href: "/manager/profile", title: "Hồ sơ", description: "Thông tin cá nhân và đổi mật khẩu." },
 
   A1: { portal: "admin", href: "/admin", nav: true, title: "Tài khoản", description: "Danh sách tài khoản, phân quyền, khóa, xóa." },
   A2: { portal: "admin", href: "/admin/accounts/new", nav: true, title: "Tạo tài khoản", description: "Tạo tài khoản nội bộ và gán role." },
   A3: { portal: "admin", href: "/admin/activity", nav: true, title: "Nhật ký hoạt động", description: "Theo dõi hoạt động quản trị hệ thống." },
-  A4: { portal: "admin", href: "/admin/profile", nav: true, title: "Hồ sơ", description: "Thông tin cá nhân và đổi mật khẩu." },
+  A4: { portal: "admin", href: "/admin/profile", title: "Hồ sơ", description: "Thông tin cá nhân và đổi mật khẩu." },
 } satisfies Record<string, Omit<Screen, "code">>;
 
 export type ScreenCode = keyof typeof screens;

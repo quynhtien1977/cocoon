@@ -7,7 +7,6 @@ import { FeedbackThread } from "@/components/brand/feedback-thread";
 import { PageHeader } from "@/components/brand/page-header";
 import { StatusBadge } from "@/components/brand/status-badge";
 import { Button } from "@/components/ui/button";
-import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { loadFeedbackDetail, replyToFeedback } from "../api";
 import { REPLY_MAX, validateReply } from "../schemas";
@@ -17,7 +16,6 @@ import { caseCard, CustomerSummary, FeedbackTimeline, OrderProductSummary } from
 import { FeedbackLoadState } from "./feedback-load-state";
 
 export function StaffFeedbackReply({ initial }: { initial: FeedbackDetail }) {
-  const s = screen("S2");
   const id = useId();
   const [feedback, setFeedback] = useState(initial);
   const [content, setContent] = useState("");
@@ -52,7 +50,7 @@ export function StaffFeedbackReply({ initial }: { initial: FeedbackDetail }) {
   return (
     <>
       <Link href="/staff/feedback" className="mb-3 inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Phản hồi được giao</Link>
-      <PageHeader eyebrow={s.code} title={`Xử lý phản hồi khách hàng #${feedback.id}`} description={`${feedback.customerName}${feedback.orderCode ? ` · Đơn #${feedback.orderCode}` : ""}`} actions={<StatusBadge kind="feedback" status={feedback.status} className="whitespace-nowrap" />} />
+      <PageHeader title={`Xử lý phản hồi khách hàng #${feedback.id}`} description={`${feedback.customerName}${feedback.orderCode ? ` · Đơn #${feedback.orderCode}` : ""}`} actions={<StatusBadge kind="feedback" status={feedback.status} />} />
       <div aria-live="polite">
         {sent && (
           <p className="mb-6 flex items-center gap-2 rounded-md border border-border bg-status-sage-bg p-3 text-sm text-status-sage-fg">

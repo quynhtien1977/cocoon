@@ -2,7 +2,7 @@
 
 import { useCallback, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, Archive, BadgeInfo, CircleCheck, ClipboardCheck, Lock, LockOpen, ReceiptText, Star, UserRound } from "lucide-react";
+import { ArrowLeft, Archive, CircleCheck, ClipboardCheck, Lock, LockOpen, ReceiptText, Star, UserRound } from "lucide-react";
 import { ConfirmDialog } from "@/components/brand/confirm-dialog";
 import { EmptyState } from "@/components/brand/empty-state";
 import { PageHeader } from "@/components/brand/page-header";
@@ -14,7 +14,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApiData } from "@/lib/api/use-api-data";
-import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { deleteCustomer, loadCustomerDetail, lockCustomer, unlockCustomer } from "../api";
 import type { CustomerDetail as Customer, RecommendationState } from "../types";
@@ -47,7 +46,6 @@ export function CustomerDetailPage({ id }: { id: number }) {
 
 /** scoreBreakdown is passed in by the route: features/customers must not import features/recommendations. */
 export function CustomerDetail({ initial, scoreBreakdown }: { initial: Customer; scoreBreakdown?: ReactNode }) {
-  const s = screen("M4");
   const [customer, setCustomer] = useState(initial);
   const [deleted, setDeleted] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -70,7 +68,7 @@ export function CustomerDetail({ initial, scoreBreakdown }: { initial: Customer;
   if (deleted) {
     return (
       <>
-        <PageHeader eyebrow={s.code} title="Đã xóa khách hàng" description={`Hồ sơ ${customer.fullName} (${customer.code}) đã được xóa mềm.`} />
+        <PageHeader title="Đã xóa khách hàng" description={`Đã xóa hồ sơ ${customer.fullName} (${customer.code}).`} />
         <Link href="/manager/customers" className={cn(buttonVariants(), "h-12 px-4")}>Về danh sách khách hàng</Link>
       </>
     );
@@ -79,15 +77,14 @@ export function CustomerDetail({ initial, scoreBreakdown }: { initial: Customer;
   return (
     <>
       <Link href="/manager/customers" className="mb-3 inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Danh sách khách hàng</Link>
-      <PageHeader eyebrow={`${s.code} · ${customer.code}`} title={`Hồ sơ khách hàng: ${customer.fullName}`} actions={<>
+      <PageHeader eyebrow={customer.code} title={`Hồ sơ khách hàng: ${customer.fullName}`} actions={<>
         <StatusBadge kind="account" status={customer.status} className="self-center whitespace-nowrap" />
         <ConfirmDialog portal="manager" title={locked ? "Mở khóa tài khoản?" : "Khóa tài khoản?"} confirmLabel={locked ? "Mở khóa" : "Khóa tài khoản"}
           description={locked ? `${customer.fullName} sẽ đăng nhập lại được.` : `${customer.fullName} sẽ không đăng nhập được cho đến khi được mở khóa. Dữ liệu vẫn được giữ.`}
           trigger={<Button type="button" variant="outline" className="h-12 px-4">{locked ? <LockOpen aria-hidden="true" /> : <Lock aria-hidden="true" />}{locked ? "Mở khóa" : "Khóa tài khoản"}</Button>} onConfirm={toggleLock} />
-        <ConfirmDialog portal="manager" title="Xóa khách hàng?" description={`Hồ sơ ${customer.fullName} chuyển sang không hoạt động và không đăng nhập được nữa. Lịch sử đơn hàng và phản hồi vẫn được giữ lại.`} confirmLabel="Xóa khách hàng"
+        <ConfirmDialog portal="manager" title="Xóa khách hàng?" description={`${customer.fullName} sẽ bị xóa và không đăng nhập được nữa. Lịch sử đơn hàng và phản hồi vẫn được giữ.`} confirmLabel="Xóa khách hàng"
           trigger={<Button type="button" variant="outline" className="h-12 px-4 text-destructive"><Archive aria-hidden="true" />Xóa khách hàng</Button>} onConfirm={remove} />
       </>} />
-      <p className="mb-6 flex gap-2 rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground"><BadgeInfo className="mt-0.5 size-4 shrink-0 text-gold-strong" aria-hidden="true" /><span><strong className="font-semibold text-foreground">Xóa mềm:</strong> giữ nguyên lịch sử đơn hàng và phản hồi, chỉ chuyển tài khoản sang không hoạt động.</span></p>
       <div aria-live="polite">{notice && <p className="mb-6 flex items-center gap-2 rounded-md border border-border bg-status-sage-bg p-3 text-sm text-status-sage-fg"><CircleCheck className="size-4 shrink-0" aria-hidden="true" />{notice}</p>}</div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
@@ -130,7 +127,7 @@ export function CustomerDetail({ initial, scoreBreakdown }: { initial: Customer;
                 <TableCaption className="sr-only">Đơn hàng của {customer.fullName}</TableCaption>
                 <TableHeader><TableRow><TableHead>Mã đơn</TableHead><TableHead>Ngày đặt</TableHead><TableHead className="text-right">Số sản phẩm</TableHead><TableHead className="text-right">Tổng tiền</TableHead><TableHead>Trạng thái</TableHead></TableRow></TableHeader>
                 <TableBody>{customer.orders.map((order) => (
-                  <TableRow key={order.id}><TableCell className="font-mono text-xs">#{order.code}</TableCell><TableCell>{date.format(new Date(order.placedAt))}</TableCell><TableCell className="text-right tabular-nums">{order.itemCount}</TableCell><TableCell className="text-right tabular-nums">{money.format(order.total)}</TableCell><TableCell><StatusBadge kind="order" status={order.status} className="whitespace-nowrap" /></TableCell></TableRow>
+                  <TableRow key={order.id}><TableCell className="font-mono text-xs">#{order.code}</TableCell><TableCell>{date.format(new Date(order.placedAt))}</TableCell><TableCell className="text-right tabular-nums">{order.itemCount}</TableCell><TableCell className="text-right tabular-nums">{money.format(order.total)}</TableCell><TableCell><StatusBadge kind="order" status={order.status} /></TableCell></TableRow>
                 ))}</TableBody>
               </Table>
             </section>
@@ -156,13 +153,13 @@ export function CustomerDetail({ initial, scoreBreakdown }: { initial: Customer;
           {customer.surveys.length ? <ul className={cn(panel, "divide-y divide-border py-2 sm:py-2")}>{customer.surveys.map((item) => (
             <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
               <span className="min-w-0"><span className="block font-semibold">{item.title}</span><span className="block text-xs text-muted-foreground">Gửi ngày {date.format(new Date(item.sentAt))}</span></span>
-              <StatusBadge kind="recipient" status={item.status} className="whitespace-nowrap" />
+              <StatusBadge kind="recipient" status={item.status} />
             </li>
           ))}</ul> : <EmptyState title="Chưa có khảo sát" description="Khách hàng này chưa được gửi khảo sát nào." />}
         </TabsContent>
 
         <TabsContent value="recommendations" className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-          {!customer.recommendations.length ? <EmptyState className="lg:col-span-2" title="Chưa có gợi ý" description="Gợi ý sản phẩm cho khách hàng này sẽ hiện khi hệ thống gợi ý được bật." /> : <>
+          {!customer.recommendations.length ? <EmptyState className="lg:col-span-2" title="Chưa có gợi ý" description="Khách hàng này chưa có gợi ý. Gợi ý mới xuất hiện sau khi bấm “Tính lại gợi ý” ở trang Gợi ý." /> : <>
           {scoreBreakdown}
           <section aria-labelledby="suggested-title" className={panel}>
             <h2 id="suggested-title" className="font-heading text-xl">Sản phẩm đang gợi ý</h2>

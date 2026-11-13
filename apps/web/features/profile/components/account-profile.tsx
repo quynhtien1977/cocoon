@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
-import { CircleCheck, Info, KeyRound, LoaderCircle, ShieldAlert } from "lucide-react";
+import { CircleCheck, KeyRound, LoaderCircle, ShieldAlert } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,23 +23,20 @@ const dateTime = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-di
 /** Copy from the Stitch S3, M15 and A4 screens. */
 const variants = {
   staff: {
-    code: "S3", loginHref: "/login", prefix: "STF",
+    loginHref: "/login", prefix: "STF",
     title: "Hồ sơ Nhân viên Chăm sóc khách hàng", description: "Thông tin cá nhân và liên hệ công vụ của nhân viên Cocoon.",
-    notice: "Màn hình hồ sơ phục vụ xác nhận thông tin liên lạc. Hệ thống không cung cấp chức năng đổi mật khẩu tại đây nhằm đảm bảo tính toàn vẹn quản trị nội bộ.",
     section: "Thông tin định danh nhân sự", note: "Cập nhật họ tên và số điện thoại liên lạc",
     codeLabel: "Mã nhân viên", emailLabel: "Email nội bộ", phoneLabel: "Số điện thoại liên lạc", reset: "Hủy thay đổi", save: "Lưu thông tin hồ sơ",
   },
   manager: {
-    code: "M15", loginHref: "/login", prefix: "MGR",
+    loginHref: "/login", prefix: "MGR",
     title: "Hồ sơ Quản lý CRM", description: "Thông tin trưởng nhóm điều phối chăm sóc khách hàng và giám sát chất lượng.",
-    notice: "Tính năng đổi mật khẩu không hỗ trợ tại giao diện này. Nếu cần thay đổi thông tin định danh, vui lòng liên hệ Ban Quản trị viên (Admin Console) để xác minh nội bộ.",
     section: "Thông tin cá nhân & Liên hệ công vụ", note: "Cập nhật thông tin phối hợp liên bộ phận",
     codeLabel: "Mã quản lý", emailLabel: "Email công tác", phoneLabel: "Số điện thoại trực", reset: "Hủy chỉnh sửa", save: "Cập nhật hồ sơ",
   },
   admin: {
-    code: "A4", loginHref: "/admin/login", prefix: "ADM",
+    loginHref: "/admin/login", prefix: "ADM",
     title: "Hồ sơ quản trị viên", description: "Thông tin tài khoản công vụ của quản trị viên hệ thống Cocoon CRM.",
-    notice: "Hệ thống không kích hoạt tính năng tự đổi mật khẩu trực tiếp tại màn hình này. Mọi thay đổi định danh bảo mật được kiểm soát qua quy trình cấp tài khoản nội bộ.",
     section: "Thông tin công vụ", note: "Chỉ cập nhật thông tin liên hệ hành chính",
     codeLabel: "Mã cán bộ quản trị", emailLabel: "Email công vụ", phoneLabel: "Số điện thoại nội bộ", reset: "Khôi phục mặc định", save: "Lưu cập nhật thông tin",
   },
@@ -150,8 +147,8 @@ function ProfileForm({ profile, code, copy, onSaved }: { profile: StaffProfile; 
   );
 }
 
-/** Only shown while the account still has the temporary password an admin issued (Stitch keeps password changes off this screen). */
-function PasswordForm({ loginHref }: { loginHref: string }) {
+/** forced: the account still has the temporary password an admin issued. */
+function PasswordForm({ loginHref, forced }: { loginHref: string; forced: boolean }) {
   const id = useId();
   const [draft, setDraft] = useState(emptyPassword);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -195,8 +192,8 @@ function PasswordForm({ loginHref }: { loginHref: string }) {
   );
 
   return (
-    <form onSubmit={submit} noValidate aria-labelledby={`${id}-title`} className={cn(card, "space-y-5 border-status-danger-fg")}>
-      <h2 id={`${id}-title`} className="flex items-center gap-2 border-b border-border pb-3 font-heading text-xl"><KeyRound className="size-5 text-gold-strong" aria-hidden="true" />Đổi mật khẩu tạm</h2>
+    <form onSubmit={submit} noValidate aria-labelledby={`${id}-title`} className={cn(card, "space-y-5", forced && "border-status-danger-fg")}>
+      <h2 id={`${id}-title`} className="flex items-center gap-2 border-b border-border pb-3 font-heading text-xl"><KeyRound className="size-5 text-gold-strong" aria-hidden="true" />{forced ? "Đổi mật khẩu tạm" : "Đổi mật khẩu"}</h2>
       <div className="grid gap-5 sm:grid-cols-3">
         <Field id={`${id}-currentPassword`} label="Mật khẩu hiện tại" error={errors.currentPassword}>{input("currentPassword", "current-password")}</Field>
         <Field id={`${id}-newPassword`} label="Mật khẩu mới" error={errors.newPassword} hint="8–128 ký tự, có cả chữ và số.">{input("newPassword", "new-password", true)}</Field>
@@ -258,7 +255,7 @@ export function AccountProfile({ variant, logout }: AccountProfileProps) {
     return () => controller.abort();
   }, [attempt]);
 
-  const header = <PageHeader eyebrow={copy.code} title={copy.title} description={copy.description} actions={profile ? logout : undefined} />;
+  const header = <PageHeader title={copy.title} description={copy.description} actions={profile ? logout : undefined} />;
 
   if (!profile) {
     return (
@@ -283,18 +280,16 @@ export function AccountProfile({ variant, logout }: AccountProfileProps) {
   return (
     <>
       {header}
-      {profile.mustChangePassword ? (
+      {profile.mustChangePassword && (
         <p role="alert" className="mb-6 flex gap-2 rounded-md border border-status-danger-fg bg-status-danger-bg p-4 text-sm text-status-danger-fg">
           <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Bạn đang dùng mật khẩu tạm do quản trị viên cấp. Hãy đổi mật khẩu ở cuối trang trước khi tiếp tục làm việc.
         </p>
-      ) : (
-        <p className="mb-6 flex gap-2 rounded-r-md border-l-4 border-gold bg-card p-4 text-sm text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0 text-gold-strong" aria-hidden="true" />{copy.notice}</p>
       )}
       <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <SummaryCard profile={profile} code={code} rows={rows} stats={stats} />
         <div className="min-w-0 space-y-6">
           <ProfileForm profile={profile} code={code} copy={copy} onSaved={(draft) => setProfile((current) => current && { ...current, fullName: draft.fullName, phone: draft.phone || null })} />
-          {profile.mustChangePassword && <PasswordForm loginHref={copy.loginHref} />}
+          <PasswordForm loginHref={copy.loginHref} forced={profile.mustChangePassword} />
         </div>
       </div>
     </>

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { CircleCheck, Save } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
 import { createCustomer, type CustomerCreated } from "../api";
@@ -19,7 +18,6 @@ const emptyDraft: CustomerDraft = { fullName: "", email: "", phone: "", dateOfBi
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" });
 
 export function CustomerCreateForm() {
-  const s = screen("M3");
   const id = useId();
   const [draft, setDraft] = useState(emptyDraft);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -55,7 +53,7 @@ export function CustomerCreateForm() {
 
   return (
     <>
-      <PageHeader eyebrow={s.code} title="Thêm hồ sơ khách hàng mới" description="Tạo hồ sơ với thông tin định danh cơ bản của khách hàng." />
+      <PageHeader title="Thêm hồ sơ khách hàng mới" description="Tạo hồ sơ với thông tin định danh cơ bản của khách hàng." />
       <form onSubmit={submit} noValidate className="max-w-[1020px] space-y-8 rounded-lg border border-border border-t-4 border-t-gold bg-card p-4 sm:p-8">
         <section aria-labelledby={`${id}-identity`} className="space-y-5">
           <h2 id={`${id}-identity`} className={sectionTitle}><span className="font-bold text-gold-strong">01</span><span aria-hidden="true">/</span>Thông tin định danh cơ bản</h2>
