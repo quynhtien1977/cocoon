@@ -28,12 +28,12 @@ export async function loadOrders(signal: AbortSignal): Promise<CustomerOrder[]> 
   const orders: CustomerOrder[] = [];
   for (let page = 1; page <= 100; page++) {
     const result = parseOrders(await apiRequest<unknown>(`/me/orders?page=${page}&pageSize=20`, { signal, refresh: false }));
-    if (result.items.some((order) => orders.some((previous) => previous.id === order.id))) throw new Error("Không thể tải đầy đủ danh sách đơn hàng.");
+    if (result.items.some((order) => orders.some((previous) => previous.id === order.id))) throw new Error("Chưa tải được đầy đủ đơn hàng. Kiểm tra kết nối rồi thử lại.");
     orders.push(...result.items);
     if (orders.length >= result.totalCount) return orders;
     if (!result.items.length) break;
   }
-  throw new Error("Không thể tải đầy đủ danh sách đơn hàng. Vui lòng thử lại sau.");
+  throw new Error("Chưa tải được đầy đủ đơn hàng. Kiểm tra kết nối rồi thử lại.");
 }
 
 export function filterOrders(orders: CustomerOrder[], filter: OrderFilter, search = "") {

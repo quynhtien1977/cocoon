@@ -8,6 +8,10 @@ export type LoginPortal = "shared" | "admin" | "customer";
 const destinations: Record<AccountRole, string> = {
   Admin: "/admin", Manager: "/manager", Staff: "/staff/feedback", Customer: "/account",
 };
+/** A temporary password blocks every other API call, so those accounts land where they can change it. */
+const profilePages: Record<AccountRole, string> = {
+  Admin: "/admin/profile", Manager: "/manager/profile", Staff: "/staff/profile", Customer: "/account/profile",
+};
 
 export function validateLogin(email: string, password: string) {
   return {
@@ -26,6 +30,7 @@ export async function signIn(email: string, password: string, portal: LoginPorta
     if (portal === "admin" && role !== "Admin") throw new Error("Tài khoản này không thuộc quản trị viên. Vui lòng dùng trang đăng nhập chung.");
     if (portal === "shared" && role === "Admin") throw new Error("Tài khoản quản trị viên cần đăng nhập tại trang dành riêng cho Admin.");
     if (portal === "customer" && role !== "Customer") throw new Error("Không thể mở phiên khách hàng. Vui lòng đăng nhập lại.");
+    if ((profile as { mustChangePassword?: unknown }).mustChangePassword === true) return profilePages[role];
     return role === "Customer" && returnTo === CUSTOMER_RECOMMENDATIONS_HREF ? CUSTOMER_RECOMMENDATIONS_HREF : destinations[role];
   } catch (error) {
     // Clear a partially established session on profile failure or wrong entry point.

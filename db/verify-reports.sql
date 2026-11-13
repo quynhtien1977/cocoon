@@ -91,7 +91,7 @@ GROUP BY n.rating ORDER BY n.rating;
 -- Result set 06: ratings_by_month.
 -- Monthly negative rate uses 0–1 fractions, not percentages.
 SELECT to_char(f."CreatedAt", 'YYYY-MM') AS month, count(*) AS feedback_count,
-    avg(f."Rating") AS avg_rating, count(*) FILTER (WHERE f."Rating" <= 2)::numeric / count(*) AS low_rating_rate
+    avg(f."Rating") AS avg_rating, count(*) FILTER (WHERE f."Rating" <= 4)::numeric / count(*) AS low_rating_rate
 FROM "Feedback" f
 WHERE (NULLIF(:'report_from', '') IS NULL OR f."CreatedAt" >= NULLIF(:'report_from', '')::timestamptz)
   AND f."CreatedAt" < COALESCE(NULLIF(:'report_to', '')::timestamptz, CURRENT_TIMESTAMP)

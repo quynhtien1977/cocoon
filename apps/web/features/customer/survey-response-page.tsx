@@ -30,7 +30,7 @@ export function SurveyResponsePage({ id, preview = false }: { id: string; previe
       return { survey, accountId: account.id };
     }
     load().then(result => { if (!controller.signal.aborted) setData(result); })
-      .catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.status === 501 ? "Khảo sát hiện chưa khả dụng. Bạn hãy quay lại sau nhé." : reason.status === 404 ? "Không tìm thấy khảo sát này hoặc bạn chưa được mời tham gia." : "Chưa thể mở khảo sát. Bạn hãy thử lại nhé." : "Chưa thể tải khảo sát. Vui lòng kiểm tra lại kết nối hoặc thử lại."); })
+      .catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError ? reason.status === 501 ? "Khảo sát hiện chưa khả dụng. Bạn hãy quay lại sau nhé." : reason.status === 404 ? "Không tìm thấy khảo sát này hoặc bạn chưa được mời tham gia." : "Chưa thể mở khảo sát. Bạn hãy thử lại nhé." : "Chưa tải được khảo sát. Kiểm tra kết nối rồi thử lại."); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [id, preview, attempt]);

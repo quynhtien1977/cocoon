@@ -2673,6 +2673,7 @@ export interface components {
             email: string;
             fullName: string;
             role: components["schemas"]["AccountRole"];
+            phone?: null | string;
         };
         CreateCustomerRequest: {
             email: string;

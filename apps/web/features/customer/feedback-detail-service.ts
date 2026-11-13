@@ -145,7 +145,7 @@ export function feedbackDetailError(error: unknown): string {
     if (error.status === 501) return "Chi tiết phản hồi hiện chưa khả dụng. Vui lòng quay lại sau.";
     if (error.status === 404) return "Không tìm thấy phản hồi này.";
     if (error.status === 403) return "Bạn không có quyền xem phản hồi này.";
-    return "Chưa thể tải phản hồi. Vui lòng thử lại.";
+    return "Chưa tải được phản hồi. Kiểm tra kết nối rồi thử lại.";
   }
   return error instanceof Error && !(error instanceof TypeError) && !["AbortError", "TimeoutError"].includes(error.name) ? error.message : "Kết nối bị gián đoạn. Vui lòng thử lại.";
 }

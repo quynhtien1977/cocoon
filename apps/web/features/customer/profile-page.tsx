@@ -151,7 +151,8 @@ function Preferences() {
   </Section>;
 }
 
-export function ProfilePage() {
+/** passwordSection comes from the route: features/customer must not import features/profile. */
+export function ProfilePage({ passwordSection }: { passwordSection?: ReactNode }) {
   return <div className="pb-8 text-[#30291f]">
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <Link href="/account" className="inline-flex min-h-11 items-center gap-2 text-sm text-[#756b5e] hover:text-[#846530]"><ArrowLeft size={16} />Trang chủ</Link>
@@ -159,5 +160,6 @@ export function ProfilePage() {
     </div>
     <header className="mb-8"><p className="mb-3 font-label text-sm font-semibold uppercase tracking-[0.15em] text-[#856936]">TÀI KHOẢN COCOON</p><h1 className="font-heading text-4xl sm:text-5xl">Hồ sơ của bạn</h1><p className="mt-3 max-w-xl text-base leading-7 text-[#756b5e]">Một chút về bạn, để mỗi trải nghiệm cùng Cocoon thêm trọn vẹn.</p></header>
     <div className="grid items-start gap-6 lg:grid-cols-[1.15fr_1fr]"><PersonalInformation /><Preferences /></div>
+    {passwordSection && <div className="mt-6">{passwordSection}</div>}
   </div>;
 }

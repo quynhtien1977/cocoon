@@ -78,7 +78,7 @@ export function SurveyBuilder({ initial, surveyId, preferences, products }: Surv
       setSavedAt(new Date());
     } catch (reason) {
       setSavedAt(null);
-      setServerError(reason instanceof ApiError ? reason.message : "Không kết nối được máy chủ. Thử lại sau.");
+      setServerError(reason instanceof ApiError ? reason.message : "Mất kết nối. Kiểm tra mạng rồi thử lại.");
     } finally {
       setSaving(false);
     }

@@ -4,6 +4,7 @@ import { useId, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { CircleCheck, Info, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
+import { TemporaryPassword } from "@/components/brand/temporary-password";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { AccountRole } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
@@ -14,8 +15,8 @@ import type { AccountDraft } from "../types";
 
 const fieldClass = "min-h-12 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-destructive";
 const labelClass = "font-label text-sm uppercase tracking-wider";
-const emptyDraft: AccountDraft = { fullName: "", email: "", role: "Staff" };
-const draftFields = new Set(["fullName", "email", "role"]);
+const emptyDraft: AccountDraft = { fullName: "", email: "", phone: "", role: "Staff" };
+const draftFields = new Set(["fullName", "email", "phone", "role"]);
 
 export function AccountCreateForm() {
   const id = useId();
@@ -39,7 +40,7 @@ export function AccountCreateForm() {
       setCreated(await createAccount(draft));
       setDraft(emptyDraft);
     } catch (error) {
-      if (!(error instanceof ApiError)) { setSubmitError("Không kết nối được máy chủ. Thử lại sau."); return; }
+      if (!(error instanceof ApiError)) { setSubmitError("Mất kết nối. Kiểm tra mạng rồi thử lại."); return; }
       // 409 EMAIL_TAKEN and 400 VALIDATION_ERROR name the field; show them next to it.
       const fields = Object.fromEntries(Object.entries(error.errors).filter(([field]) => draftFields.has(field)).map(([field, messages]) => [field, messages[0]]));
       if (Object.keys(fields).length) setErrors(fields);
@@ -75,6 +76,12 @@ export function AccountCreateForm() {
             {assignableRoles.map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}
           </select>
         </div>
+        <div className="space-y-2">
+          <label htmlFor={`${id}-phone`} className={labelClass}>Số điện thoại{draft.role === "Manager" && <> <span aria-hidden="true" className="text-destructive">*</span></>}</label>
+          <input id={`${id}-phone`} type="tel" inputMode="tel" value={draft.phone} onChange={(event) => update({ phone: event.target.value })} maxLength={32} required={draft.role === "Manager"} autoComplete="off" placeholder="0912 345 678"
+            aria-invalid={!!errors.phone} aria-describedby={describedBy("phone")} className={fieldClass} />
+          {fieldError("phone")}
+        </div>
 
         <section aria-live="polite" aria-label="Quyền của vai trò đang chọn" className="space-y-2 rounded-md border border-border bg-muted p-4 sm:col-span-2">
           <header className="flex flex-wrap items-center justify-between gap-2">
@@ -90,7 +97,7 @@ export function AccountCreateForm() {
         <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5 sm:col-span-2">
           <div aria-live="polite" className="min-w-0 text-sm">
             {submitError ? <p role="alert" className="text-destructive">Chưa tạo được tài khoản: {submitError}</p>
-              : created ? <p className="flex items-start gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0 break-all">Đã tạo tài khoản {created.email} ({roleLabels[created.role]}). Mật khẩu tạm để đăng nhập lần đầu: <code className="font-mono font-semibold text-foreground">{created.temporaryPassword}</code>. Người dùng phải đổi mật khẩu khi đăng nhập.</span></p> : null}
+              : created ? <p className="flex items-start gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0 break-words">Đã tạo tài khoản {created.email} ({roleLabels[created.role]}). Mật khẩu tạm: <TemporaryPassword value={created.temporaryPassword} /> Chỉ hiện một lần. Gửi riêng cho người dùng; họ phải đổi mật khẩu khi đăng nhập lần đầu.</span></p> : null}
           </div>
           <div className="flex w-full gap-3 sm:ml-auto sm:w-auto">
             <Link href="/admin" className={cn(buttonVariants({ variant: "outline" }), "h-12 flex-1 px-6 sm:flex-none")}>Hủy</Link>

@@ -46,7 +46,7 @@ type Copy = (typeof variants)[ProfileVariant];
 type Stat = { label: string; value: number | null };
 
 const initials = (name: string) => name.trim().split(/\s+/).filter(Boolean).slice(-2).map((part) => part[0]).join("").toUpperCase() || "?";
-const failure = (reason: unknown) => reason instanceof ApiError ? reason.message : "Chưa kết nối được máy chủ. Kiểm tra mạng rồi thử lại.";
+const failure = (reason: unknown) => reason instanceof ApiError ? reason.message : "Mất kết nối. Kiểm tra mạng rồi thử lại.";
 /** Display code derived from the account id, like the API's KH-0001 for customers; accounts have no stored staff code. */
 export const staffCode = (prefix: string, id: number) => `${prefix}-${String(id).padStart(4, "0")}`;
 
@@ -92,12 +92,13 @@ function ProfileForm({ profile, code, copy, onSaved }: { profile: StaffProfile; 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [problem, setProblem] = useState<string | null>(null);
+  const phoneRequired = profile.role === "Manager";
   const dirty = draft.fullName !== saved.fullName || draft.phone !== saved.phone;
   const update = (patch: Partial<ProfileDraft>) => { setDraft((current) => ({ ...current, ...patch })); setStatus("idle"); setProblem(null); };
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const found = validateProfileDraft(draft);
+    const found = validateProfileDraft(draft, phoneRequired);
     setErrors(found);
     if (Object.keys(found).length || status === "saving") return;
     if (!dirty) { setProblem("Chưa có thay đổi nào để lưu."); return; }
@@ -132,8 +133,8 @@ function ProfileForm({ profile, code, copy, onSaved }: { profile: StaffProfile; 
         <Field id={`${id}-email`} label={copy.emailLabel} hint="Liên hệ quản trị viên để đổi email.">
           <input id={`${id}-email`} value={profile.email} readOnly aria-describedby={`${id}-email-hint`} className={fieldClass} />
         </Field>
-        <Field id={`${id}-phone`} label={copy.phoneLabel} error={errors.phone} hint="Không bắt buộc.">
-          <input id={`${id}-phone`} type="tel" inputMode="tel" value={draft.phone} maxLength={32} autoComplete="tel" onChange={(event) => update({ phone: event.target.value })} aria-invalid={!!errors.phone} aria-describedby={describedBy("phone", true)} className={fieldClass} />
+        <Field id={`${id}-phone`} label={copy.phoneLabel} error={errors.phone} hint={phoneRequired ? "Bắt buộc với tài khoản quản lý." : "Không bắt buộc."}>
+          <input id={`${id}-phone`} type="tel" inputMode="tel" value={draft.phone} maxLength={32} required={phoneRequired} autoComplete="tel" onChange={(event) => update({ phone: event.target.value })} aria-invalid={!!errors.phone} aria-describedby={describedBy("phone", true)} className={fieldClass} />
         </Field>
       </div>
       <div aria-live="polite" className="text-sm empty:hidden">
@@ -205,6 +206,26 @@ function PasswordForm({ loginHref, forced }: { loginHref: string; forced: boolea
         <Button type="submit" className="h-12 px-6" aria-busy={pending}>{pending ? <><LoaderCircle className="animate-spin" aria-hidden="true" />Đang đổi…</> : "Đổi mật khẩu"}</Button>
       </div>
     </form>
+  );
+}
+
+/** Password card for pages outside this module (the customer profile); the route composes it so features stay separate. */
+export function MyPasswordSection({ loginHref }: { loginHref: string }) {
+  const [forced, setForced] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    loadMyProfile(controller.signal).then((me) => setForced(me.mustChangePassword === true)).catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+  return (
+    <div className="space-y-4">
+      {forced && (
+        <p role="alert" className="flex gap-2 rounded-md border border-status-danger-fg bg-status-danger-bg p-4 text-sm text-status-danger-fg">
+          <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Bạn đang dùng mật khẩu tạm. Hãy đổi mật khẩu để dùng đầy đủ tài khoản.
+        </p>
+      )}
+      <PasswordForm loginHref={loginHref} forced={forced} />
+    </div>
   );
 }
 

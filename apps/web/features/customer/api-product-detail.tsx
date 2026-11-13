@@ -23,7 +23,7 @@ export function ApiProductDetail({ id }: { id: string }) {
         if (controller.signal.aborted) return;
         setError(reason instanceof ApiError && reason.status === 501 ? "Chi tiết sản phẩm hiện chưa khả dụng. Vui lòng quay lại sau."
           : reason instanceof ApiError && reason.status === 404 ? "Không tìm thấy sản phẩm này."
-          : "Chưa thể tải sản phẩm. Vui lòng thử lại.");
+          : "Chưa tải được sản phẩm. Kiểm tra kết nối rồi thử lại.");
       }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [id, attempt]);

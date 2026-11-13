@@ -23,7 +23,11 @@ export const roleOrdinal: Record<AccountRole, number> = { Admin: 0, Manager: 1, 
 export const accountDraftSchema = z.object({
   fullName: z.string().trim().min(1, "Nhập họ và tên.").max(200, "Họ tên tối đa 200 ký tự."),
   email: z.string().trim().min(1, "Nhập email đăng nhập.").max(256, "Email tối đa 256 ký tự.").email("Email không hợp lệ."),
+  // Same rule as the profile pages: 8–15 digits, common separators allowed.
+  phone: z.string().trim().max(32, "Số điện thoại tối đa 32 ký tự.").refine((value) => !value || (/^\+?[\d\s().-]+$/.test(value) && value.replace(/\D/g, "").length >= 8 && value.replace(/\D/g, "").length <= 15), "Nhập số điện thoại hợp lệ (8–15 chữ số)."),
   role: z.enum(["Admin", "Manager", "Staff", "Customer"]),
+}).superRefine((value, ctx) => {
+  if (value.role === "Manager" && !value.phone) ctx.addIssue({ code: "custom", path: ["phone"], message: "Quản lý cần có số điện thoại." });
 });
 
 /** Flattens zod issues to field → message, first message per field. */
@@ -36,5 +40,5 @@ export function validateAccountDraft(draft: AccountDraft): Record<string, string
 }
 
 export function toCreateAccountRequest(draft: AccountDraft): CreateAccountRequest {
-  return { email: draft.email.trim(), fullName: draft.fullName.trim(), role: roleOrdinal[draft.role] };
+  return { email: draft.email.trim(), fullName: draft.fullName.trim(), role: roleOrdinal[draft.role], phone: draft.phone.trim() || null };
 }

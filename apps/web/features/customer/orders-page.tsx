@@ -41,7 +41,7 @@ export function OrdersPage({ initialFilter = "all", initialPreview = false }: { 
     const controller = new AbortController();
     loadOrders(AbortSignal.any([controller.signal, AbortSignal.timeout(12000)])).then((data) => { if (!controller.signal.aborted) setOrders(data); }).catch((error: unknown) => {
       if (controller.signal.aborted) return;
-      setError(error instanceof ApiError && error.status === 501 ? "Lịch sử đơn hàng hiện chưa khả dụng. Bạn có thể quay lại sau hoặc xem giao diện mẫu." : "Chưa thể tải đơn hàng. Vui lòng thử lại sau.");
+      setError(error instanceof ApiError && error.status === 501 ? "Lịch sử đơn hàng hiện chưa khả dụng. Bạn có thể quay lại sau hoặc xem giao diện mẫu." : "Chưa tải được đơn hàng. Kiểm tra kết nối rồi thử lại.");
     }).finally(() => { if (!controller.signal.aborted) setPending(false); });
     return () => controller.abort();
   }, [attempt, preview]);

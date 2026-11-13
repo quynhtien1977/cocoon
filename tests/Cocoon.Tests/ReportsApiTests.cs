@@ -142,7 +142,7 @@ public sealed partial class ReportsApiTests : AccountApiTestBase
             db.Add(product); await db.SaveChangesAsync();
             var variant = new ProductVariant { ProductId = product.Id, Sku = "REPORT-V1", Price = 999, IsDeleted = true };
             db.Add(variant); await db.SaveChangesAsync();
-            foreach (var (date, rating) in new[] { (start.AddTicks(-10), 1), (start, 2), (start.AddDays(1), 5), (start.AddMonths(1), 1) })
+            foreach (var (date, rating) in new[] { (start.AddTicks(-10), 1), (start, 4), (start.AddDays(1), 5), (start.AddMonths(1), 1) })
                 db.Add(new Feedback { CustomerId = customer, ProductId = product.Id, Rating = rating, Content = "Phản hồi báo cáo", CreatedAt = date });
             foreach (var (date, state, qty) in new[] { (start.AddTicks(-10), OrderStatus.Completed, 99), (start, OrderStatus.Completed, 2),
                 (start.AddDays(1), OrderStatus.Completed, 3), (start.AddDays(1), OrderStatus.Cancelled, 99),
@@ -161,10 +161,10 @@ public sealed partial class ReportsApiTests : AccountApiTestBase
         const string period = "?from=2026-10-01T00:00:00Z&to=2026-11-01T00:00:00Z";
         var ratings = await Get("feedback/ratings" + period, manager);
         Assert.Equal(2, ratings.GetProperty("feedbackCount").GetInt32());
-        Assert.Equal(3.5m, ratings.GetProperty("avgRating").GetDecimal());
+        Assert.Equal(4.5m, ratings.GetProperty("avgRating").GetDecimal());
         Assert.Single(ratings.GetProperty("byProduct").EnumerateArray());
         Assert.Single(ratings.GetProperty("byMonth").EnumerateArray());
-        Assert.Equal(.5m, ratings.GetProperty("byMonth")[0].GetProperty("lowRatingRate").GetDecimal());
+        Assert.Equal(.5m, ratings.GetProperty("byMonth")[0].GetProperty("lowRatingRate").GetDecimal()); // 4 stars counts as low, 5 does not
         Assert.Equal(2, ratings.GetProperty("distribution").EnumerateArray().Sum(x => x.GetProperty("feedbackCount").GetInt32()));
         var purchase = Assert.Single((await Get("purchases/categories" + period, manager)).GetProperty("items").EnumerateArray());
         Assert.Equal(500, purchase.GetProperty("revenue").GetDecimal());
@@ -176,7 +176,7 @@ public sealed partial class ReportsApiTests : AccountApiTestBase
         Assert.Equal(1, overview.GetProperty("completedResponses").GetInt32());
         var sameUtcPeriod = await Get("feedback/ratings?from=2026-10-01T07:00:00%2B07:00&to=2026-11-01T07:00:00%2B07:00", manager);
         Assert.Equal(2, sameUtcPeriod.GetProperty("feedbackCount").GetInt32());
-        Assert.Equal(3.5m, sameUtcPeriod.GetProperty("avgRating").GetDecimal());
+        Assert.Equal(4.5m, sameUtcPeriod.GetProperty("avgRating").GetDecimal());
         await AssertReportSqlMatchesApi(manager, start, start.AddMonths(1));
     }
 

@@ -47,7 +47,7 @@ export async function loadManagerProduct(value: string, preview = false, signal?
 
 export async function loadPreferenceCatalog(signal?: AbortSignal): Promise<ProductPreference[]> {
   const rows = await apiRequest<unknown>("/preferences", { signal });
-  if (!Array.isArray(rows)) throw new Error("Chưa thể tải danh mục sở thích.");
+  if (!Array.isArray(rows)) throw new Error("Chưa tải được danh mục sở thích. Kiểm tra kết nối rồi thử lại.");
   const ids = new Set<number>();
   return rows.map(row => {
     if (!row || !validId(row.id) || ids.has(row.id) || typeof row.name !== "string") throw new Error("Danh mục sở thích chưa hợp lệ.");

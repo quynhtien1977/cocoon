@@ -13,9 +13,10 @@ export interface AccountListItem {
   lastLoginAt: string | null;
 }
 
-/** Form side of CreateAccountRequest; the API takes no phone or password. */
+/** Form side of CreateAccountRequest; the API issues the password. Phone is required for managers. */
 export interface AccountDraft {
   fullName: string;
   email: string;
+  phone: string;
   role: AccountRole;
 }

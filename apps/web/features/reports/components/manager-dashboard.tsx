@@ -41,7 +41,7 @@ export function ManagerDashboard() {
   const overview = activity.data?.overview;
   const ratings = activity.data?.ratings;
   const monthly = (ratings?.byMonth ?? []).map((row) => ({ month: monthLabel(row.month), total: row.feedbackCount, lowRating: Math.round(row.feedbackCount * row.lowRatingRate), lowRatingRate: row.lowRatingRate }));
-  const lowTotal = ratings?.distribution.filter((row) => row.rating <= 2).reduce((sum, row) => sum + row.feedbackCount, 0) ?? 0;
+  const lowTotal = ratings?.distribution.filter((row) => row.rating <= 4).reduce((sum, row) => sum + row.feedbackCount, 0) ?? 0;
   const distribution = (ratings?.distribution ?? []).map((row) => ({ rating: `${row.rating} sao`, feedbackCount: row.feedbackCount }));
   const chartState = { loading: activity.loading, error: activity.error, onRetry: activity.retry };
   const people = customers.data ?? undefined;
@@ -77,9 +77,9 @@ export function ManagerDashboard() {
             <StatTile label="Khảo sát đang mở" value={overview?.openSurveys ?? "—"} icon={<ClipboardList />} hint={overview && `${overview.completedResponses} lượt hoàn tất trong kỳ`} className="col-span-2 lg:col-span-1" />
           </div>
           <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-            <ChartCard title="Phản hồi theo tháng" description={ratings && `Tổng phản hồi và số phản hồi ≤ 2 sao trong kỳ. Tổng ${ratings.feedbackCount} phản hồi, ${percent.format(lowTotal / Math.max(ratings.feedbackCount, 1))} ≤ 2 sao.`}
+            <ChartCard title="Phản hồi theo tháng" description={ratings && `Tổng phản hồi và số phản hồi ≤ 4 sao trong kỳ. Tổng ${ratings.feedbackCount} phản hồi, ${percent.format(lowTotal / Math.max(ratings.feedbackCount, 1))} ≤ 4 sao.`}
               type="bar" data={monthly} categoryKey="month" categoryLabel="Tháng"
-              series={[{ key: "total", label: "Tổng phản hồi" }, { key: "lowRating", label: "≤ 2 sao" }]} height={400} {...chartState} />
+              series={[{ key: "total", label: "Tổng phản hồi" }, { key: "lowRating", label: "≤ 4 sao" }]} height={400} {...chartState} />
             <ChartCard title="Phân bố điểm đánh giá" description="Số phản hồi theo số sao trong kỳ." type="bar" data={ratings?.feedbackCount ? distribution : []} categoryKey="rating" categoryLabel="Điểm"
               series={[{ key: "feedbackCount", label: "Phản hồi" }]} {...chartState}
               action={<Link href="/manager/feedback" className={linkClass}>Hộp phản hồi{overview && ` (${overview.newFeedback} mới)`}<ArrowRight className="size-4" aria-hidden="true" /></Link>} />
@@ -103,8 +103,8 @@ export function ManagerDashboard() {
         <TabsContent value="analytics" className="grid gap-6 lg:grid-cols-2">
           <ChartCard title="Điểm trung bình theo danh mục" type="horizontal-bar" data={ratings?.byCategory ?? []} categoryKey="category" categoryLabel="Danh mục"
             series={[{ key: "avgRating", label: "Điểm TB" }]} formatValue={(value) => rating.format(value)} maxValue={5} {...chartState} />
-          <ChartCard title="Tỷ lệ phản hồi ≤ 2 sao theo tháng" type="line" data={monthly} categoryKey="month" categoryLabel="Tháng"
-            series={[{ key: "lowRatingRate", label: "Tỷ lệ ≤ 2 sao" }]} formatValue={(value) => percent.format(value)} {...chartState} />
+          <ChartCard title="Tỷ lệ phản hồi ≤ 4 sao theo tháng" type="line" data={monthly} categoryKey="month" categoryLabel="Tháng"
+            series={[{ key: "lowRatingRate", label: "Tỷ lệ ≤ 4 sao" }]} formatValue={(value) => percent.format(value)} {...chartState} />
           <RevenueHeatmap data={activity.data?.purchases} state={activity} />
         </TabsContent>
       </Tabs>
@@ -221,7 +221,7 @@ function AnalyticsPreview({ data, state, onOpen }: { data: ActivityReports | nul
       </div>
       {latest && (
         <p className="mt-6 flex flex-wrap justify-between gap-2 border-t border-border pt-4 text-sm">
-          <span className="text-muted-foreground">Tỷ lệ phản hồi ≤ 2 sao ({monthLabel(latest.month)})</span>
+          <span className="text-muted-foreground">Tỷ lệ phản hồi ≤ 4 sao ({monthLabel(latest.month)})</span>
           <span className={!previous || latest.lowRatingRate <= previous.lowRatingRate ? "font-semibold text-status-sage-fg" : "font-semibold text-status-danger-fg"}>
             {percent.format(latest.lowRatingRate)}{previous && ` (tháng trước ${percent.format(previous.lowRatingRate)})`}
           </span>
