@@ -134,9 +134,15 @@ public sealed class OrdersApiTests : IClassFixture<DatabaseFixture>, IDisposable
         Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Post, $"/api/v1/orders/{id}/confirm", customer)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Post, "/api/v1/me/orders", staff,
             new { items = new[] { new { variantId = shop.SmallId, quantity = 1 } }, shippingAddress = Address })).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Get, "/api/v1/shop/products", staff)).StatusCode);
+        // The catalog is public and the same for everyone, so staff opening the landing page see real products.
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, "/api/v1/shop/products", staff)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, "/api/v1/shop/categories", staff)).StatusCode);
         using (var anonymous = _factory.CreateClient())
-            Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/v1/shop/products")).StatusCode);
+        {
+            Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync("/api/v1/shop/products")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync("/api/v1/shop/categories")).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/v1/me/orders")).StatusCode);
+        }
         await AssertProblem(await Send(HttpMethod.Get, "/api/v1/orders?status=Shipped", staff), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
         Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Get, "/api/v1/orders/2147483000", staff)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Post, "/api/v1/orders/2147483000/confirm", staff)).StatusCode);
