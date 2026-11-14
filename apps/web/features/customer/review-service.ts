@@ -34,14 +34,21 @@ export async function getReviewableItems(signal?: AbortSignal) {
   return parseReviewableItems(await apiRequest<unknown>("/me/reviewable-items", { refresh: false, signal }));
 }
 
-export async function submitReview(orderItemId: number, values: ReviewValues) {
+/** Sends the review, then its photos. A photo failure leaves the review sent and is reported as photosFailed. */
+export async function submitReview(orderItemId: number, values: ReviewValues, photos: File[] = []): Promise<{ photosFailed: boolean }> {
   if (!parseOrderItemId(String(orderItemId))) throw new Error("Sản phẩm trong đơn hàng không hợp lệ.");
   const errors = validateReview(values);
   if (errors.rating || errors.content) throw new Error(errors.rating || errors.content);
   // Recheck eligibility: another tab may already have reviewed the item.
   const items = await getReviewableItems(AbortSignal.timeout(12000));
   if (!items.some((item) => item.orderItemId === orderItemId)) throw new Error("Sản phẩm này đã được đánh giá hoặc không còn đủ điều kiện đánh giá.");
-  await apiRequest<unknown>("/me/feedback", { method: "POST", refresh: false, json: { orderItemId, rating: values.rating, content: values.content.trim() } });
+  const created = await apiRequest<{ id: number }>("/me/feedback", { method: "POST", refresh: false, json: { orderItemId, rating: values.rating, content: values.content.trim() } });
+  if (!photos.length) return { photosFailed: false };
+  const form = new FormData();
+  for (const photo of photos) form.append("photos", photo, photo.name);
+  try { await apiRequest<unknown>(`/me/feedback/${created.id}/photos`, { method: "POST", refresh: false, body: form }); }
+  catch { return { photosFailed: true }; }
+  return { photosFailed: false };
 }
 
 export function reviewErrorMessage(error: unknown) {

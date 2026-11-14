@@ -328,6 +328,7 @@ export function FeedbackDetailPage({ id, preview = false }: { id: string; previe
           replies={detail.replies}
           followUp={detail.followUp}
           edits={detail.edits}
+          photos={detail.photos}
           canEdit={Boolean(detail.canEditRating || detail.canEditContent)}
           onEdit={handleStartEdit}
           isEditing={isEditing}

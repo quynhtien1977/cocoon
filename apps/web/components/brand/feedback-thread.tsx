@@ -12,13 +12,15 @@ export type FeedbackThreadProps = {
   onEdit?: () => void;
   isEditing?: boolean;
   editForm?: React.ReactNode;
+  /** Photos the customer attached; urls are API paths that check access, so they load with the session cookie. */
+  photos?: { id: number; url: string }[];
   /** Back-office screens name the customer; the defaults address the customer on C5. */
   customerHeading?: string;
   emptyReplies?: string;
 };
 const date = (value: string) => new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value));
 
-export function FeedbackThread({ rating, content, createdAt, replies, followUp, edits, canEdit, onEdit, isEditing, editForm, customerHeading = "Đánh giá của bạn", emptyReplies = "Cocoon đã nhận được đánh giá của bạn. Khi nhân viên trả lời, nội dung sẽ được hiển thị tại đây." }: FeedbackThreadProps) {
+export function FeedbackThread({ rating, content, createdAt, replies, followUp, edits, photos = [], canEdit, onEdit, isEditing, editForm, customerHeading = "Đánh giá của bạn", emptyReplies = "Cocoon đã nhận được đánh giá của bạn. Khi nhân viên trả lời, nội dung sẽ được hiển thị tại đây." }: FeedbackThreadProps) {
   const round1Replies = replies.filter(r => (r.round ?? 1) === 1);
   const round2Replies = replies.filter(r => r.round === 2);
 
@@ -47,6 +49,14 @@ export function FeedbackThread({ rating, content, createdAt, replies, followUp, 
           </div>
         </header>
         <p className="mt-6 whitespace-pre-wrap break-words text-base leading-8 text-[#514837]">{content}</p>
+        {photos.length > 0 && <ul aria-label={`Ảnh đính kèm (${photos.length})`} className="mt-4 flex flex-wrap gap-3">
+          {photos.map((photo, index) => <li key={photo.id}>
+            <a href={photo.url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded border border-[#e4dbc9] focus-visible:outline-2 focus-visible:outline-[#81916c]">
+              {/* eslint-disable-next-line @next/next/no-img-element -- photos are access-checked API responses, not optimizable assets */}
+              <img src={photo.url} alt={`Ảnh đính kèm ${index + 1}`} width={112} height={112} loading="lazy" decoding="async" className="size-28 object-cover" />
+            </a>
+          </li>)}
+        </ul>}
       </section>
     )}
     <section aria-label="Phản hồi của nhân viên" className="rounded border border-[#e4dbc9] bg-[#f5f0e6] p-4 sm:p-6">

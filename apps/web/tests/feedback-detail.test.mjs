@@ -18,6 +18,12 @@ test("feedback detail reads only the customer endpoint and orders staff replies 
   assert.equal(parseFeedbackDetail({ ...detail, status: 3 }, 12).status, "Replied");
 });
 
+test("photos keep only API photo paths, so a response cannot point images elsewhere", () => {
+  const photos = [{ id: 3, url: "/api/v1/feedback-photos/3" }, { id: 4, url: "https://evil.example/x.jpg" }, { id: 0, url: "/api/v1/feedback-photos/0" }];
+  assert.deepEqual(parseFeedbackDetail({ ...detail, photos }, 12).photos, [{ id: 3, url: "/api/v1/feedback-photos/3" }]);
+  assert.deepEqual(parseFeedbackDetail(detail, 12).photos, []);
+});
+
 test("missing replies, wrong IDs and malformed details never masquerade as an unanswered review", () => {
   for (const invalid of [{ ...detail, id: 13 }, { ...detail, replies: undefined }, { ...detail, rating: 6 }, { ...detail, status: "Unknown" }, { ...detail, replies: [{ ...detail.replies[0], createdAt: "bad-date" }] }]) assert.throws(() => parseFeedbackDetail(invalid, 12));
   assert.deepEqual(parseFeedbackDetail({ ...detail, status: "New", replies: [] }, 12).replies, []);
