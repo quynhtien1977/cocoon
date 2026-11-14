@@ -3,6 +3,7 @@ using Cocoon.Application.Recommendations;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
 using Cocoon.Infrastructure.Persistence;
+using Cocoon.Infrastructure.Shop;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -116,11 +117,19 @@ public sealed class RecommendationService(AppDbContext db, CustomerFactsService 
             .ToListAsync(ct)).ToLookup(v => v.ProductId);
         var ratings = await db.Set<Feedback>().Where(f => productIds.Contains(f.ProductId)).GroupBy(f => f.ProductId)
             .Select(g => new { ProductId = g.Key, Average = g.Average(f => (double)f.Rating) }).ToDictionaryAsync(x => x.ProductId, x => x.Average, ct);
-        return rows.Select(x => new RecommendationItem(x.RecommendationId, x.Score,
-            new RecommendedProduct(x.ProductId, x.Name, variants[x.ProductId].FirstOrDefault()?.Price,
-                variants[x.ProductId].FirstOrDefault(v => v.ImageUrl != null)?.ImageUrl,
-                ratings.TryGetValue(x.ProductId, out var avg) ? Math.Round(avg, 1) : null),
-            ReadReasons(x.Reasons))).ToList();
+        // Same cover as the shop card: the cheapest variant with a photo, and that variant's hover photo.
+        var covers = productIds.Select(id => variants[id].FirstOrDefault(v => v.ImageUrl != null)).OfType<ProductVariant>()
+            .ToDictionary(v => v.ProductId);
+        var extras = await db.ExtraPhotosAsync(covers.Values.Select(v => v.Id).ToArray(), ct);
+        return rows.Select(x =>
+        {
+            var cover = covers.GetValueOrDefault(x.ProductId);
+            return new RecommendationItem(x.RecommendationId, x.Score,
+                new RecommendedProduct(x.ProductId, x.Name, variants[x.ProductId].FirstOrDefault()?.Price, cover?.ImageUrl,
+                    ratings.TryGetValue(x.ProductId, out var avg) ? Math.Round(avg, 1) : null,
+                    cover is null ? null : ProductPhotoQueries.HoverOf(cover, extras)),
+                ReadReasons(x.Reasons));
+        }).ToList();
     }
 
     /// <summary>M4 tab: the customer's current recommendations, including ones they clicked or dismissed.</summary>
