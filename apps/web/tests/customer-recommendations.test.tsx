@@ -85,3 +85,18 @@ test("landing CTA keeps the home anchor through login; authenticated customers n
   fireEvent.click(screen.getByRole("link", { name: "Gợi ý cho bạn" }));
   await waitFor(() => assert.equal(paths.at(-1), "/account#goi-y-cho-ban"));
 });
+
+test("recommendation cards fade to the same hover photo as the shop card, and stay still without one", async () => {
+  const hover = "https://image.cocoonvietnam.com/uploads/back.jpg";
+  const [withHover, without] = parseRecommendations([
+    { ...row, product: { ...row.product, hoverImageUrl: hover } },
+    { ...row, id: 72, product: { ...row.product, id: 13 } },
+  ]);
+  assert.equal(withHover.product.hoverImageUrl, hover);
+  assert.equal(without.product.hoverImageUrl, null);
+  globalThis.fetch = async () => Response.json([{ ...row, product: { ...row.product, hoverImageUrl: hover } }]);
+  const { container } = render(inAccount(<RecommendationSection />));
+  await screen.findByText("Nước dưỡng tóc bưởi");
+  const sources = [...container.querySelectorAll("img")].map(img => decodeURIComponent(img.getAttribute("src") ?? ""));
+  assert.ok(sources.some(src => src.includes("back.jpg")), "hover photo is rendered");
+});

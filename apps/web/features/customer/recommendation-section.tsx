@@ -39,7 +39,8 @@ export function RecommendationSection({ home = false, grid = false, limit = 4, e
     size: item.product.avgRating === null ? "" : `${item.product.avgRating.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}/5 ★`,
     category: item.reasons[0]?.label ?? "Gợi ý cho bạn",
     image: item.product.imageUrl ?? "",
-    hoverImage: item.product.imageUrl ?? "",
+    // Same hover photo as the shop card; empty keeps a single-photo card still instead of fading to itself.
+    hoverImage: item.product.hoverImageUrl && item.product.hoverImageUrl !== item.product.imageUrl ? item.product.hoverImageUrl : "",
     price: item.product.minPrice === null ? "" : vnd.format(item.product.minPrice),
     url: href(item),
   }));
