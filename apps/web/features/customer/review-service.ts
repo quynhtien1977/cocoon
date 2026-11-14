@@ -45,12 +45,15 @@ export async function submitReview(orderItemId: number, values: ReviewValues, ph
   const items = await getReviewableItems(AbortSignal.timeout(12000));
   if (!items.some((item) => item.orderItemId === orderItemId)) throw new Error("Sản phẩm này đã được đánh giá hoặc không còn đủ điều kiện đánh giá.");
   const created = await apiRequest<{ id: number }>("/me/feedback", { method: "POST", refresh: false, json: { orderItemId, rating: values.rating, content: values.content.trim() } });
-  if (!photos.length) return { photosFailed: false };
-  const form = new FormData();
-  for (const photo of photos) form.append("photos", photo, photo.name);
-  try { await apiRequest<unknown>(`/me/feedback/${created.id}/photos`, { method: "POST", refresh: false, body: form }); }
-  catch { return { photosFailed: true }; }
-  return { photosFailed: false };
+  // One photo per request: the Next.js proxy truncates request bodies above 10 MB, and 5 photos may reach 25 MB.
+  let photosFailed = false;
+  for (const photo of photos) {
+    const form = new FormData();
+    form.append("photos", photo, photo.name);
+    try { await apiRequest<unknown>(`/me/feedback/${created.id}/photos`, { method: "POST", refresh: false, body: form }); }
+    catch { photosFailed = true; }
+  }
+  return { photosFailed };
 }
 
 export function reviewErrorMessage(error: unknown) {

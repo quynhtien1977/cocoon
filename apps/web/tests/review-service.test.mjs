@@ -39,27 +39,26 @@ test("submission rechecks eligibility and posts only the backend feedback contra
   assert.deepEqual(JSON.parse(calls[1].options.body), { orderItemId: 91, rating: 4, content: "Cảm nhận của tôi sau một tuần" });
 });
 
-test("photos upload as multipart to the created feedback; a failed upload keeps the review sent", async () => {
+test("each photo uploads in its own multipart request to the created feedback; a failure keeps the review sent", async () => {
   const calls = [];
-  let photoStatus = 201;
+  let failName = "";
   globalThis.fetch = async (url, options) => {
     calls.push({ url, options });
     if (url.endsWith("reviewable-items")) return Response.json([item]);
     if (url === "/api/v1/me/feedback") return Response.json({ id: 7 }, { status: 201 });
-    return Response.json([], { status: photoStatus });
+    const name = options.body.get("photos").name;
+    return Response.json([], { status: name === failName ? 400 : 201 });
   };
   const photos = [new File([new Uint8Array([0xff, 0xd8, 0xff])], "a.jpg", { type: "image/jpeg" }), new File([new Uint8Array([0x89, 0x50])], "b.png", { type: "image/png" })];
   assert.deepEqual(await submitReview(91, { rating: 4, content: "Cảm nhận của tôi sau một tuần" }, photos), { photosFailed: false });
-  const upload = calls[2];
-  assert.equal(upload.url, "/api/v1/me/feedback/7/photos");
-  assert.equal(upload.options.method, "POST");
-  assert.ok(upload.options.body instanceof FormData);
-  assert.deepEqual(upload.options.body.getAll("photos").map((file) => file.name), ["a.jpg", "b.png"]);
-  assert.equal(new Headers(upload.options.headers).get("Content-Type"), null, "the browser must set the multipart boundary");
+  const uploads = calls.slice(2);
+  assert.deepEqual(uploads.map((call) => [call.url, call.options.method]), [["/api/v1/me/feedback/7/photos", "POST"], ["/api/v1/me/feedback/7/photos", "POST"]]);
+  assert.deepEqual(uploads.map((call) => call.options.body.getAll("photos").map((file) => file.name)), [["a.jpg"], ["b.png"]]);
+  assert.equal(new Headers(uploads[0].options.headers).get("Content-Type"), null, "the browser must set the multipart boundary");
 
-  calls.length = 0; photoStatus = 400;
+  calls.length = 0; failName = "a.jpg";
   assert.deepEqual(await submitReview(91, { rating: 4, content: "Cảm nhận của tôi sau một tuần" }, photos), { photosFailed: true });
-  assert.deepEqual(calls.map((call) => call.url), ["/api/v1/me/reviewable-items", "/api/v1/me/feedback", "/api/v1/me/feedback/7/photos"]);
+  assert.equal(calls.length, 4, "a failed photo does not stop the others");
 });
 
 test("ineligible or already reviewed items never post; stub errors remain failures", async () => {
