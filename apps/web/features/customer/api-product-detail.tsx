@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Leaf, ShoppingBag } from "lucide-react";
 import { ApiError } from "../../lib/api/client";
 import { loadProduct, type ApiProduct } from "./product-service";
 import { CheckoutDialog } from "./checkout-dialog";
@@ -42,6 +42,15 @@ export function ApiProductDetail({ id }: { id: string }) {
   }, [id, attempt]);
 
   const variant = product?.variants[variantIndex];
+  const variantImages = product
+    ? product.variants
+        .map((item, index) => ({ src: item.imageUrl, variantIndex: index, alt: item.name }))
+        .filter((entry): entry is { src: string; variantIndex: number; alt: string } => Boolean(entry.src))
+    : [];
+  const uniqueImages = variantImages.filter(
+    (entry, index, arr) => arr.findIndex((other) => other.src === entry.src) === index
+  );
+  const activeImage = variant?.imageUrl ?? uniqueImages[0]?.src ?? null;
 
   return (
     <article className={styles.detail}>
@@ -76,74 +85,124 @@ export function ApiProductDetail({ id }: { id: string }) {
       ) : (
         product && (
           <div className={styles.layout}>
-            <div className={styles.image}>
-              {variant?.imageUrl && failedImage !== variant.imageUrl ? (
-                // API image hosts are not configured for the Next optimizer yet.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={variant.imageUrl}
-                  alt={product.name}
-                  className="h-full w-full object-contain"
-                  onError={() => setFailedImage(variant.imageUrl)}
-                />
-              ) : (
-                <div className="grid h-full place-content-center justify-items-center gap-4 text-[#81765e]">
-                  <ShoppingBag size={48} />
-                  <span>Chưa có ảnh sản phẩm</span>
+            <div>
+              <div className={styles.image}>
+                {activeImage && failedImage !== activeImage ? (
+                  // API image hosts are not configured for the Next optimizer yet.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={activeImage}
+                    alt={product.name}
+                    onError={() => setFailedImage(activeImage)}
+                  />
+                ) : (
+                  <div className="grid h-full place-content-center justify-items-center gap-4 text-[#81765e]">
+                    <ShoppingBag size={48} />
+                    <span>Chưa có ảnh sản phẩm</span>
+                  </div>
+                )}
+              </div>
+              {uniqueImages.length > 1 && (
+                <div className={styles.thumbnails} aria-label="Hình ảnh sản phẩm">
+                  {uniqueImages.map((entry, index) => (
+                    <button
+                      key={entry.src}
+                      type="button"
+                      aria-label={`Xem ảnh sản phẩm ${index + 1}`}
+                      aria-pressed={activeImage === entry.src}
+                      onClick={() => {
+                        setVariantIndex(entry.variantIndex);
+                        setFailedImage(null);
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={entry.src} alt="" width={80} height={80} />
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
             <div className={styles.info}>
               <p className={styles.category}>{product.categoryName || "Cocoon"}</p>
               <h1>{product.name}</h1>
-              {product.variants.length > 0 && (
-                <label className="grid gap-2 text-sm">
-                  Biến thể
+              <p className={styles.size}>
+                {variant ? variant.name : product.variants.map((item) => item.name).join(" · ")}
+              </p>
+              {product.variants.length > 1 && (
+                <>
+                  <div className={styles.variantPills} role="group" aria-label="Chọn biến thể">
+                    {product.variants.map((item, index) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={styles.variantPill}
+                        aria-pressed={index === variantIndex}
+                        onClick={() => {
+                          setVariantIndex(index);
+                          setFailedImage(null);
+                        }}
+                      >
+                        {item.name}
+                      </button>
+                    ))}
+                  </div>
                   <select
-                    className="min-h-12 rounded border border-[#dfd7c5] p-3"
+                    aria-label="Chọn biến thể"
+                    className="sr-only"
                     value={variantIndex}
-                    onChange={(event) => setVariantIndex(Number(event.target.value))}
+                    onChange={(event) => {
+                      setVariantIndex(Number(event.target.value));
+                      setFailedImage(null);
+                    }}
                   >
                     {product.variants.map((item, index) => (
-                      <option key={index} value={index}>
+                      <option key={item.id} value={index}>
                         {item.name}
                       </option>
                     ))}
                   </select>
-                </label>
+                </>
               )}
               <p className={styles.price}>
                 {variant
-                  ? new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(variant.price)
+                  ? new Intl.NumberFormat("vi-VN", {
+                      style: "currency",
+                      currency: "VND",
+                      maximumFractionDigits: 0,
+                    }).format(variant.price)
                   : "Giá đang cập nhật"}
+              </p>
+              <span className={styles.note}>Giá niêm yết từ Cocoon · Thanh toán khi nhận hàng</span>
+              <p className={styles.vegan}>
+                <Leaf size={20} strokeWidth={1.5} />
+                Mỹ phẩm 100% thuần chay từ Việt Nam
               </p>
 
               {product.status === "Active" && variant && (
-                <div className={styles.purchaseBox}>
-                  <div className={styles.controlsRow}>
-                    <label className="grid gap-1.5 text-sm font-medium">
-                      Số lượng
-                      <select
-                        className="min-h-11 rounded border border-[#dfd7c5] bg-white px-3 py-2 text-sm"
-                        value={quantity}
-                        onChange={(e) => setQuantity(Number(e.target.value))}
-                      >
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                          <option key={n} value={n}>
-                            {n}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <button
-                      type="button"
-                      className={styles.buyButton}
-                      onClick={() => setCheckoutOpen(true)}
-                    >
-                      <ShoppingBag size={18} />
-                      Mua ngay
-                    </button>
-                  </div>
+                <div className={styles.purchaseRow}>
+                  <label htmlFor="buy-quantity" className={styles.quantityField}>
+                    Số lượng
+                    <input
+                      id="buy-quantity"
+                      type="number"
+                      min={1}
+                      max={10}
+                      className={styles.quantityInput}
+                      value={quantity}
+                      onChange={(event) => {
+                        const parsed = Number.parseInt(event.target.value, 10);
+                        setQuantity(Number.isFinite(parsed) ? Math.min(10, Math.max(1, parsed)) : 1);
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className={styles.buyButton}
+                    onClick={() => setCheckoutOpen(true)}
+                  >
+                    <ShoppingBag size={18} />
+                    Mua ngay
+                  </button>
                 </div>
               )}
 
@@ -161,6 +220,11 @@ export function ApiProductDetail({ id }: { id: string }) {
                     </section>
                   )
               )}
+
+              <Link href="/account/products" className={styles.back}>
+                <ArrowLeft size={18} />
+                Tiếp tục khám phá sản phẩm
+              </Link>
             </div>
           </div>
         )
@@ -176,10 +240,6 @@ export function ApiProductDetail({ id }: { id: string }) {
         />
       )}
 
-      <Link href="/account/products" className={styles.back}>
-        <ArrowLeft size={18} />
-        Tiếp tục khám phá sản phẩm
-      </Link>
       {product && !loading && !error && <RecommendationSection excludeProductId={product.id} />}
     </article>
   );

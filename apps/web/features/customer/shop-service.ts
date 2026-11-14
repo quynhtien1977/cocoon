@@ -38,18 +38,74 @@ export interface ShopQuery {
   pageSize?: number;
 }
 
-export async function loadShopProducts(params: ShopQuery = {}, signal?: AbortSignal): Promise<ShopProductsResponse> {
+export interface ShopRequestOptions {
+  redirectOnUnauthorized?: boolean;
+  refresh?: boolean;
+}
+
+export async function loadShopProducts(
+  params: ShopQuery = {},
+  signal?: AbortSignal,
+  options?: ShopRequestOptions
+): Promise<ShopProductsResponse> {
   const query = new URLSearchParams();
   if (params.search?.trim()) query.set("search", params.search.trim());
   if (params.categoryId && params.categoryId > 0) query.set("categoryId", String(params.categoryId));
   if (params.page && params.page > 0) query.set("page", String(params.page));
   if (params.pageSize && params.pageSize > 0) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return await apiRequest<ShopProductsResponse>(`/shop/products${qs ? `?${qs}` : ""}`, { signal });
+  const requestOptions: { signal?: AbortSignal; redirectOnUnauthorized?: boolean; refresh?: boolean } = { signal };
+  if (options?.redirectOnUnauthorized !== undefined) {
+    requestOptions.redirectOnUnauthorized = options.redirectOnUnauthorized;
+  }
+  if (options?.refresh !== undefined) {
+    requestOptions.refresh = options.refresh;
+  }
+  return await apiRequest<ShopProductsResponse>(`/shop/products${qs ? `?${qs}` : ""}`, requestOptions);
 }
 
-export async function loadShopCategories(signal?: AbortSignal): Promise<ShopCategory[]> {
-  return await apiRequest<ShopCategory[]>("/shop/categories", { signal });
+export async function loadShopCategories(
+  signal?: AbortSignal,
+  options?: ShopRequestOptions
+): Promise<ShopCategory[]> {
+  const requestOptions: { signal?: AbortSignal; redirectOnUnauthorized?: boolean; refresh?: boolean } = { signal };
+  if (options?.redirectOnUnauthorized !== undefined) {
+    requestOptions.redirectOnUnauthorized = options.redirectOnUnauthorized;
+  }
+  if (options?.refresh !== undefined) {
+    requestOptions.refresh = options.refresh;
+  }
+  return await apiRequest<ShopCategory[]>("/shop/categories", requestOptions);
+}
+
+const vndCurrency = new Intl.NumberFormat("vi-VN", {
+  style: "currency",
+  currency: "VND",
+  maximumFractionDigits: 0,
+});
+
+export function toCarouselProduct(product: ShopProduct) {
+  const variantImages = product.variants
+    .map((v) => v.imageUrl)
+    .filter((url): url is string => Boolean(url));
+  const image = variantImages[0] ?? product.imageUrl ?? "";
+  const hoverImage = variantImages.find((url) => url !== image) ?? image;
+  const variantNames = product.variants.map((v) => v.name).filter(Boolean).join(" · ");
+  const ratingText =
+    product.averageRating !== null && product.feedbackCount > 0
+      ? `★ ${product.averageRating.toLocaleString("vi-VN", { maximumFractionDigits: 1 })} (${product.feedbackCount})`
+      : "";
+  const size = [variantNames, ratingText].filter(Boolean).join(" · ");
+
+  return {
+    name: product.name,
+    category: product.categoryName || "Cocoon",
+    size,
+    image,
+    hoverImage,
+    price: Number.isFinite(product.minPrice) && product.minPrice > 0 ? vndCurrency.format(product.minPrice) : "Giá đang cập nhật",
+    url: `/account/products/${product.id}`,
+  };
 }
 
 export interface PlaceOrderItemInput {

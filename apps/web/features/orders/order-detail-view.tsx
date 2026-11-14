@@ -2,7 +2,7 @@
 
 import { useCallback, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, CircleCheck, MapPin, Package, ShoppingBag, Truck, UserRound } from "lucide-react";
+import { ArrowLeft, Check, CircleCheck, Clock, MapPin, Package, PackageCheck, PackageX, RotateCcw, ShoppingBag, Truck, UserRound } from "lucide-react";
 import { ConfirmDialog } from "@/components/brand/confirm-dialog";
 import { EmptyState } from "@/components/brand/empty-state";
 import { PageHeader } from "@/components/brand/page-header";
@@ -91,6 +91,15 @@ function buildSteps(order: OrderDetail): TimelineStep[] {
   ];
 }
 
+function renderStepIcon(step: TimelineStep) {
+  if (step.key === "Cancelled") return <PackageX className="size-3.5" />;
+  if (step.key === "Returned") return <RotateCcw className="size-3.5" />;
+  if (step.key === "Completed") return <PackageCheck className="size-3.5" />;
+  if (step.done) return <Check className="size-4" />;
+  if (step.key === "Delivering") return <Truck className="size-3.5" />;
+  return <Clock className="size-3.5" />;
+}
+
 function OrderTimeline({ order }: { order: OrderDetail }) {
   const steps = buildSteps(order);
   return (
@@ -99,7 +108,7 @@ function OrderTimeline({ order }: { order: OrderDetail }) {
         Tiến trình đơn hàng (3 bước)
       </h2>
       <ol className="grid gap-2 sm:grid-cols-3">
-        {steps.map((step, index) => (
+        {steps.map((step) => (
           <li
             key={step.key}
             aria-current={step.active ? "step" : undefined}
@@ -122,7 +131,7 @@ function OrderTimeline({ order }: { order: OrderDetail }) {
                     : "border border-input text-muted-foreground"
               )}
             >
-              {step.done ? <Check className="size-4" /> : index + 1}
+              {renderStepIcon(step)}
             </span>
             <span className="min-w-0 text-sm">
               <span className="block font-semibold">{step.label}</span>

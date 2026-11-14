@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CircleCheck, Download, Hourglass, ShoppingBag, Truck } from "lucide-react";
+import { Clock, Download, PackageCheck, ShoppingBag, Truck } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { StatTile } from "@/components/brand/stat-tile";
 import { StatusBadge, statusMap } from "@/components/brand/status-badge";
@@ -291,7 +291,7 @@ export function OrdersList({ portal }: { portal: "staff" | "manager" }) {
         <StatTile
           label="Chờ xác nhận"
           value={ready ? placedCount : "—"}
-          icon={<Hourglass />}
+          icon={<Clock />}
           hint={ready ? (placedCount > 0 ? "Đơn Website mới cần xác nhận giao" : "Không có đơn chờ xác nhận") : undefined}
         />
         <StatTile
@@ -303,7 +303,7 @@ export function OrdersList({ portal }: { portal: "staff" | "manager" }) {
         <StatTile
           label="Hoàn thành"
           value={ready ? completedCount : "—"}
-          icon={<CircleCheck />}
+          icon={<PackageCheck />}
           progress={ready && orders.length ? completedCount / orders.length : undefined}
           hint={ready ? `${cancelledCount} đơn đã hủy` : undefined}
         />

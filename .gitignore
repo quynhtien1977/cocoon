@@ -55,3 +55,4 @@ Thumbs.db
 docs/
 .codegraph/
 .agents/
+.playwright-mcp/

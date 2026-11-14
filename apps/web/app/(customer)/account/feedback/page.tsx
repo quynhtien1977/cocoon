@@ -1,7 +1,10 @@
-import { ScreenPlaceholder, screenMetadata } from "@/components/brand/screen-placeholder";
+import type { Metadata } from "next";
+import { MyFeedbackPage } from "@/features/customer/my-feedback-page";
 
-export const metadata = screenMetadata("C3");
+export const metadata: Metadata = {
+  title: "Phản hồi của tôi | Cocoon",
+};
 
 export default function Page() {
-  return <ScreenPlaceholder code="C3" />;
+  return <MyFeedbackPage />;
 }
