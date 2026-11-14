@@ -122,7 +122,7 @@ export function ProductCatalog({ initialQuery = "" }: { initialQuery?: string })
         </label>
       </div>
 
-      <div className={landing.tabs} aria-label="Lọc danh mục">
+      <div className={`${landing.tabs} ${styles.tabs}`} aria-label="Lọc danh mục">
         <button
           type="button"
           aria-pressed={categoryId === null}
