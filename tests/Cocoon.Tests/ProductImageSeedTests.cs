@@ -13,7 +13,8 @@ namespace Cocoon.Tests;
 public sealed class ProductImageSeedTests(DemoSeedDatabaseFixture database) : IClassFixture<DemoSeedDatabaseFixture>
 {
     private static readonly DateTime ReferenceUtc = new(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc);
-    private sealed record SourceVariant(string Name, decimal Price, string ImageUrl, string SourceUrl, string SourceTitle);
+    private sealed record SourceVariant(string Name, decimal Price, string ImageUrl, string SourceUrl, string SourceTitle, string? HoverImageUrl,
+        string[] Gallery);
     private sealed record SourceProduct(string LegacyName, string Name, string Category, SourceVariant[] Variants);
     private sealed record SourceCatalog(string VerifiedOn, SourceProduct[] Products);
     private static SourceProduct[] Sources()
@@ -27,7 +28,7 @@ public sealed class ProductImageSeedTests(DemoSeedDatabaseFixture database) : IC
     {
         await using var db = database.CreateContext();
         await using var transaction = await db.Database.BeginTransactionAsync();
-        Assert.Equal(1519, await new DemoDataSeeder(db, _ => "test-hash", ReferenceUtc).RunAsync());
+        Assert.Equal(1619, await new DemoDataSeeder(db, _ => "test-hash", ReferenceUtc).RunAsync());
         var sources = Sources();
         var variants = await db.Set<ProductVariant>().ToListAsync();
         var products = await db.Set<Product>().ToDictionaryAsync(p => p.Id);
@@ -57,6 +58,52 @@ public sealed class ProductImageSeedTests(DemoSeedDatabaseFixture database) : IC
         }
         Assert.Equal(320, await db.Set<Order>().CountAsync());
         Assert.Equal(640, await db.Set<OrderItem>().CountAsync());
+
+        var photos = (await db.Set<ProductVariantImage>().OrderBy(i => i.SortOrder).ToListAsync()).ToLookup(i => i.ProductVariantId);
+        Assert.Equal(100, photos.Sum(g => g.Count()));
+        for (var i = 0; i < sources.Length; i++)
+            for (var j = 0; j < sources[i].Variants.Length; j++)
+            {
+                var expected = sources[i].Variants[j];
+                var row = variants.Single(v => v.Sku == $"COC-V1-{i + 1:000}-{j + 1}");
+                Assert.Equal(expected.HoverImageUrl, row.HoverImageUrl);
+                Assert.NotEqual(expected.ImageUrl, expected.HoverImageUrl);
+                Assert.Equal(expected.Gallery, photos[row.Id].Select(p => p.Url));
+                Assert.Equal(Enumerable.Range(1, expected.Gallery.Length), photos[row.Id].Select(p => p.SortOrder));
+                Assert.DoesNotContain(expected.ImageUrl, expected.Gallery);
+                Assert.All(expected.Gallery.Append(expected.HoverImageUrl ?? expected.ImageUrl),
+                    url => Assert.Equal("image.cocoonvietnam.com", new Uri(url).Host));
+            }
+        db.ChangeTracker.Clear();
+        Assert.Equal(0, await new DemoDataSeeder(db, _ => "unused", ReferenceUtc.AddDays(1)).RunAsync());
+        Assert.Equal(100, await db.Set<ProductVariantImage>().CountAsync());
+    }
+
+    [Fact]
+    public async Task Rerun_fills_missing_photos_but_leaves_variants_with_another_main_photo_alone()
+    {
+        await using var db = database.CreateContext();
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await new DemoDataSeeder(db, _ => "test-hash", ReferenceUtc).RunAsync();
+        var source = Sources()[0].Variants[0];
+        var untouched = await db.Set<ProductVariant>().SingleAsync(v => v.Sku == "COC-V1-001-1");
+        var custom = await db.Set<ProductVariant>().SingleAsync(v => v.Sku == "COC-V1-002-1");
+        // A database seeded before 14/11/2026 has no hover photo and no gallery.
+        await db.Set<ProductVariantImage>().Where(i => i.ProductVariantId == untouched.Id || i.ProductVariantId == custom.Id).ExecuteDeleteAsync();
+        untouched.HoverImageUrl = null;
+        (custom.HoverImageUrl, custom.ImageUrl) = (null, "/uploads/team-photo.jpg");
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        Assert.Equal(source.Gallery.Length, await new DemoDataSeeder(db, _ => "unused", ReferenceUtc.AddDays(1)).RunAsync());
+        db.ChangeTracker.Clear();
+        Assert.Equal(source.HoverImageUrl, (await db.Set<ProductVariant>().SingleAsync(v => v.Id == untouched.Id)).HoverImageUrl);
+        Assert.Equal(source.Gallery, await db.Set<ProductVariantImage>().Where(i => i.ProductVariantId == untouched.Id)
+            .OrderBy(i => i.SortOrder).Select(i => i.Url).ToListAsync());
+        var kept = await db.Set<ProductVariant>().SingleAsync(v => v.Id == custom.Id);
+        Assert.Equal("/uploads/team-photo.jpg", kept.ImageUrl);
+        Assert.Null(kept.HoverImageUrl);
+        Assert.False(await db.Set<ProductVariantImage>().AnyAsync(i => i.ProductVariantId == custom.Id));
     }
 
     [Fact]

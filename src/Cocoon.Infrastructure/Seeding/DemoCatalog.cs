@@ -13,7 +13,9 @@ internal static class DemoCatalog
         ["Da dầu", "Da khô", "Da nhạy cảm", "Mụn", "Thâm nám", "Tóc gãy rụng",
          "Mùi thảo mộc", "Thuần chay", "Chống nắng", "Dưỡng thể", "Cấp ẩm", "Chăm sóc môi"];
 
-    internal sealed record CatalogVariant(string Name, decimal Price, string ImageUrl, string SourceUrl);
+    /// <summary>HoverImageUrl and Gallery (photos after the main one) come from the same official product page.</summary>
+    internal sealed record CatalogVariant(string Name, decimal Price, string ImageUrl, string SourceUrl, string? HoverImageUrl = null,
+        string[]? Gallery = null);
     internal sealed record CatalogProduct(string LegacyName, string Name, string Category, CatalogVariant[] Variants);
     private sealed record CatalogSnapshot(CatalogProduct[] Products);
 

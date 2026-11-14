@@ -72,8 +72,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         variant.Property(x => x.Sku).HasMaxLength(100);
         variant.Property(x => x.Price).HasPrecision(18, 2);
         variant.Property(x => x.ImageUrl).HasMaxLength(2048);
+        variant.Property(x => x.HoverImageUrl).HasMaxLength(2048);
         variant.ToTable(table => table.HasCheckConstraint("CK_ProductVariant_Price", "\"Price\" > 0"));
         variant.HasQueryFilter(x => !x.IsDeleted);
+
+        var variantImage = model.Entity<ProductVariantImage>();
+        variantImage.HasKey(x => x.Id);
+        variantImage.HasOne<ProductVariant>().WithMany().HasForeignKey(x => x.ProductVariantId);
+        variantImage.HasIndex(x => new { x.ProductVariantId, x.SortOrder }).IsUnique();
+        variantImage.Property(x => x.Url).HasMaxLength(2048);
+        variantImage.ToTable(table => table.HasCheckConstraint("CK_ProductVariantImage_SortOrder", "\"SortOrder\" > 0"));
 
         var feedback = model.Entity<Feedback>();
         feedback.HasKey(x => x.Id);

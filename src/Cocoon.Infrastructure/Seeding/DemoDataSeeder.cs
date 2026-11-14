@@ -211,7 +211,31 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
             result.Add(product);
         }
         await db.SaveChangesAsync(ct);
+        await AddCatalogPhotos(ct);
         return result;
+    }
+
+    /// <summary>
+    /// Hover and gallery photos for catalog variants that still show their catalog photo. A variant that already has a
+    /// gallery or another main photo is left alone, so a rerun never duplicates rows or mixes photos of two products.
+    /// </summary>
+    private async Task AddCatalogPhotos(CancellationToken ct)
+    {
+        var variants = (await db.Set<ProductVariant>().Where(v => v.Sku.StartsWith("COC-V1-")).ToListAsync(ct)).ToDictionary(v => v.Sku);
+        var withGallery = (await db.Set<ProductVariantImage>().Select(i => i.ProductVariantId).Distinct().ToListAsync(ct)).ToHashSet();
+        for (var index = 0; index < DemoCatalog.Products.Length; index++)
+            for (var variantIndex = 0; variantIndex < DemoCatalog.Products[index].Variants.Length; variantIndex++)
+            {
+                var source = DemoCatalog.Products[index].Variants[variantIndex];
+                if (!variants.TryGetValue($"COC-V1-{index + 1:000}-{variantIndex + 1}", out var variant) || variant.ImageUrl != source.ImageUrl)
+                    continue;
+                variant.HoverImageUrl ??= source.HoverImageUrl;
+                if (withGallery.Contains(variant.Id)) continue;
+                var gallery = source.Gallery ?? [];
+                for (var position = 0; position < gallery.Length; position++)
+                    Add(new ProductVariantImage { ProductVariantId = variant.Id, SortOrder = position + 1, Url = gallery[position] });
+            }
+        await db.SaveChangesAsync(ct);
     }
 
     private async Task AddOrders(List<CustomerProfile> customers, List<Product> products, CancellationToken ct)

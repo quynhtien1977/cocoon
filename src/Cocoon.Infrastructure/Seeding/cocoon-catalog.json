@@ -1,5 +1,5 @@
 {
-  "verifiedOn": "2026-11-05",
+  "verifiedOn": "2026-11-14",
   "products": [
     {
       "legacyName": "Sữa rửa mặt sen Hậu Giang",
@@ -11,7 +11,14 @@
           "price": 339000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Artboard_12_ea031b6b39.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/sua-rua-mat-sen-hau-giang-310ml",
-          "sourceTitle": "Sữa rửa mặt sen Hậu Giang 310ml"
+          "sourceTitle": "Sữa rửa mặt sen Hậu Giang 310ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_1_dcfa1bbf4e.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Avatar_2_b410879481.jpg",
+            "https://image.cocoonvietnam.com/uploads/Lamellar_078c139e24.png",
+            "https://image.cocoonvietnam.com/uploads/554756182_810437861343651_7121688203284243728_n_d2ab596dcf.jpg",
+            "https://image.cocoonvietnam.com/uploads/Mau_fb52e3dc81.png"
+          ]
         }
       ]
     },
@@ -25,14 +32,25 @@
           "price": 192000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Web_Avatar_Nuoc_Sen_140ml_copy_100_14377247e3.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/nuoc-sen-hau-giang-140ml",
-          "sourceTitle": "Nước sen Hậu Giang 140ml"
+          "sourceTitle": "Nước sen Hậu Giang 140ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/HS_Nuoc_sen_3_7e4f7a8418.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Product_Sen_Website_Avatar_02_67c513805c.jpg",
+            "https://image.cocoonvietnam.com/uploads/Avatar_Toner_Sen_140ml_04_641fc9cb27.jpg",
+            "https://image.cocoonvietnam.com/uploads/HS_Nuoc_sen_3_7e4f7a8418.jpg"
+          ]
         },
         {
           "name": "310ml",
           "price": 299000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Web_Avatar_Nuoc_Sen_310ml_copy_100_996dc09029.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/nuoc-sen-hau-giang-310ml",
-          "sourceTitle": "Nước sen Hậu Giang 310ml"
+          "sourceTitle": "Nước sen Hậu Giang 310ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/HS_Nuoc_sen_3_7e4f7a8418.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/z5421345221560_ded0136681dc93fd158807939849abc8_690e94429b.jpg",
+            "https://image.cocoonvietnam.com/uploads/HS_Nuoc_sen_3_7e4f7a8418.jpg"
+          ]
         }
       ]
     },
@@ -46,21 +64,38 @@
           "price": 192000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/z4394607669965_ca1ceaa3a09cb9e3f966f4ac4256dd9a_1_f787014de5.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/gel-bi-dao-rua-mat-140ml",
-          "sourceTitle": "Gel bí đao rửa mặt 140ml"
+          "sourceTitle": "Gel bí đao rửa mặt 140ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/gel_bi_dao_rua_mat_mat_sau_936e515ab5.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/gel_bi_dao_rua_mat_texture_5eaab2bbe3.jpg",
+            "https://image.cocoonvietnam.com/uploads/29892181_slide_2_7e4e7f82a1.jpg",
+            "https://image.cocoonvietnam.com/uploads/z4727571380348_d9fea5abc9cc75106c94676b570071d6_a800916a97.jpg"
+          ]
         },
         {
           "name": "310ml",
           "price": 299000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/z3526520930085_8478409d6ac4058a7b77514ce71bdada_d14a16f231.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/gel-bi-dao-rua-mat-310ml",
-          "sourceTitle": "Gel bí đao rửa mặt 310ml"
+          "sourceTitle": "Gel bí đao rửa mặt 310ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/gel_bi_dao_rua_mat_mat_sau_936e515ab5.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/gel_bi_dao_rua_mat_texture_5eaab2bbe3.jpg",
+            "https://image.cocoonvietnam.com/uploads/31989099_slide_2_9583e65dc4.jpg",
+            "https://image.cocoonvietnam.com/uploads/z4727571380348_d9fea5abc9cc75106c94676b570071d6_a800916a97.jpg"
+          ]
         },
         {
           "name": "500ml",
           "price": 441000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Website_Gel_bi_dao_rua_mat_500ml_65368b5c9e.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/gel-bi-dao-rua-mat-500ml",
-          "sourceTitle": "Gel bí đao rửa mặt 500ml"
+          "sourceTitle": "Gel bí đao rửa mặt 500ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/gel_bi_dao_rua_mat_mat_sau_936e515ab5.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/gel_bi_dao_rua_mat_texture_5eaab2bbe3.jpg",
+            "https://image.cocoonvietnam.com/uploads/z4727571380348_d9fea5abc9cc75106c94676b570071d6_a800916a97.jpg"
+          ]
         }
       ]
     },
@@ -74,7 +109,12 @@
           "price": 299000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Artboard_6_3ec256ca12.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/nuoc-tay-trang-bi-dao-500ml",
-          "sourceTitle": "Nước tẩy trang bí đao 500ml"
+          "sourceTitle": "Nước tẩy trang bí đao 500ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892150_back_4bcb783962.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Hinh_3_29162f2a67.jpg",
+            "https://image.cocoonvietnam.com/uploads/Hinh_4_7e36be8667.jpg"
+          ]
         }
       ]
     },
@@ -88,7 +128,13 @@
           "price": 320000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Skin_N_Tinh_chat_nghe_C10_a7b2be4596.png",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/tinh-chat-nghe-hung-yen-30ml",
-          "sourceTitle": "Tinh chất nghệ Hưng Yên C10 30ml"
+          "sourceTitle": "Tinh chất nghệ Hưng Yên C10 30ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/30382208_back_75cb18d093.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_ca406d4971.jpg",
+            "https://image.cocoonvietnam.com/uploads/30382208_slide_3_b60a1bfcec.jpg",
+            "https://image.cocoonvietnam.com/uploads/Artboard_csa62_f8a4e76fb5.png"
+          ]
         }
       ]
     },
@@ -102,14 +148,26 @@
           "price": 192000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Artboard_46_1412dc8aa4.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/thach-bi-dao-30ml",
-          "sourceTitle": "Thạch bí đao 30ml"
+          "sourceTitle": "Thạch bí đao 30ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/34211376_back_83ef2dd0e2.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_80603a3734.jpg",
+            "https://image.cocoonvietnam.com/uploads/34211376_slide_2_ae991ad490.jpg",
+            "https://image.cocoonvietnam.com/uploads/34211376_slide_3_c752820dfc.jpg"
+          ]
         },
         {
           "name": "100ml",
           "price": 378000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Artboard_41_d59cbd8b7e.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/thach-bi-dao-100ml",
-          "sourceTitle": "Thạch bí đao 100ml"
+          "sourceTitle": "Thạch bí đao 100ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/34211377_back_dcf91de6c7.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_4_a074f8f1e0.jpg",
+            "https://image.cocoonvietnam.com/uploads/34211377_slide_2_d6ee956311.jpg",
+            "https://image.cocoonvietnam.com/uploads/34211377_slide_3_e2496b9fb2.jpg"
+          ]
         }
       ]
     },
@@ -123,7 +181,11 @@
           "price": 172000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Ca_phe_Dak_Lak_Lam_Sach_Da_Chet_Mat_150ml_ec5910e863.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/ca-phe-dak-lak-lam-sach-da-chet-mat-150ml",
-          "sourceTitle": "Cà phê Đắk Lắk làm sạch da chết mặt 150ml"
+          "sourceTitle": "Cà phê Đắk Lắk làm sạch da chết mặt 150ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892144_back_0289748668.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/29892144_slide_2_a241a3841e.jpg"
+          ]
         }
       ]
     },
@@ -137,7 +199,14 @@
           "price": 261000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Artboard_18_e4234e2f81.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/tinh-chat-hoa-hong-30ml",
-          "sourceTitle": "Tinh chất hoa hồng 30ml"
+          "sourceTitle": "Tinh chất hoa hồng 30ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892134_back_11222dc901.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_ddecb646cb.jpg",
+            "https://image.cocoonvietnam.com/uploads/29892134_slide_2_15f2c41040.jpg",
+            "https://image.cocoonvietnam.com/uploads/29892134_slide_3_0b3c6fca1c.jpg",
+            "https://image.cocoonvietnam.com/uploads/slide_4_5a43f33bbd.jpg"
+          ]
         }
       ]
     },
@@ -151,7 +220,12 @@
           "price": 388000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/z4389424986730_1e574bdd58278206885aaafd9cf54665_f04a0b7f9b.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/kem-chong-nang-bi-dao-50ml",
-          "sourceTitle": "Kem chống nắng bí đao 50ml"
+          "sourceTitle": "Kem chống nắng bí đao 50ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/mat_sau_1aa348d2b1.png",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_fdd028ff30.jpg",
+            "https://image.cocoonvietnam.com/uploads/IMG_5890_3_320fa750cd.jpg"
+          ]
         }
       ]
     },
@@ -165,7 +239,14 @@
           "price": 432000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/website_1_99aec50414.png",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/sua-chong-nang-bi-dao-50ml",
-          "sourceTitle": "Sữa chống nắng bí đao 50ml"
+          "sourceTitle": "Sữa chống nắng bí đao 50ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/Ecom_Skin_BD_Sua_chong_nang_bi_dao_50ml_mo_nap_4241adf5e3.png",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Ecom_Skin_BD_Sua_chong_nang_bi_dao_50ml_01_01_9df155e3a1.png",
+            "https://image.cocoonvietnam.com/uploads/Ecom_Skin_BD_Sua_chong_nang_bi_dao_50ml_mo_nap_4241adf5e3.png",
+            "https://image.cocoonvietnam.com/uploads/Avatar_1_ce2d0d0b63.png",
+            "https://image.cocoonvietnam.com/uploads/Avatar_3_31b6f83568.png"
+          ]
         }
       ]
     },
@@ -179,14 +260,35 @@
           "price": 195000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Sua_chong_nang_sen_Hau_Giang_15ml_Beige_d37d7037da.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/sua-chong-nang-vo-co-sen-hau-giang-15ml-tone-up-beige",
-          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 15ml - Tone up Beige"
+          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 15ml - Tone up Beige",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/Website_Hinh_10_f8af5e7d04.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_10_f8af5e7d04.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_1_c756dd76ba.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_7_190e500664.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_8_d550431303.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_9_bbe435e06a.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_6_68f37c91d5.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_5_be4126bd19.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_4_416ad36bf9.jpg"
+          ]
         },
         {
           "name": "50ml",
           "price": 449000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Sua_chong_nang_sen_Hau_Giang_50ml_Beige_284980728e.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/sua-chong-nang-vo-co-sen-hau-giang-50ml-tone-up-beige",
-          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 50ml - Tone up Beige"
+          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 50ml - Tone up Beige",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/Website_Hinh_10_f8af5e7d04.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_1_c756dd76ba.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_7_190e500664.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_8_d550431303.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_9_bbe435e06a.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_6_68f37c91d5.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_5_be4126bd19.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_4_416ad36bf9.jpg"
+          ]
         }
       ]
     },
@@ -200,14 +302,26 @@
           "price": 195000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Sua_chong_nang_sen_Hau_Giang_15ml_Pink_084ca30b14.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/sua-chong-nang-vo-co-sen-hau-giang-15ml-tone-up-pink",
-          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 15ml - Tone up Pink"
+          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 15ml - Tone up Pink",
+          "hoverImageUrl": null,
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_7_190e500664.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_8_d550431303.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_9_bbe435e06a.jpg"
+          ]
         },
         {
           "name": "50ml",
           "price": 449000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Sua_chong_nang_sen_Hau_Giang_50ml_Pink_49d7c36474.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/sua-chong-nang-vo-co-sen-hau-giang-50ml-tone-up-pink",
-          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 50ml - Tone up Pink"
+          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 50ml - Tone up Pink",
+          "hoverImageUrl": null,
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_7_190e500664.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_8_d550431303.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_9_bbe435e06a.jpg"
+          ]
         }
       ]
     },
@@ -221,7 +335,11 @@
           "price": 261000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/z3955699562722_f08debe9657c26ce2a9a6333b3295060_1476261cc8.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/dau-goi-buoi-310ml",
-          "sourceTitle": "Dầu gội bưởi không sulfate 310ml"
+          "sourceTitle": "Dầu gội bưởi không sulfate 310ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/33518591_back_571fe54619.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_518d38980c.jpg"
+          ]
         }
       ]
     },
@@ -235,14 +353,22 @@
           "price": 192000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Ecom_Hair_B_Dau_xa_buoi_310ml_230821_54e210a145.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/dau-xa-buoi-310ml",
-          "sourceTitle": "Dầu xả bưởi 310ml"
+          "sourceTitle": "Dầu xả bưởi 310ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/33518621_back_295972e50e.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_f862e65918.jpg"
+          ]
         },
         {
           "name": "50ml",
           "price": 49000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Artboard_27_1183759e8f.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/dau-xa-buoi-50ml",
-          "sourceTitle": "Dầu xả bưởi 50ml"
+          "sourceTitle": "Dầu xả bưởi 50ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/33518621_back_295972e50e.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_f862e65918.jpg"
+          ]
         }
       ]
     },
@@ -256,14 +382,26 @@
           "price": 162000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Nuoc_duong_toc_tinh_dau_buoi_140ml_Cai_tien_moi_240629_7819f9ba98.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/nuoc-duong-toc-tinh-dau-buoi-140ml-1",
-          "sourceTitle": "Nước dưỡng tóc tinh dầu bưởi 140ml"
+          "sourceTitle": "Nước dưỡng tóc tinh dầu bưởi 140ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/Website_Avatar_Nuoc_duong_toc_tinh_dau_buoi_140ml_670a87b3c5.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Hair_B_Avatar_Website_KV_Suboi_Website_1_1f6db8c177.jpg",
+            "https://image.cocoonvietnam.com/uploads/Hair_B_Avatar_Website_KV_Suboi_Website_2_132850218d.jpg",
+            "https://image.cocoonvietnam.com/uploads/Hinh_buoi_240618_b42356057e.jpg"
+          ]
         },
         {
           "name": "310ml",
           "price": 320000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Website_Avatar_Nuoc_duong_toc_tinh_dau_buoi_310ml_fac4084ecb.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/nuoc-duong-toc-tinh-dau-buoi-310ml",
-          "sourceTitle": "Nước dưỡng tóc tinh dầu bưởi 310ml"
+          "sourceTitle": "Nước dưỡng tóc tinh dầu bưởi 310ml",
+          "hoverImageUrl": null,
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Export_launching_ghep_label_moi_copy_ada8b999fe.jpg",
+            "https://image.cocoonvietnam.com/uploads/nuocbuoifinal_ghep_label_moi_89279427fb.jpg",
+            "https://image.cocoonvietnam.com/uploads/HAIR_TREATMENT_Label_moi_1x1_2_0a25c3c1da.jpg"
+          ]
         }
       ]
     },
@@ -277,7 +415,13 @@
           "price": 182000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Hair_BK_Nuoc_duong_da_dau_bo_ket_140ml_front_05520b4595.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/nuoc-duong-da-dau-bo-ket-140ml",
-          "sourceTitle": "Nước dưỡng da đầu bồ kết 140ml"
+          "sourceTitle": "Nước dưỡng da đầu bồ kết 140ml",
+          "hoverImageUrl": null,
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Hinh_con_1_31a6876853.jpg",
+            "https://image.cocoonvietnam.com/uploads/Hinh_con_2_5f3a73b8b3.jpg",
+            "https://image.cocoonvietnam.com/uploads/Hinh_con_4_e8101ba757.jpg"
+          ]
         }
       ]
     },
@@ -291,7 +435,15 @@
           "price": 275000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Website_Gel_tam_nghe_Hung_Yen_500ml_mat_sau_9a8b4a4573.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/gel-tam-nghe-hung-yen-500ml",
-          "sourceTitle": "Gel tắm nghệ Hưng Yên 500ml"
+          "sourceTitle": "Gel tắm nghệ Hưng Yên 500ml",
+          "hoverImageUrl": null,
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Hinh_1_3x_100_bbc2125851.jpg",
+            "https://image.cocoonvietnam.com/uploads/Artboard_2_3x_100_655926e546.jpg",
+            "https://image.cocoonvietnam.com/uploads/Artboard_3_3x_100_af0cc34aba.jpg",
+            "https://image.cocoonvietnam.com/uploads/Artboard_4_3x_100_b526ee1d70.jpg",
+            "https://image.cocoonvietnam.com/uploads/Artboard_7_3x_100_59932386e6.jpg"
+          ]
         }
       ]
     },
@@ -305,21 +457,38 @@
           "price": 133000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/z4147355364575_e4b88c65711b8261d9c996e6797b60a1_83f203bec3.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/ca-phe-dak-lak-lam-sach-da-chet-co-the-200ml",
-          "sourceTitle": "Cà phê Đắk Lắk làm sạch da chết cơ thể 200ml"
+          "sourceTitle": "Cà phê Đắk Lắk làm sạch da chết cơ thể 200ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892166_back_1fadce72bc.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_437158eaa0.jpg",
+            "https://image.cocoonvietnam.com/uploads/29892166_slide_2_0b4a1c8139.jpg",
+            "https://image.cocoonvietnam.com/uploads/z4727571374255_78089ff78f6258b59cbb86f217a6e73e_2e06a2ea90.jpg"
+          ]
         },
         {
           "name": "Túi refill 600ml",
           "price": 339000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Website_Tui_refill_Ca_phe_Dak_Lak_lam_sach_da_chet_co_the_600ml_3d48515de3.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/ca-phe-dak-lak-lam-sach-da-chet-600ml",
-          "sourceTitle": "Túi Refill Cà phê Đắk Lắk làm sạch da chết 600ml"
+          "sourceTitle": "Túi Refill Cà phê Đắk Lắk làm sạch da chết 600ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/slide_2_437158eaa0.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_437158eaa0.jpg",
+            "https://image.cocoonvietnam.com/uploads/CAFE_TUI_1_d5385bee7c.png",
+            "https://image.cocoonvietnam.com/uploads/CAFE_TUI_2_43da3fd0ac.png"
+          ]
         },
         {
           "name": "Túi refill 200ml",
           "price": 118000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Website_Tui_refill_Ca_phe_Dak_Lak_lam_sach_da_chet_co_the_200ml_ec53c387a0.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/tui-refill-ca-phe-dak-lak-lam-sach-da-chet-co-the-200-ml",
-          "sourceTitle": "Túi Refill Cà Phê Đắk Lắk Làm Sạch Da Chết Cơ Thể 200ML"
+          "sourceTitle": "Túi Refill Cà Phê Đắk Lắk Làm Sạch Da Chết Cơ Thể 200ML",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892166_back_1fadce72bc.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_437158eaa0.jpg",
+            "https://image.cocoonvietnam.com/uploads/45_tui_refill_cafe_body_200_1265f226b9.png"
+          ]
         }
       ]
     },
@@ -333,7 +502,12 @@
           "price": 241000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Ecom_Body_CP_Bo_duong_the_200ml_4a14a2094c.png",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/bo-duong-the-ca-phe-dak-lak-200ml",
-          "sourceTitle": "Bơ dưỡng thể cà phê Đắk Lắk 200ml"
+          "sourceTitle": "Bơ dưỡng thể cà phê Đắk Lắk 200ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/31228483_back_54c9dd233a.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_e79b590999.jpg",
+            "https://image.cocoonvietnam.com/uploads/z4727354008333_dd7cdd4b8f4013b010a0ed4e5af38085_6f0c997469.jpg"
+          ]
         }
       ]
     },
@@ -347,7 +521,9 @@
           "price": 275000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Gel_tam_bi_dao_500ml_0870b26d17.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/gel-tam-bi-dao-500ml",
-          "sourceTitle": "Gel tắm bí đao 500ml"
+          "sourceTitle": "Gel tắm bí đao 500ml",
+          "hoverImageUrl": null,
+          "gallery": []
         }
       ]
     },
@@ -361,7 +537,13 @@
           "price": 32000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Son_duong_dau_dua_26498c9936.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/son-duong-dau-dua-ben-tre-5g",
-          "sourceTitle": "Son dưỡng dầu dừa Bến Tre 5g"
+          "sourceTitle": "Son dưỡng dầu dừa Bến Tre 5g",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892178_back_d4ee5440f2.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_e3f7a6323c.jpg",
+            "https://image.cocoonvietnam.com/uploads/29892178_slide_2_1d91cc459b.jpg",
+            "https://image.cocoonvietnam.com/uploads/29892178_slide_3_7ff1ac2322.jpg"
+          ]
         }
       ]
     },
@@ -375,7 +557,13 @@
           "price": 74000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/CP_Ca_phe_moi_1a1b8ddbf1.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/ca-phe-dak-lak-lam-sach-da-chet-moi-5g",
-          "sourceTitle": "Cà phê Đắk Lắk làm sạch da chết môi 5g"
+          "sourceTitle": "Cà phê Đắk Lắk làm sạch da chết môi 5g",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892152_back_9470adca0a.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_d3162d63a2.jpg",
+            "https://image.cocoonvietnam.com/uploads/29892152_slide_3_2fa7938dc7.png",
+            "https://image.cocoonvietnam.com/uploads/29892152_slide_2_27292b7da5.png"
+          ]
         }
       ]
     },
@@ -389,14 +577,24 @@
           "price": 241000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Website_240627_14_cc24cef100.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/tinh-chat-xit-duong-sen-hau-giang-100ml",
-          "sourceTitle": "Tinh chất xịt dưỡng Sen Hậu Giang 100ml"
+          "sourceTitle": "Tinh chất xịt dưỡng Sen Hậu Giang 100ml",
+          "hoverImageUrl": null,
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Tinh_chat_xit_duong_SHG_1_e621e26603.jpg",
+            "https://image.cocoonvietnam.com/uploads/Tinh_chat_xit_duong_SHG_KV_411995d512.jpg"
+          ]
         },
         {
           "name": "200ml",
           "price": 368000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Website_240627_15_d093502192.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/tinh-chat-xit-duong-sen-hau-giang-200ml",
-          "sourceTitle": "Tinh chất xịt dưỡng Sen Hậu Giang 200ml"
+          "sourceTitle": "Tinh chất xịt dưỡng Sen Hậu Giang 200ml",
+          "hoverImageUrl": null,
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Tinh_chat_xit_duong_SHG_1_e621e26603.jpg",
+            "https://image.cocoonvietnam.com/uploads/Tinh_chat_xit_duong_SHG_KV_411995d512.jpg"
+          ]
         }
       ]
     },
@@ -410,7 +608,13 @@
           "price": 192000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Ecom_Hair_S_Serum_sa_chi_70ml_0c3c4772cb.png",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/serum-sa-chi-phuc-hoi-toc-70ml",
-          "sourceTitle": "Serum Sa-chi phục hồi tóc 70ml"
+          "sourceTitle": "Serum Sa-chi phục hồi tóc 70ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892180_back_587f156493.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_ffaaea5720.jpg",
+            "https://image.cocoonvietnam.com/uploads/z5117174672712_d476e957e4d9e37e2191cf448e7761d7_f3c62acd91.jpg",
+            "https://image.cocoonvietnam.com/uploads/z5117174656433_290ef64ca3d7ed250779997cc9ad4e42_515299ca45.jpg"
+          ]
         }
       ]
     }

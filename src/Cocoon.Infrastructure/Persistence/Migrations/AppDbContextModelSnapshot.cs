@@ -700,6 +700,10 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("HoverImageUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
                     b.Property<string>("ImageUrl")
                         .HasMaxLength(2048)
                         .HasColumnType("character varying(2048)");
@@ -734,6 +738,36 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.ToTable("ProductVariant", t =>
                         {
                             t.HasCheckConstraint("CK_ProductVariant_Price", "\"Price\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Cocoon.Domain.Entities.ProductVariantImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ProductVariantId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductVariantId", "SortOrder")
+                        .IsUnique();
+
+                    b.ToTable("ProductVariantImage", t =>
+                        {
+                            t.HasCheckConstraint("CK_ProductVariantImage_SortOrder", "\"SortOrder\" > 0");
                         });
                 });
 
@@ -1358,6 +1392,15 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.HasOne("Cocoon.Domain.Entities.Product", null)
                         .WithMany()
                         .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Cocoon.Domain.Entities.ProductVariantImage", b =>
+                {
+                    b.HasOne("Cocoon.Domain.Entities.ProductVariant", null)
+                        .WithMany()
+                        .HasForeignKey("ProductVariantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
