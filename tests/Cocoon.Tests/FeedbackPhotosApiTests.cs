@@ -90,6 +90,21 @@ public sealed class FeedbackPhotosApiTests : IClassFixture<DatabaseFixture>, IDi
     }
 
     [Fact]
+    public async Task Concurrent_uploads_never_exceed_the_photo_limit()
+    {
+        var shop = await Seed();
+        var owner = FoundationFactory.Token("Customer", shop.CustomerId);
+        var batch = Enumerable.Range(0, 3).Select(i => ($"{i}.jpg", "image/jpeg", Jpeg)).ToArray();
+
+        var results = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => Upload(shop.FeedbackId, owner, batch)));
+        Assert.Equal(1, results.Count(r => r.StatusCode == HttpStatusCode.Created));
+        Assert.All(results.Where(r => r.StatusCode != HttpStatusCode.Created), r => Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode));
+        var mine = await Json(await Send(HttpMethod.Get, $"/api/v1/me/feedback/{shop.FeedbackId}", owner));
+        Assert.Equal(3, mine.GetProperty("photos").GetArrayLength());
+        Assert.Equal(3, _storage.Objects.Count);
+    }
+
+    [Fact]
     public async Task Owner_deletes_a_photo_until_the_feedback_is_closed()
     {
         var shop = await Seed();

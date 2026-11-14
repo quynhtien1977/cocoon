@@ -24,13 +24,7 @@ public sealed class FeedbackPhotosController(AppDbContext db, IObjectStorage sto
     public async Task<IActionResult> Upload(int id, [FromForm(Name = "photos")] List<IFormFile> photos, CancellationToken cancellationToken)
     {
         var me = AccountId;
-        var status = await db.Set<Feedback>().Where(f => f.Id == id && f.CustomerId == me).Select(f => (FeedbackStatus?)f.Status)
-            .SingleOrDefaultAsync(cancellationToken);
-        if (status is null) return NotFound();
-        if (status == FeedbackStatus.Closed)
-            return Fail(StatusCodes.Status409Conflict, "FEEDBACK_CLOSED", "Phản hồi đã đóng, không thêm ảnh được nữa.");
-        var existing = await db.Set<FeedbackPhoto>().CountAsync(p => p.FeedbackId == id, cancellationToken);
-        if (photos.Count == 0 || existing + photos.Count > MaxPhotos)
+        if (photos.Count is 0 or > MaxPhotos)
             return Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR", $"Mỗi phản hồi có tối đa {MaxPhotos} ảnh.");
 
         // Validate every file before storing any, so a bad file does not leave half the batch behind.
@@ -48,6 +42,18 @@ public sealed class FeedbackPhotosController(AppDbContext db, IObjectStorage sto
             accepted.Add((data, contentType));
         }
 
+        // The row lock serialises uploads to one feedback, so concurrent requests cannot both pass the count check.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM \"Feedback\" WHERE \"Id\" = {id} FOR UPDATE", cancellationToken);
+        var status = await db.Set<Feedback>().Where(f => f.Id == id && f.CustomerId == me).Select(f => (FeedbackStatus?)f.Status)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (status is null) return NotFound();
+        if (status == FeedbackStatus.Closed)
+            return Fail(StatusCodes.Status409Conflict, "FEEDBACK_CLOSED", "Phản hồi đã đóng, không thêm ảnh được nữa.");
+        var existing = await db.Set<FeedbackPhoto>().CountAsync(p => p.FeedbackId == id, cancellationToken);
+        if (existing + photos.Count > MaxPhotos)
+            return Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR", $"Mỗi phản hồi có tối đa {MaxPhotos} ảnh (đã có {existing}).");
+
         var rows = new List<FeedbackPhoto>();
         try
         {
@@ -59,6 +65,7 @@ public sealed class FeedbackPhotosController(AppDbContext db, IObjectStorage sto
             }
             db.AddRange(rows);
             await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
         catch
         {
