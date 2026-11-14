@@ -12,7 +12,6 @@ import { updateTableParams } from "@/components/data/table-state";
 import { Button } from "@/components/ui/button";
 import type { OrderStatus } from "@/features/customer/orders-service";
 import { useApiData } from "@/lib/api/use-api-data";
-import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import {
   loadAllBackofficeOrders,
@@ -245,7 +244,6 @@ function downloadOrdersCsv(rows: readonly OrderRow[]) {
 }
 
 export function OrdersList({ portal }: { portal: "staff" | "manager" }) {
-  const s = screen(portal === "staff" ? "S4" : "M16");
   const { data, loading, error, retry } = useApiData(
     loadAllBackofficeOrders,
     "Chưa tải được danh sách đơn hàng. Kiểm tra kết nối rồi thử lại."
@@ -263,7 +261,6 @@ export function OrdersList({ portal }: { portal: "staff" | "manager" }) {
   return (
     <>
       <PageHeader
-        eyebrow={s.code}
         title="Danh sách đơn hàng"
         description={
           portal === "staff"
