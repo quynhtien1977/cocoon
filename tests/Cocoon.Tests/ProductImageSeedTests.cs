@@ -15,7 +15,8 @@ public sealed class ProductImageSeedTests(DemoSeedDatabaseFixture database) : IC
     private static readonly DateTime ReferenceUtc = new(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc);
     private sealed record SourceVariant(string Name, decimal Price, string ImageUrl, string SourceUrl, string SourceTitle, string? HoverImageUrl,
         string[] Gallery);
-    private sealed record SourceProduct(string LegacyName, string Name, string Category, SourceVariant[] Variants);
+    private sealed record SourceContent(string Description, string Benefits, string Ingredients, string Usage);
+    private sealed record SourceProduct(string LegacyName, string Name, string Category, SourceVariant[] Variants, SourceContent Content);
     private sealed record SourceCatalog(string VerifiedOn, SourceProduct[] Products);
     private static SourceProduct[] Sources()
     {
@@ -44,6 +45,7 @@ public sealed class ProductImageSeedTests(DemoSeedDatabaseFixture database) : IC
             Assert.Equal(sources[i].Name, product.Name);
             Assert.Equal(SearchText.Normalize(product.Name), product.NameNormalized);
             Assert.Equal(sources[i].Category, categories[product.CategoryId]);
+            AssertOfficialContent(sources[i], product);
             for (var j = 0; j < rows.Length; j++)
             {
                 var expected = sources[i].Variants[j];
@@ -124,6 +126,11 @@ public sealed class ProductImageSeedTests(DemoSeedDatabaseFixture database) : IC
         Assert.Equal(35, all.Count(v => !v.IsDeleted));
         Assert.Equal(ids.OrderBy(x => x.Key), all.ToDictionary(v => v.Sku, v => v.Id).OrderBy(x => x.Key));
         Assert.Equal(productIds, await db.Set<Product>().OrderBy(p => p.Id).Select(p => p.Id).ToArrayAsync());
+        // Legacy simulated text is replaced by the official page text in the same run.
+        var upgraded = await db.Set<Product>().ToDictionaryAsync(p => p.Id);
+        var sources = Sources();
+        for (var i = 0; i < sources.Length; i++)
+            AssertOfficialContent(sources[i], upgraded[all.First(v => v.Sku == $"COC-V1-{i + 1:000}-1").ProductId]);
         Assert.All(all, v => Assert.StartsWith("https://image.cocoonvietnam.com/", v.ImageUrl));
         Assert.Equal(orders, await History(db));
         var snapshot = JsonSerializer.Serialize(all.OrderBy(v => v.Id));
@@ -169,6 +176,20 @@ public sealed class ProductImageSeedTests(DemoSeedDatabaseFixture database) : IC
         Assert.Equal("Sản phẩm team đã chỉnh", (await db.Set<Product>().SingleAsync(p => p.Id == renamedId)).Name);
         Assert.Equal("Mô tả tự chỉnh", (await db.Set<Product>().SingleAsync(p => p.Id == renamedId)).Description);
         Assert.Equal(orders, await History(db));
+    }
+
+    private static void AssertOfficialContent(SourceProduct source, Product product)
+    {
+        Assert.Equal(source.Content.Description, product.Description);
+        Assert.Equal(source.Content.Benefits, product.Benefits);
+        Assert.Equal(source.Content.Ingredients, product.Ingredients);
+        Assert.Equal(source.Content.Usage, product.Usage);
+        Assert.All(new[] { product.Description, product.Benefits, product.Ingredients, product.Usage }, text =>
+        {
+            Assert.InRange(text.Length, 1, 4000);
+            Assert.DoesNotContain("trang sản phẩm chính thức", text);
+            Assert.DoesNotContain("<", text);
+        });
     }
 
     private static async Task MakeLegacyCatalog(AppDbContext db)

@@ -142,7 +142,12 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
             var definition = DemoCatalog.Products[index];
             var name = definition.Name;
             var categoryId = selectedCategories.Single(c => c.Name == definition.Category).Id;
+            // Placeholders written by earlier seeds; replaced by the official page text whenever nobody has edited them.
             var description = $"Sản phẩm Cocoon. Thông tin chính thức: {definition.Variants[0].SourceUrl}";
+            const string ingredientsPlaceholder = "Xem thành phần trên trang sản phẩm chính thức.";
+            const string benefitsPlaceholder = "Xem công dụng trên trang sản phẩm chính thức.";
+            const string usagePlaceholder = "Sử dụng theo hướng dẫn trên trang sản phẩm chính thức.";
+            var content = definition.Content;
             var product = productIds.Length == 1 ? existingProducts.Single(p => p.Id == productIds[0])
                 : existingProducts.SingleOrDefault(p => p.NameNormalized == SearchText.Normalize(name)
                     || p.NameNormalized == SearchText.Normalize(definition.LegacyName));
@@ -151,9 +156,9 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
                 product = Add(new Product
                 {
                     Name = name, NameNormalized = SearchText.Normalize(name), CategoryId = categoryId,
-                    Description = description,
-                    Ingredients = "Xem thành phần trên trang sản phẩm chính thức.", Benefits = "Xem công dụng trên trang sản phẩm chính thức.",
-                    Usage = "Sử dụng theo hướng dẫn trên trang sản phẩm chính thức.",
+                    Description = content?.Description ?? description,
+                    Ingredients = content?.Ingredients ?? ingredientsPlaceholder, Benefits = content?.Benefits ?? benefitsPlaceholder,
+                    Usage = content?.Usage ?? usagePlaceholder,
                     Status = index >= 22 ? ProductStatus.Upcoming : index == 21 ? ProductStatus.Inactive : ProductStatus.Active,
                     CreatedAt = referenceUtc.AddMonths(-12)
                 });
@@ -171,9 +176,16 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
                     (product.Name, product.NameNormalized) = (name, SearchText.Normalize(name));
                 if (product.CategoryId == selectedCategories[index / 4].Id) product.CategoryId = categoryId;
                 if (product.Description == $"{definition.LegacyName} — sản phẩm mô phỏng phục vụ đồ án CRM.") product.Description = description;
-                if (product.Ingredients == "Thành phần mô phỏng từ thực vật.") product.Ingredients = "Xem thành phần trên trang sản phẩm chính thức.";
-                if (product.Benefits == "Chăm sóc cá nhân theo nhu cầu.") product.Benefits = "Xem công dụng trên trang sản phẩm chính thức.";
-                if (product.Usage == "Dữ liệu minh họa, không phải hướng dẫn sử dụng sản phẩm thật.") product.Usage = "Sử dụng theo hướng dẫn trên trang sản phẩm chính thức.";
+                if (product.Ingredients == "Thành phần mô phỏng từ thực vật.") product.Ingredients = ingredientsPlaceholder;
+                if (product.Benefits == "Chăm sóc cá nhân theo nhu cầu.") product.Benefits = benefitsPlaceholder;
+                if (product.Usage == "Dữ liệu minh họa, không phải hướng dẫn sử dụng sản phẩm thật.") product.Usage = usagePlaceholder;
+                if (content is not null)
+                {
+                    if (product.Description == description) product.Description = content.Description;
+                    if (product.Ingredients == ingredientsPlaceholder) product.Ingredients = content.Ingredients;
+                    if (product.Benefits == benefitsPlaceholder) product.Benefits = content.Benefits;
+                    if (product.Usage == usagePlaceholder) product.Usage = content.Usage;
+                }
             }
             for (var variantIndex = 0; variantIndex < Math.Max(1 + index % 3, definition.Variants.Length); variantIndex++)
             {
