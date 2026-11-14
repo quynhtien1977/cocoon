@@ -6,4 +6,3 @@ export const metadata = screenMetadata("M16");
 export default function Page() {
   return <OrdersList portal="manager" />;
 }
-

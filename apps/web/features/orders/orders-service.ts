@@ -124,4 +124,3 @@ export function ordersToCsv(rows: readonly OrderRow[]): string {
   );
   return `\uFEFF${[header.map(escapeCsvCell).join(","), ...lines].join("\r\n")}`;
 }
-
