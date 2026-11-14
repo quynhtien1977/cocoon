@@ -96,7 +96,8 @@ public sealed class CustomerPortalController(AppDbContext db, RecommendationServ
             CanEditRating = canEditRating,
             RatingEditableUntil = canEditRating ? ratingUntil : null,
             CanEditContent = ContentEditable(f.Status, f.RepliedAt),
-            CanClose = f.Status != FeedbackStatus.Closed
+            CanClose = f.Status != FeedbackStatus.Closed,
+            Photos = await FeedbackPhotosController.Photos(db, id, cancellationToken)
         });
     }
 
@@ -398,6 +399,7 @@ public sealed record MyFeedbackDetail(int Id, int Rating, string Content, Feedba
     public bool CanEditContent { get; init; }
     /// <summary>True while open: the customer may end the conversation ("Tôi không cần hỗ trợ thêm").</summary>
     public bool CanClose { get; init; }
+    public IReadOnlyList<FeedbackPhotoItem> Photos { get; init; } = [];
 }
 public sealed record FollowUpRequest([Required] string Content);
 public sealed record EditFeedbackRequest([Range(1, 5)] int Rating, [Required] string Content);

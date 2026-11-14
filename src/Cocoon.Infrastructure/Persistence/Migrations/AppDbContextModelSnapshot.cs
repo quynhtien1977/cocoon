@@ -331,6 +331,46 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.ToTable("FeedbackAssignment");
                 });
 
+            modelBuilder.Entity("Cocoon.Domain.Entities.FeedbackPhoto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FeedbackId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FeedbackId");
+
+                    b.HasIndex("ObjectKey")
+                        .IsUnique();
+
+                    b.ToTable("FeedbackPhoto");
+                });
+
             modelBuilder.Entity("Cocoon.Domain.Entities.FeedbackReply", b =>
                 {
                     b.Property<int>("Id")
@@ -1185,6 +1225,15 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.HasOne("Cocoon.Domain.Entities.StaffProfile", null)
                         .WithMany()
                         .HasForeignKey("StaffId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Cocoon.Domain.Entities.FeedbackPhoto", b =>
+                {
+                    b.HasOne("Cocoon.Domain.Entities.Feedback", null)
+                        .WithMany()
+                        .HasForeignKey("FeedbackId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
