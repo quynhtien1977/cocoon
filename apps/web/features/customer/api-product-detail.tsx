@@ -18,6 +18,7 @@ export function ApiProductDetail({ id }: { id: string }) {
   const [quantity, setQuantity] = useState(1);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [failedImage, setFailedImage] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -42,15 +43,12 @@ export function ApiProductDetail({ id }: { id: string }) {
   }, [id, attempt]);
 
   const variant = product?.variants[variantIndex];
-  const variantImages = product
-    ? product.variants
-        .map((item, index) => ({ src: item.imageUrl, variantIndex: index, alt: item.name }))
-        .filter((entry): entry is { src: string; variantIndex: number; alt: string } => Boolean(entry.src))
-    : [];
-  const uniqueImages = variantImages.filter(
-    (entry, index, arr) => arr.findIndex((other) => other.src === entry.src) === index
-  );
-  const activeImage = variant?.imageUrl ?? uniqueImages[0]?.src ?? null;
+  // Gallery of the selected size, main photo first, like the official product page. The size picker changes it.
+  const gallery = variant?.images ?? [];
+  const activeImage =
+    selectedImage && gallery.includes(selectedImage)
+      ? selectedImage
+      : gallery[0] ?? product?.variants.find((item) => item.images.length)?.images[0] ?? null;
 
   return (
     <article className={styles.detail}>
@@ -102,21 +100,21 @@ export function ApiProductDetail({ id }: { id: string }) {
                   </div>
                 )}
               </div>
-              {uniqueImages.length > 1 && (
+              {gallery.length > 1 && (
                 <div className={styles.thumbnails} aria-label="Hình ảnh sản phẩm">
-                  {uniqueImages.map((entry, index) => (
+                  {gallery.map((src, index) => (
                     <button
-                      key={entry.src}
+                      key={src}
                       type="button"
                       aria-label={`Xem ảnh sản phẩm ${index + 1}`}
-                      aria-pressed={activeImage === entry.src}
+                      aria-pressed={activeImage === src}
                       onClick={() => {
-                        setVariantIndex(entry.variantIndex);
+                        setSelectedImage(src);
                         setFailedImage(null);
                       }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={entry.src} alt="" width={80} height={80} />
+                      <img src={src} alt="" width={80} height={80} />
                     </button>
                   ))}
                 </div>
@@ -139,6 +137,7 @@ export function ApiProductDetail({ id }: { id: string }) {
                         aria-pressed={index === variantIndex}
                         onClick={() => {
                           setVariantIndex(index);
+                          setSelectedImage(null);
                           setFailedImage(null);
                         }}
                       >
@@ -152,6 +151,7 @@ export function ApiProductDetail({ id }: { id: string }) {
                     value={variantIndex}
                     onChange={(event) => {
                       setVariantIndex(Number(event.target.value));
+                      setSelectedImage(null);
                       setFailedImage(null);
                     }}
                   >

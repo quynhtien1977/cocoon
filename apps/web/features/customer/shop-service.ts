@@ -5,6 +5,10 @@ export type ShopVariant = {
   name: string;
   price: number;
   imageUrl: string | null;
+  /** Photo the card fades to on hover; null when the variant has a single photo. */
+  hoverImageUrl: string | null;
+  /** Detail gallery, main photo first. */
+  images: string[];
 };
 
 export type ShopProduct = {
@@ -17,6 +21,8 @@ export type ShopProduct = {
   averageRating: number | null;
   feedbackCount: number;
   variants: ShopVariant[];
+  /** Hover photo of the variant whose photo is imageUrl; null when there is none. */
+  hoverImageUrl: string | null;
 };
 
 export type ShopCategory = {
@@ -85,11 +91,9 @@ const vndCurrency = new Intl.NumberFormat("vi-VN", {
 });
 
 export function toCarouselProduct(product: ShopProduct) {
-  const variantImages = product.variants
-    .map((v) => v.imageUrl)
-    .filter((url): url is string => Boolean(url));
-  const image = variantImages[0] ?? product.imageUrl ?? "";
-  const hoverImage = variantImages.find((url) => url !== image) ?? image;
+  const image = product.imageUrl ?? product.variants.find((v) => v.imageUrl)?.imageUrl ?? "";
+  // Empty when the product has a single photo, so the card keeps its photo instead of fading to the same one.
+  const hoverImage = product.hoverImageUrl && product.hoverImageUrl !== image ? product.hoverImageUrl : "";
   const variantNames = product.variants.map((v) => v.name).filter(Boolean).join(" · ");
   const ratingText =
     product.averageRating !== null && product.feedbackCount > 0
