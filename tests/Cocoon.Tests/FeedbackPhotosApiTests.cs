@@ -89,6 +89,29 @@ public sealed class FeedbackPhotosApiTests : IClassFixture<DatabaseFixture>, IDi
         Assert.Equal(HttpStatusCode.Conflict, (await Upload(shop.FeedbackId, owner, ("a.jpg", "image/jpeg", Jpeg))).StatusCode);
     }
 
+    [Fact]
+    public async Task Owner_deletes_a_photo_until_the_feedback_is_closed()
+    {
+        var shop = await Seed();
+        var owner = FoundationFactory.Token("Customer", shop.CustomerId);
+        using var created = await Upload(shop.FeedbackId, owner, ("a.jpg", "image/jpeg", Jpeg), ("b.png", "image/png", Png));
+        var ids = (await created.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray().Select(p => p.GetProperty("id").GetInt32()).ToList();
+
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await Send(HttpMethod.Delete, $"/api/v1/me/feedback/photos/{ids[0]}", FoundationFactory.Token("Customer", shop.OtherCustomerId))).StatusCode);
+        var left = await Json(await Send(HttpMethod.Delete, $"/api/v1/me/feedback/photos/{ids[0]}", owner));
+        Assert.Equal([ids[1]], left.EnumerateArray().Select(p => p.GetProperty("id").GetInt32()));
+        Assert.Single(_storage.Objects);
+        Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Get, $"/api/v1/feedback-photos/{ids[0]}", owner)).StatusCode);
+
+        await using (var db = _database.CreateContext())
+        {
+            (await db.Set<Feedback>().FindAsync(shop.FeedbackId))!.Status = FeedbackStatus.Closed;
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(HttpStatusCode.Conflict, (await Send(HttpMethod.Delete, $"/api/v1/me/feedback/photos/{ids[1]}", owner)).StatusCode);
+    }
+
     [Theory]
     [InlineData(new byte[] { 0xFF, 0xD8, 0xFF, 0xDB }, "image/jpeg")]
     [InlineData(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }, "image/png")]

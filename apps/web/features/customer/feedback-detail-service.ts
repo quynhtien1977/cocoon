@@ -109,6 +109,11 @@ export async function editFeedback(id: number, rating: number, content: string):
   await apiRequest<void>(`/me/feedback/${id}`, { method: "PUT", json: { rating, content } });
 }
 
+/** Removes one of the customer's own photos; returns the photos left on the feedback. */
+export async function deleteFeedbackPhoto(photoId: number): Promise<{ id: number; url: string }[]> {
+  return apiRequest<{ id: number; url: string }[]>(`/me/feedback/photos/${photoId}`, { method: "DELETE" });
+}
+
 export async function closeFeedback(id: number): Promise<void> {
   await apiRequest<void>(`/me/feedback/${id}/close`, { method: "POST" });
 }

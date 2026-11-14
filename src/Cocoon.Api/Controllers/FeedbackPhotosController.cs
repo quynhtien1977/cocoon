@@ -89,6 +89,25 @@ public sealed class FeedbackPhotosController(AppDbContext db, IObjectStorage sto
         return File(buffer.ToArray(), photo.ContentType);
     }
 
+    /// <summary>The owner removes a photo they sent, until the feedback is closed. Returns the remaining photos.</summary>
+    [HttpDelete("me/feedback/photos/{id:int}"), Authorize(Policy = "RequireCustomer")]
+    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
+    {
+        var me = AccountId;
+        var photo = await db.Set<FeedbackPhoto>().Where(p => p.Id == id)
+            .Join(db.Set<Feedback>(), p => p.FeedbackId, f => f.Id, (p, f) => new { Photo = p, f.CustomerId, f.Status })
+            .Where(x => x.CustomerId == me).SingleOrDefaultAsync(cancellationToken);
+        if (photo is null) return NotFound();
+        if (photo.Status == FeedbackStatus.Closed)
+            return Fail(StatusCodes.Status409Conflict, "FEEDBACK_CLOSED", "Phản hồi đã đóng, không xóa ảnh được nữa.");
+        db.Remove(photo.Photo);
+        await db.SaveChangesAsync(cancellationToken);
+        // The row is gone first, so a storage failure leaves an unreachable object rather than a broken photo link.
+        try { await storage.DeleteAsync(photo.Photo.ObjectKey, CancellationToken.None); }
+        catch (Exception e) { logger.LogWarning(e, "Deleted feedback photo {Key} is still in storage", photo.Photo.ObjectKey); }
+        return Ok(await Photos(db, photo.Photo.FeedbackId, cancellationToken));
+    }
+
     internal static Task<List<FeedbackPhotoItem>> Photos(AppDbContext db, int feedbackId, CancellationToken cancellationToken) =>
         db.Set<FeedbackPhoto>().Where(p => p.FeedbackId == feedbackId).OrderBy(p => p.SortOrder).ThenBy(p => p.Id)
             .Select(p => new FeedbackPhotoItem(p.Id, "/api/v1/feedback-photos/" + p.Id)).ToListAsync(cancellationToken);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { loadFeedbackDetail, parseFeedbackDetail } from "../features/customer/feedback-detail-service.ts";
+import { deleteFeedbackPhoto, loadFeedbackDetail, parseFeedbackDetail } from "../features/customer/feedback-detail-service.ts";
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
@@ -43,4 +43,13 @@ test("invalid IDs and demo feedback never call the API; real errors never fall b
   assert.equal(calls, 0);
   await assert.rejects(loadFeedbackDetail("2"), error => error.status === 501);
   assert.equal(calls, 1);
+});
+
+test("deleting a photo calls the owner endpoint and returns the photos left", async () => {
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, "/api/v1/me/feedback/photos/3");
+    assert.equal(options.method, "DELETE");
+    return Response.json([{ id: 4, url: "/api/v1/feedback-photos/4" }]);
+  };
+  assert.deepEqual(await deleteFeedbackPhoto(3), [{ id: 4, url: "/api/v1/feedback-photos/4" }]);
 });

@@ -1,4 +1,5 @@
-import { MessageSquare, UserRound } from "lucide-react";
+import { MessageSquare, Trash2, UserRound } from "lucide-react";
+import { ConfirmDialog } from "./confirm-dialog";
 import { RatingStars } from "./rating-stars";
 
 export type FeedbackThreadProps = {
@@ -14,13 +15,15 @@ export type FeedbackThreadProps = {
   editForm?: React.ReactNode;
   /** Photos the customer attached; urls are API paths that check access, so they load with the session cookie. */
   photos?: { id: number; url: string }[];
+  /** C5 only: lets the customer remove a photo they sent; it throws to keep the dialog open with the error. */
+  onRemovePhoto?: (photoId: number) => Promise<void>;
   /** Back-office screens name the customer; the defaults address the customer on C5. */
   customerHeading?: string;
   emptyReplies?: string;
 };
 const date = (value: string) => new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value));
 
-export function FeedbackThread({ rating, content, createdAt, replies, followUp, edits, photos = [], canEdit, onEdit, isEditing, editForm, customerHeading = "Đánh giá của bạn", emptyReplies = "Cocoon đã nhận được đánh giá của bạn. Khi nhân viên trả lời, nội dung sẽ được hiển thị tại đây." }: FeedbackThreadProps) {
+export function FeedbackThread({ rating, content, createdAt, replies, followUp, edits, photos = [], onRemovePhoto, canEdit, onEdit, isEditing, editForm, customerHeading = "Đánh giá của bạn", emptyReplies = "Cocoon đã nhận được đánh giá của bạn. Khi nhân viên trả lời, nội dung sẽ được hiển thị tại đây." }: FeedbackThreadProps) {
   const round1Replies = replies.filter(r => (r.round ?? 1) === 1);
   const round2Replies = replies.filter(r => r.round === 2);
 
@@ -50,11 +53,14 @@ export function FeedbackThread({ rating, content, createdAt, replies, followUp, 
         </header>
         <p className="mt-6 whitespace-pre-wrap break-words text-base leading-8 text-[#514837]">{content}</p>
         {photos.length > 0 && <ul aria-label={`Ảnh đính kèm (${photos.length})`} className="mt-4 flex flex-wrap gap-3">
-          {photos.map((photo, index) => <li key={photo.id}>
+          {photos.map((photo, index) => <li key={photo.id} className="relative">
             <a href={photo.url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded border border-[#e4dbc9] focus-visible:outline-2 focus-visible:outline-[#81916c]">
               {/* eslint-disable-next-line @next/next/no-img-element -- photos are access-checked API responses, not optimizable assets */}
               <img src={photo.url} alt={`Ảnh đính kèm ${index + 1}`} width={112} height={112} loading="lazy" decoding="async" className="size-28 object-cover" />
             </a>
+            {onRemovePhoto && <ConfirmDialog portal="customer" appearance="soft" title="Xóa ảnh này?" description="Ảnh sẽ bị gỡ khỏi phản hồi và Cocoon không xem được nữa."
+              confirmLabel="Xóa ảnh" pendingLabel="Đang xóa…" onConfirm={() => onRemovePhoto(photo.id)}
+              trigger={<button type="button" aria-label={`Xóa ảnh đính kèm ${index + 1}`} className="absolute -right-2 -top-2 grid size-8 place-items-center rounded-full border border-[#e4dbc9] bg-[#fffcf7] text-[#826438] hover:bg-[#eee6d5] focus-visible:outline-2 focus-visible:outline-[#81916c]"><Trash2 size={14} aria-hidden="true" /></button>} />}
           </li>)}
         </ul>}
       </section>

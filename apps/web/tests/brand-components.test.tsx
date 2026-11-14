@@ -149,3 +149,17 @@ test("FeedbackThread shows attached photos as links to the access-checked API pa
   render(<FeedbackThread rating={4} content="Không ảnh" createdAt="2026-10-20T09:00:00Z" replies={[]} />);
   assert.equal(screen.queryByRole("list", { name: /Ảnh đính kèm/ }), null);
 });
+
+test("FeedbackThread removes a photo only after confirmation", async () => {
+  const user = userEvent.setup();
+  const removed: number[] = [];
+  render(<FeedbackThread rating={4} content="Da mềm hơn" createdAt="2026-10-20T09:00:00Z" replies={[]}
+    photos={[{ id: 3, url: "/api/v1/feedback-photos/3" }]} onRemovePhoto={async (id) => { removed.push(id); }} />);
+  await user.click(screen.getByRole("button", { name: "Xóa ảnh đính kèm 1" }));
+  const dialog = await screen.findByRole("alertdialog");
+  await user.click(within(dialog).getByRole("button", { name: "Hủy" }));
+  assert.deepEqual(removed, []);
+  await user.click(screen.getByRole("button", { name: "Xóa ảnh đính kèm 1" }));
+  await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Xóa ảnh" }));
+  await waitFor(() => assert.deepEqual(removed, [3]));
+});
