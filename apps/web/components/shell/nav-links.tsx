@@ -9,9 +9,9 @@ import { isNavActive, type NavItem } from "@/lib/navigation";
 
 const icons: Record<string, LucideIcon> = {
   U1: House, U2: UserRound, U3: UserRoundPlus,
-  C0: House, C1: UserRound, C2: Package, C3: MessageSquare, C6: ClipboardList, C8: Sparkles,
+  C0: House, C1: UserRound, C2: Package, C3: MessageSquare, C6: ClipboardList, C8: Lightbulb,
   S1: MessageSquare, S4: Package, M1: LayoutDashboard, M2: UsersRound, M16: Package, M5: MessageSquare,
-  M7: ClipboardList, M11: Package, M13: Sparkles, A1: UsersRound, A2: UserRoundPlus, A3: ScrollText,
+  M7: ClipboardList, M11: Package, M13: Lightbulb, A1: UsersRound, A2: UserRoundPlus, A3: ScrollText,
   S3: UserRound, M15: UserRound, A4: UserRound,
 };
 
