@@ -158,6 +158,47 @@ public sealed class OrdersApiTests : IClassFixture<DatabaseFixture>, IDisposable
 
     private const string Review = "Sản phẩm dịu nhẹ, giao hàng nhanh, da mềm hơn sau một tuần.";
 
+    [Fact]
+    public async Task Catalog_and_detail_show_the_gallery_main_photo_first_and_a_hover_photo_only_when_there_is_another()
+    {
+        var shop = await Seed();
+        const string img = "https://image.cocoonvietnam.com/uploads/";
+        int single;
+        await using (var db = _database.CreateContext())
+        {
+            var variants = await db.Set<ProductVariant>().Where(v => v.ProductId == shop.ProductId).ToDictionaryAsync(v => v.Id);
+            // Cocoon's hover photo equals the main photo here, so the second gallery photo is used instead.
+            (variants[shop.SmallId].ImageUrl, variants[shop.SmallId].HoverImageUrl) = (img + "s.jpg", img + "s.jpg");
+            (variants[shop.LargeId].ImageUrl, variants[shop.LargeId].HoverImageUrl) = (img + "l.jpg", img + "l-back.jpg");
+            var only = new ProductVariant { ProductId = shop.ProductId, Name = "500ml", Sku = $"M-{shop.Tag}", Price = 250000, ImageUrl = img + "m.jpg" };
+            db.Add(only);
+            db.AddRange(new ProductVariantImage { ProductVariantId = shop.SmallId, SortOrder = 2, Url = img + "s-3.jpg" },
+                new ProductVariantImage { ProductVariantId = shop.SmallId, SortOrder = 1, Url = img + "s-2.jpg" });
+            await db.SaveChangesAsync();
+            single = only.Id;
+        }
+        static string[] Urls(JsonElement variant) => variant.GetProperty("images").EnumerateArray().Select(x => x.GetString()!).ToArray();
+        void AssertPhotos(Dictionary<int, JsonElement> variants)
+        {
+            Assert.Equal([img + "s.jpg", img + "s-2.jpg", img + "s-3.jpg"], Urls(variants[shop.SmallId]));
+            Assert.Equal(img + "s-2.jpg", variants[shop.SmallId].GetProperty("hoverImageUrl").GetString());
+            Assert.Equal([img + "l.jpg"], Urls(variants[shop.LargeId]));
+            Assert.Equal(img + "l-back.jpg", variants[shop.LargeId].GetProperty("hoverImageUrl").GetString());
+            Assert.Equal([img + "m.jpg"], Urls(variants[single]));
+            Assert.Equal(JsonValueKind.Null, variants[single].GetProperty("hoverImageUrl").ValueKind);
+        }
+
+        using var anonymous = _factory.CreateClient();
+        var catalog = await Json(await anonymous.GetAsync($"/api/v1/shop/products?search={shop.Tag}"));
+        var product = Assert.Single(catalog.GetProperty("items").EnumerateArray());
+        Assert.Equal(img + "s.jpg", product.GetProperty("imageUrl").GetString());
+        Assert.Equal(img + "s-2.jpg", product.GetProperty("hoverImageUrl").GetString());
+        AssertPhotos(product.GetProperty("variants").EnumerateArray().ToDictionary(v => v.GetProperty("id").GetInt32()));
+
+        var detail = await Json(await Send(HttpMethod.Get, $"/api/v1/products/{shop.ProductId}", Token("Customer", shop.CustomerId)));
+        AssertPhotos(detail.GetProperty("variants").EnumerateArray().ToDictionary(v => v.GetProperty("id").GetInt32()));
+    }
+
     private sealed record Shop(string Tag, int CustomerId, int OtherCustomerId, int StaffId, int ManagerId, int ProductId, int SmallId, int LargeId, int InactiveId);
 
     private async Task<Shop> Seed()

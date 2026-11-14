@@ -35,9 +35,14 @@ public sealed class ShopService(AppDbContext db)
         var total = await rows.CountAsync(ct);
         var products = await rows.OrderBy(x => x.Name).ThenBy(x => x.Id).Skip((page - 1) * size).Take(size).ToListAsync(ct);
         var ids = products.Select(p => p.Id).ToArray();
-        var variants = (await db.Set<ProductVariant>().Where(v => ids.Contains(v.ProductId)).OrderBy(v => v.Price).ThenBy(v => v.Id)
-            .Select(v => new { v.ProductId, Variant = new ShopVariant(v.Id, v.Name, v.Price, v.ImageUrl) }).ToListAsync(ct))
-            .ToLookup(x => x.ProductId, x => x.Variant);
+        var variantRows = await db.Set<ProductVariant>().Where(v => ids.Contains(v.ProductId)).OrderBy(v => v.Price).ThenBy(v => v.Id)
+            .Select(v => new { v.Id, v.ProductId, v.Name, v.Price, v.ImageUrl, v.HoverImageUrl }).ToListAsync(ct);
+        var extras = await db.ExtraPhotosAsync(variantRows.Select(v => v.Id).ToArray(), ct);
+        var variants = variantRows.ToLookup(v => v.ProductId, v =>
+        {
+            var gallery = ProductPhotos.Gallery(v.ImageUrl, extras[v.Id]);
+            return new ShopVariant(v.Id, v.Name, v.Price, v.ImageUrl, ProductPhotos.Hover(v.ImageUrl, v.HoverImageUrl, gallery), gallery);
+        });
         var ratings = await db.Set<Feedback>().Where(f => ids.Contains(f.ProductId)).GroupBy(f => f.ProductId)
             .Select(g => new { g.Key, Average = g.Average(f => (double)f.Rating), Count = g.Count() }).ToDictionaryAsync(x => x.Key, ct);
 
@@ -45,9 +50,9 @@ public sealed class ShopService(AppDbContext db)
         {
             var options = variants[p.Id].ToList();
             var rating = ratings.GetValueOrDefault(p.Id);
+            var cover = options.FirstOrDefault(v => v.ImageUrl != null);
             return new ShopProduct(p.Id, p.Name, p.CategoryId, p.CategoryName, options.Min(v => v.Price),
-                options.FirstOrDefault(v => v.ImageUrl != null)?.ImageUrl, rating is null ? null : Math.Round(rating.Average, 1),
-                rating?.Count ?? 0, options);
+                cover?.ImageUrl, rating is null ? null : Math.Round(rating.Average, 1), rating?.Count ?? 0, options, cover?.HoverImageUrl);
         }).ToList(), total, page, size);
     }
 
