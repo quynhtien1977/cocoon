@@ -23,6 +23,8 @@ export class ApiError extends Error {
 interface ApiRequestOptions {
   method?: string;
   json?: unknown;
+  /** Raw body such as FormData; the browser sets its Content-Type. Ignored when json is set. */
+  body?: BodyInit;
   headers?: HeadersInit;
   signal?: AbortSignal;
   refresh?: boolean;
@@ -71,7 +73,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   const request: RequestInit = {
     method: options.method ?? "GET", headers, credentials: "include", cache: "no-store",
     signal: options.signal,
-    body: options.json === undefined ? undefined : JSON.stringify(options.json),
+    body: options.json === undefined ? options.body : JSON.stringify(options.json),
   };
   const url = `/api/v1${path}`;
   let response = await fetch(url, request);

@@ -143,7 +143,7 @@ export function FeedbackProcessing({ initial, staff }: { initial: FeedbackDetail
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-6">
           <FeedbackTimeline status={status} times={feedback.statusTimes} />
-          <FeedbackThread rating={feedback.rating} content={feedback.content} createdAt={feedback.createdAt} replies={feedback.replies} followUp={feedback.followUp} edits={feedback.edits} customerHeading={`Phản hồi của ${feedback.customerName}`} emptyReplies="Chưa có câu trả lời nào cho khách." />
+          <FeedbackThread rating={feedback.rating} content={feedback.content} createdAt={feedback.createdAt} replies={feedback.replies} photos={feedback.photos} followUp={feedback.followUp} edits={feedback.edits} customerHeading={`Phản hồi của ${feedback.customerName}`} emptyReplies="Chưa có câu trả lời nào cho khách." />
         </div>
         <div className="min-w-0 space-y-6">
           <CustomerSummary feedback={feedback} />

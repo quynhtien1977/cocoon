@@ -107,6 +107,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         assignment.HasOne<Feedback>().WithMany().HasForeignKey(x => x.FeedbackId);
         assignment.HasOne<StaffProfile>().WithMany().HasForeignKey(x => x.StaffId);
         assignment.HasOne<StaffProfile>().WithMany().HasForeignKey(x => x.AssignedBy);
+        var photo = model.Entity<FeedbackPhoto>();
+        photo.HasKey(x => x.Id);
+        photo.HasOne<Feedback>().WithMany().HasForeignKey(x => x.FeedbackId);
+        photo.HasIndex(x => x.FeedbackId);
+        photo.HasIndex(x => x.ObjectKey).IsUnique();
+        photo.Property(x => x.ObjectKey).HasMaxLength(200);
+        photo.Property(x => x.ContentType).HasMaxLength(32);
+
         var reply = model.Entity<FeedbackReply>();
         reply.HasKey(x => x.Id);
         // At most two replies: one to the feedback, one to the customer's follow-up.

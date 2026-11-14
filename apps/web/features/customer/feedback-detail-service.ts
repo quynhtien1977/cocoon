@@ -17,6 +17,7 @@ export type FeedbackDetail = {
   ratingEditableUntil?: string | null;
   canEditContent?: boolean;
   canClose?: boolean;
+  photos?: { id: number; url: string }[];
 };
 const statuses = ["New", "Accepted", "Assigned", "Replied", "Closed"] as const;
 const validId = (id: unknown): id is number => typeof id === "number" && Number.isInteger(id) && id > 0 && id <= 2147483647;
@@ -59,7 +60,8 @@ export function parseFeedbackDetail(response: unknown, expectedId: number): Feed
   const canEditContent = Boolean(item.canEditContent);
   const canClose = Boolean(item.canClose);
 
-  return { ...item, status: status!, replies, followUp, autoCloseAt, canFollowUp, edits, canEditRating, ratingEditableUntil, canEditContent, canClose };
+  const photos = Array.isArray(item.photos) ? item.photos.filter((photo) => validId(photo?.id) && typeof photo.url === "string" && photo.url.startsWith("/api/v1/feedback-photos/")) : [];
+  return { ...item, status: status!, replies, followUp, autoCloseAt, canFollowUp, edits, canEditRating, ratingEditableUntil, canEditContent, canClose, photos };
 }
 
 function previewFeedback(id: number): FeedbackDetail {
@@ -105,6 +107,11 @@ export async function sendFollowUp(id: number, content: string): Promise<void> {
 
 export async function editFeedback(id: number, rating: number, content: string): Promise<void> {
   await apiRequest<void>(`/me/feedback/${id}`, { method: "PUT", json: { rating, content } });
+}
+
+/** Removes one of the customer's own photos; returns the photos left on the feedback. */
+export async function deleteFeedbackPhoto(photoId: number): Promise<{ id: number; url: string }[]> {
+  return apiRequest<{ id: number; url: string }[]>(`/me/feedback/photos/${photoId}`, { method: "DELETE" });
 }
 
 export async function closeFeedback(id: number): Promise<void> {

@@ -12,6 +12,7 @@ import { RatingInput } from "../components/brand/rating-input";
 import { RatingStars } from "../components/brand/rating-stars";
 import { ProductCard } from "../components/brand/product-card";
 import { ReasonChip } from "../components/brand/reason-chip";
+import { FeedbackThread } from "../components/brand/feedback-thread";
 
 afterEach(cleanup);
 
@@ -140,4 +141,29 @@ test("failed confirmation stays open, shows an error and permits retry", async (
   await user.click(screen.getByRole("button", { name: "Xác nhận" }));
   await waitFor(() => assert.equal(screen.queryByRole("alertdialog"), null));
   assert.equal(calls, 2);
+});
+
+test("FeedbackThread shows attached photos as links to the access-checked API path", () => {
+  render(<FeedbackThread rating={4} content="Da mềm hơn" createdAt="2026-10-20T09:00:00Z" replies={[]}
+    photos={[{ id: 3, url: "/api/v1/feedback-photos/3" }, { id: 4, url: "/api/v1/feedback-photos/4" }]} />);
+  const list = screen.getByRole("list", { name: "Ảnh đính kèm (2)" });
+  assert.equal(within(list).getAllByRole("img").length, 2);
+  assert.equal(within(list).getAllByRole("link")[0].getAttribute("href"), "/api/v1/feedback-photos/3");
+  cleanup();
+  render(<FeedbackThread rating={4} content="Không ảnh" createdAt="2026-10-20T09:00:00Z" replies={[]} />);
+  assert.equal(screen.queryByRole("list", { name: /Ảnh đính kèm/ }), null);
+});
+
+test("FeedbackThread removes a photo only after confirmation", async () => {
+  const user = userEvent.setup();
+  const removed: number[] = [];
+  render(<FeedbackThread rating={4} content="Da mềm hơn" createdAt="2026-10-20T09:00:00Z" replies={[]}
+    photos={[{ id: 3, url: "/api/v1/feedback-photos/3" }]} onRemovePhoto={async (id) => { removed.push(id); }} />);
+  await user.click(screen.getByRole("button", { name: "Xóa ảnh đính kèm 1" }));
+  const dialog = await screen.findByRole("alertdialog");
+  await user.click(within(dialog).getByRole("button", { name: "Hủy" }));
+  assert.deepEqual(removed, []);
+  await user.click(screen.getByRole("button", { name: "Xóa ảnh đính kèm 1" }));
+  await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Xóa ảnh" }));
+  await waitFor(() => assert.deepEqual(removed, [3]));
 });

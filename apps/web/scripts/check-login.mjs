@@ -461,7 +461,7 @@ try {
   await until(() => evaluate(() => !!document.querySelector('#review-content')));
   await evaluate(() => document.querySelector('[role="radio"][aria-label="5 sao"]').click());
   await evaluate(() => document.querySelector('#review-content').focus());
-  await send('Input.insertText', { text: '  Nhan xet that  ' });
+  await send('Input.insertText', { text: '  Nhan xet that sau mot tuan  ' });
   await attachPhotos('valid', 1);
   await until(() => evaluate(() => document.querySelectorAll('[aria-label="Ảnh đính kèm đánh giá"] img').length === 1));
   await evaluate(() => document.querySelector('main form').requestSubmit());
@@ -470,8 +470,8 @@ try {
   await evaluate(() => document.querySelector('[aria-label="Ảnh đính kèm đánh giá"] button').click());
   await evaluate(() => document.querySelector('main form').requestSubmit());
   await until(() => evaluate(() => document.querySelector('main [role="alert"]')?.textContent.includes('chưa khả dụng')));
-  assert.equal(await evaluate(() => document.querySelector('#review-content').value), '  Nhan xet that  ');
-  assert.deepEqual(feedbackSubmissions[0], { orderItemId: 91, rating: 5, content: 'Nhan xet that' });
+  assert.equal(await evaluate(() => document.querySelector('#review-content').value), '  Nhan xet that sau mot tuan  ');
+  assert.deepEqual(feedbackSubmissions[0], { orderItemId: 91, rating: 5, content: 'Nhan xet that sau mot tuan' });
   feedbackStatus = 200;
   await evaluate(() => { document.querySelector('main form').requestSubmit(); document.querySelector('main form').requestSubmit(); });
   await until(() => evaluate(() => document.querySelector('main h2[tabindex]')?.textContent === 'Cảm ơn bạn đã chia sẻ!'));

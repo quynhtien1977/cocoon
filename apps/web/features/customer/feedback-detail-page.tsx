@@ -11,6 +11,7 @@ import { cn } from "../../lib/utils";
 import {
   closeFeedback,
   closeFeedbackError,
+  deleteFeedbackPhoto,
   editFeedback,
   editFeedbackError,
   feedbackDetailError,
@@ -328,6 +329,11 @@ export function FeedbackDetailPage({ id, preview = false }: { id: string; previe
           replies={detail.replies}
           followUp={detail.followUp}
           edits={detail.edits}
+          photos={detail.photos}
+          onRemovePhoto={detail.canClose ? async (photoId) => {
+            const photos = await deleteFeedbackPhoto(photoId);
+            setDetail((curr) => curr ? { ...curr, photos } : curr);
+          } : undefined}
           canEdit={Boolean(detail.canEditRating || detail.canEditContent)}
           onEdit={handleStartEdit}
           isEditing={isEditing}

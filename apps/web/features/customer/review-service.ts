@@ -9,10 +9,12 @@ export function parseOrderItemId(value: string | undefined): number | null {
   return Number.isSafeInteger(id) && id <= 2147483647 ? id : null;
 }
 
+/** Same rule as POST me/feedback: trimmed content of 20–1000 characters. */
 export function validateReview({ rating, content }: ReviewValues) {
+  const length = content.trim().length;
   return {
     rating: rating !== null && Number.isInteger(rating) && rating >= 1 && rating <= 5 ? "" : "Vui lòng chọn từ 1 đến 5 sao.",
-    content: !content.trim() ? "Hãy chia sẻ nhận xét của bạn về sản phẩm." : content.length > 1000 ? "Nhận xét không được vượt quá 1.000 ký tự." : "",
+    content: !length ? "Hãy chia sẻ nhận xét của bạn về sản phẩm." : length < 20 ? "Nhận xét cần ít nhất 20 ký tự." : length > 1000 ? "Nhận xét không được vượt quá 1.000 ký tự." : "",
   };
 }
 
@@ -34,14 +36,24 @@ export async function getReviewableItems(signal?: AbortSignal) {
   return parseReviewableItems(await apiRequest<unknown>("/me/reviewable-items", { refresh: false, signal }));
 }
 
-export async function submitReview(orderItemId: number, values: ReviewValues) {
+/** Sends the review, then its photos. A photo failure leaves the review sent and is reported as photosFailed. */
+export async function submitReview(orderItemId: number, values: ReviewValues, photos: File[] = []): Promise<{ photosFailed: boolean }> {
   if (!parseOrderItemId(String(orderItemId))) throw new Error("Sản phẩm trong đơn hàng không hợp lệ.");
   const errors = validateReview(values);
   if (errors.rating || errors.content) throw new Error(errors.rating || errors.content);
   // Recheck eligibility: another tab may already have reviewed the item.
   const items = await getReviewableItems(AbortSignal.timeout(12000));
   if (!items.some((item) => item.orderItemId === orderItemId)) throw new Error("Sản phẩm này đã được đánh giá hoặc không còn đủ điều kiện đánh giá.");
-  await apiRequest<unknown>("/me/feedback", { method: "POST", refresh: false, json: { orderItemId, rating: values.rating, content: values.content.trim() } });
+  const created = await apiRequest<{ id: number }>("/me/feedback", { method: "POST", refresh: false, json: { orderItemId, rating: values.rating, content: values.content.trim() } });
+  // One photo per request: the Next.js proxy truncates request bodies above 10 MB, and 5 photos may reach 25 MB.
+  let photosFailed = false;
+  for (const photo of photos) {
+    const form = new FormData();
+    form.append("photos", photo, photo.name);
+    try { await apiRequest<unknown>(`/me/feedback/${created.id}/photos`, { method: "POST", refresh: false, body: form }); }
+    catch { photosFailed = true; }
+  }
+  return { photosFailed };
 }
 
 export function reviewErrorMessage(error: unknown) {
