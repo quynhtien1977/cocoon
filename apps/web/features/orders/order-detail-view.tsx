@@ -11,7 +11,6 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useApiData } from "@/lib/api/use-api-data";
-import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { ChannelChip } from "./orders-list";
 import { confirmOrder, loadBackofficeOrderDetail, orderChannelLabels, type OrderDetail } from "./orders-service";
@@ -139,7 +138,6 @@ function OrderTimeline({ order }: { order: OrderDetail }) {
 }
 
 export function OrderDetailView({ id, portal }: { id: number; portal: "staff" | "manager" }) {
-  const s = screen(portal === "staff" ? "S5" : "M17");
   const listHref = `/${portal}/orders`;
   const load = useCallback((signal: AbortSignal) => loadBackofficeOrderDetail(id, signal), [id]);
   const { data, loading, error, missing, retry } = useApiData(load, "Chưa tải được chi tiết đơn hàng. Kiểm tra kết nối rồi thử lại.");
@@ -217,7 +215,6 @@ export function OrderDetailView({ id, portal }: { id: number; portal: "staff" | 
       </Link>
 
       <PageHeader
-        eyebrow={`${s.code} · #${order.code}`}
         title={`Đơn hàng #${order.code}`}
         description={`${order.customer.fullName} · Kênh ${orderChannelLabels[order.channel] ?? order.channel} · Đặt lúc ${dateTime.format(new Date(order.orderedAt))}`}
         actions={<StatusBadge kind="order" status={order.status} className="self-center whitespace-nowrap" />}
