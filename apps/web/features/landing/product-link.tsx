@@ -6,6 +6,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api/client";
 import { getAccountRole } from "@/features/auth/login-service";
 
+function toAccountProductHref(href: string): string {
+  const slug = href.split("/").filter(Boolean).at(-1);
+  return slug ? `/account/products/${slug}` : "/account/products";
+}
+
 /** Product destinations are only opened after the current session is verified. */
 export function ProductLink({ href, className, children }: {
   href: string;
@@ -16,13 +21,15 @@ export function ProductLink({ href, className, children }: {
   const pathname = usePathname();
   const checking = useRef(false);
   const [pending, setPending] = useState(false);
+  const productHref = toAccountProductHref(href);
 
   if (pathname.startsWith("/account")) {
-    const slug = href.split("/").filter(Boolean).at(-1);
-    return <Link href={`/account/products/${slug}`} className={className}>{children}</Link>;
+    return <Link href={productHref} className={className}>{children}</Link>;
   }
 
-  return <Link href="/login" scroll={false} prefetch={false} className={className}
+  const loginHref = `/login?next=${encodeURIComponent(productHref)}`;
+
+  return <Link href={loginHref} scroll={false} prefetch={false} className={className}
     aria-busy={pending} aria-disabled={pending || undefined}
     onClick={async (event) => {
       event.preventDefault();
@@ -42,7 +49,7 @@ export function ProductLink({ href, className, children }: {
         checking.current = false;
         setPending(false);
       }
-      router.push("/login", { scroll: false });
+      router.push(loginHref, { scroll: false });
     }}>
     {children}
   </Link>;
