@@ -9,10 +9,12 @@ export function parseOrderItemId(value: string | undefined): number | null {
   return Number.isSafeInteger(id) && id <= 2147483647 ? id : null;
 }
 
+/** Same rule as POST me/feedback: trimmed content of 20–1000 characters. */
 export function validateReview({ rating, content }: ReviewValues) {
+  const length = content.trim().length;
   return {
     rating: rating !== null && Number.isInteger(rating) && rating >= 1 && rating <= 5 ? "" : "Vui lòng chọn từ 1 đến 5 sao.",
-    content: !content.trim() ? "Hãy chia sẻ nhận xét của bạn về sản phẩm." : content.length > 1000 ? "Nhận xét không được vượt quá 1.000 ký tự." : "",
+    content: !length ? "Hãy chia sẻ nhận xét của bạn về sản phẩm." : length < 20 ? "Nhận xét cần ít nhất 20 ký tự." : length > 1000 ? "Nhận xét không được vượt quá 1.000 ký tự." : "",
   };
 }
 
