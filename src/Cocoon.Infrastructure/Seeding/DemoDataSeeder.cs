@@ -235,11 +235,13 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
             var chosen = candidates.Take(2).Select(p => variants.Where(v => v.ProductId == p.Id)
                 .OrderBy(v => v.Sku, StringComparer.Ordinal).First()).ToArray();
             var quantity = 1 + index % 3;
+            var status = index % 20 == 18 ? OrderStatus.Cancelled : index % 20 == 19 ? OrderStatus.Returned : OrderStatus.Completed;
+            var orderedAt = referenceUtc.AddMonths(-(index % 12)).AddDays(-(index / 12 % 21));
             var order = Add(new Order
             {
-                Code = code, CustomerId = customer.AccountId, Channel = (OrderChannel)(index % 3),
-                Status = index % 20 == 18 ? OrderStatus.Cancelled : index % 20 == 19 ? OrderStatus.Returned : OrderStatus.Completed,
-                OrderedAt = referenceUtc.AddMonths(-(index % 12)).AddDays(-(index / 12 % 21)),
+                Code = code, CustomerId = customer.AccountId, Channel = (OrderChannel)(index % 3), Status = status, OrderedAt = orderedAt,
+                // Same rule as migration AddWebsiteOrders: a seeded Completed order was completed when placed.
+                CompletedAt = status == OrderStatus.Completed ? orderedAt : null,
                 TotalAmount = chosen.Sum(v => quantity * v.Price)
             });
             await db.SaveChangesAsync(ct);

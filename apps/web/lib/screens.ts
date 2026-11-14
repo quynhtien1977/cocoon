@@ -30,11 +30,15 @@ export const screens = {
 
   S1: { portal: "staff", href: "/staff/feedback", nav: true, title: "Phản hồi được giao", description: "Phản hồi Manager giao cho bạn xử lý." },
   S2: { portal: "staff", href: "/staff/feedback/[id]", title: "Trả lời phản hồi", description: "Đọc phản hồi và gửi trả lời cho khách." },
+  S4: { portal: "staff", href: "/staff/orders", nav: true, title: "Đơn hàng", description: "Hàng đợi đơn hàng website cần xác nhận và giao." },
+  S5: { portal: "staff", href: "/staff/orders/[id]", title: "Chi tiết đơn hàng", description: "Chi tiết đơn hàng và xác nhận giao hàng." },
   // Profile screens for internal accounts are not in spec 8.1; codes continue each portal's numbering.
   S3: { portal: "staff", href: "/staff/profile", title: "Hồ sơ", description: "Thông tin cá nhân và đổi mật khẩu." },
 
   M1: { portal: "manager", href: "/manager", nav: true, title: "Tổng quan", description: "KPI, báo cáo khách hàng và phân tích." },
   M2: { portal: "manager", href: "/manager/customers", nav: true, title: "Khách hàng", description: "Tìm, lọc, sắp xếp khách hàng." },
+  M16: { portal: "manager", href: "/manager/orders", nav: true, title: "Đơn hàng", description: "Theo dõi và xử lý đơn hàng website." },
+  M17: { portal: "manager", href: "/manager/orders/[id]", title: "Chi tiết đơn hàng", description: "Chi tiết đơn hàng và xác nhận giao hàng." },
   M5: { portal: "manager", href: "/manager/feedback", nav: true, title: "Phản hồi", description: "Hộp phản hồi, lọc theo trạng thái và điểm." },
   M7: { portal: "manager", href: "/manager/surveys", nav: true, title: "Khảo sát", description: "Danh sách khảo sát và trạng thái." },
   M11: { portal: "manager", href: "/manager/products", nav: true, title: "Sản phẩm", description: "Sản phẩm, trạng thái và tag sở thích." },
