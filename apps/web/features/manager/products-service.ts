@@ -37,7 +37,7 @@ export async function loadManagerProducts(signal?: AbortSignal): Promise<Manager
     if (items.length >= result.totalCount) return items;
     if (!result.items.length) break;
   }
-  throw new Error("Chưa thể tải đầy đủ danh sách sản phẩm.");
+  throw new Error("Chưa tải được đầy đủ sản phẩm. Kiểm tra kết nối rồi thử lại.");
 }
 
 export const productStatusLabels = { Active: "Đang bán", Inactive: "Ngừng bán", Upcoming: "Sắp ra mắt" };

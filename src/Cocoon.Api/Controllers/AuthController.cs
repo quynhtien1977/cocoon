@@ -3,6 +3,7 @@ using Cocoon.Api.Auth;
 using Cocoon.Domain;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
+using Cocoon.Infrastructure.Accounts;
 using Cocoon.Infrastructure.Persistence;
 using Cocoon.Infrastructure.Recommendations;
 using Microsoft.AspNetCore.Authorization;
@@ -165,6 +166,7 @@ public sealed class ProfileController(AppDbContext db, RecommendationService rec
         else
         {
             // Staff edit only their name and phone; position is set by an admin.
+            if (User.IsInRole("Manager")) AccountManagementService.RequireManagerPhone(AccountRole.Manager, request.Phone);
             var staff = await db.Set<StaffProfile>().SingleOrDefaultAsync(x => x.AccountId == AccountId, cancellationToken);
             if (staff is null) db.Add(staff = new StaffProfile { AccountId = AccountId });
             (staff.FullName, staff.Phone) = (name, request.Phone);

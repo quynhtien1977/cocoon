@@ -25,7 +25,7 @@ public sealed class AdminAccountsController(AccountManagementService accounts) :
     [ProducesResponseType<AccountCreated>(StatusCodes.Status201Created)]
     public async Task<ActionResult<AccountCreated>> Create(CreateAccountRequest request, CancellationToken ct)
     {
-        var result = await accounts.CreateAsync(AccountId, request.Email, request.FullName, request.Role!.Value, ct);
+        var result = await accounts.CreateAsync(AccountId, request.Email, request.FullName, request.Role!.Value, request.Phone, ct);
         Response.Headers.CacheControl = "no-store";
         return StatusCode(StatusCodes.Status201Created, result);
     }
@@ -47,6 +47,7 @@ public sealed class AdminAccountsController(AccountManagementService accounts) :
 }
 
 public sealed record CreateAccountRequest([Required, EmailAddress, StringLength(256)] string Email,
-    [Required, StringLength(200, MinimumLength = 2)] string FullName, [Required, EnumDataType(typeof(AccountRole))] AccountRole? Role);
+    [Required, StringLength(200, MinimumLength = 2)] string FullName, [Required, EnumDataType(typeof(AccountRole))] AccountRole? Role,
+    [StringLength(32)] string? Phone = null);
 public sealed record ChangeRoleRequest([Required, EnumDataType(typeof(AccountRole))] AccountRole? Role);
 public sealed record ChangeStatusRequest([Required] bool? IsActive);

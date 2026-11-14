@@ -2,12 +2,11 @@
 
 import { useCallback, useId, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { ChevronsDownUp, ChevronsUpDown, CircleCheck, Info, ListChecks, Plus, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, ChevronsDownUp, ChevronsUpDown, CircleCheck, Info, ListChecks, Plus, SlidersHorizontal } from "lucide-react";
 import { EmptyState } from "@/components/brand/empty-state";
 import { PageHeader } from "@/components/brand/page-header";
 import { StatusBadge } from "@/components/brand/status-badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { screen } from "@/lib/screens";
 import { ApiError } from "@/lib/api/client";
 import { useApiData } from "@/lib/api/use-api-data";
 import { cn } from "@/lib/utils";
@@ -27,10 +26,11 @@ const emptyDraft = (): SurveyDraft => ({ title: "", description: "", purpose: "S
 export function SurveyBuilderPage({ id }: { id?: number }) {
   const load = useCallback((signal: AbortSignal) => loadBuilder(id, signal), [id]);
   const { data, loading, error, missing, retry } = useApiData(load, "Chưa tải được khảo sát. Kiểm tra kết nối rồi thử lại.");
-  if (!data) return <LoadState loading={loading} missing={missing} error={error} retry={retry} label="khảo sát" />;
-  if (data.status && data.status !== "Draft") return <EmptyState title="Không sửa được khảo sát" description="Khảo sát đã mở nên câu hỏi bị khóa. Muốn đổi câu hỏi hãy tạo khảo sát mới."
-    action={<Link href="/manager/surveys" className={cn(buttonVariants(), "h-12 px-4")}>Về danh sách khảo sát</Link>} />;
-  return <SurveyBuilder initial={data.draft} surveyId={data.surveyId} preferences={data.preferences} products={data.products} />;
+  const back = <Link href="/manager/surveys" className="mb-3 inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Danh sách khảo sát</Link>;
+  if (!data) return <>{back}<LoadState loading={loading} missing={missing} error={error} retry={retry} label="khảo sát" /></>;
+  if (data.status && data.status !== "Draft") return <>{back}<EmptyState title="Không sửa được khảo sát" description="Khảo sát đã mở nên câu hỏi bị khóa. Muốn đổi câu hỏi hãy tạo khảo sát mới."
+    action={<Link href="/manager/surveys" className={cn(buttonVariants(), "h-12 px-4")}>Về danh sách khảo sát</Link>} /></>;
+  return <>{back}<SurveyBuilder initial={data.draft} surveyId={data.surveyId} preferences={data.preferences} products={data.products} /></>;
 }
 
 export interface SurveyBuilderProps {
@@ -43,7 +43,6 @@ export interface SurveyBuilderProps {
 }
 
 export function SurveyBuilder({ initial, surveyId, preferences, products }: SurveyBuilderProps) {
-  const s = screen("M8");
   const id = useId();
   const [draft, setDraft] = useState<SurveyDraft>(() => initial ?? emptyDraft());
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -79,7 +78,7 @@ export function SurveyBuilder({ initial, surveyId, preferences, products }: Surv
       setSavedAt(new Date());
     } catch (reason) {
       setSavedAt(null);
-      setServerError(reason instanceof ApiError ? reason.message : "Không kết nối được máy chủ. Thử lại sau.");
+      setServerError(reason instanceof ApiError ? reason.message : "Mất kết nối. Kiểm tra mạng rồi thử lại.");
     } finally {
       setSaving(false);
     }
@@ -90,11 +89,11 @@ export function SurveyBuilder({ initial, surveyId, preferences, products }: Surv
 
   return (
     <form onSubmit={save} noValidate>
-      <PageHeader eyebrow={s.code} title={initial ? "Sửa khảo sát" : "Tạo khảo sát"} description="Câu hỏi 4 loại; lựa chọn có thể gắn sở thích để cập nhật hồ sơ khách khi họ trả lời."
+      <PageHeader title={initial ? "Sửa khảo sát" : "Tạo khảo sát"} description="Câu hỏi 4 loại; lựa chọn có thể gắn sở thích để cập nhật hồ sơ khách khi họ trả lời."
         actions={<StatusBadge kind="survey" status="Draft" />} />
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <section aria-labelledby={`${id}-config`} className="space-y-6 rounded-lg border border-border bg-card p-4 sm:p-6 lg:sticky lg:top-6">
+        <section aria-labelledby={`${id}-config`} className="space-y-6 rounded-lg border border-border bg-card p-4 sm:p-6 lg:sticky lg:top-22">
           <h2 id={`${id}-config`} className="flex items-center gap-2 border-b border-border pb-4 font-heading text-xl"><SlidersHorizontal className="size-5 text-gold-strong" aria-hidden="true" />Thông tin khảo sát</h2>
 
           <div className="space-y-2">

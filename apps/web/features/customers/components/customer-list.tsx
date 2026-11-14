@@ -7,7 +7,6 @@ import { StatTile } from "@/components/brand/stat-tile";
 import { StatusBadge } from "@/components/brand/status-badge";
 import { DataTable, type DataColumn, type DataFilter } from "@/components/data/data-table";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { customersToCsv } from "../customers-csv";
 import { useApiData } from "@/lib/api/use-api-data";
@@ -90,7 +89,6 @@ function downloadCsv(rows: readonly CustomerListItem[]) {
 }
 
 export function CustomerList() {
-  const s = screen("M2");
   const { data, loading, error, retry } = useApiData(loadCustomers, "Chưa tải được danh sách khách hàng. Kiểm tra kết nối rồi thử lại.");
   const customers = data ?? [];
   const active = customers.filter((row) => row.status === "Active").length;
@@ -98,12 +96,11 @@ export function CustomerList() {
   for (const preference of customers.flatMap((row) => row.preferences)) counts.set(preference, (counts.get(preference) ?? 0) + 1);
   const [topPreference, topCount] = [...counts].sort((a, b) => b[1] - a[1])[0] ?? ["—", 0];
   const avgOrders = customers.length ? customers.reduce((sum, row) => sum + row.orderCount, 0) / customers.length : 0;
-  const buyers = customers.filter((row) => row.orderCount > 0).length;
   const total = Math.max(customers.length, 1);
 
   return (
     <>
-      <PageHeader eyebrow={s.code} title="Danh sách khách hàng" description={`Hồ sơ ${customers.length} khách hàng: thông tin liên hệ, sở thích chăm sóc da và lịch sử mua hàng.`} actions={<>
+      <PageHeader title="Danh sách khách hàng" description={`Hồ sơ ${customers.length} khách hàng: thông tin liên hệ, sở thích chăm sóc da và lịch sử mua hàng.`} actions={<>
         <Button type="button" variant="outline" className="h-12 px-4" disabled={!customers.length} onClick={() => downloadCsv(customers)}><Download aria-hidden="true" />Xuất file CSV</Button>
         <Link href="/manager/customers/new" className={cn(buttonVariants(), "h-12 px-4")}><UserPlus aria-hidden="true" />Thêm khách hàng</Link>
       </>} />
@@ -111,7 +108,7 @@ export function CustomerList() {
         <StatTile label="Tổng khách hàng" value={customers.length} icon={<Users />} hint={`${customers.length - active} tài khoản đã khóa`} />
         <StatTile label="Đang hoạt động" value={active} unit={`/${customers.length}`} icon={<UserCheck />} progress={active / total} hint={`${percent.format(active / total)} tổng số khách`} />
         <StatTile label="Sở thích phổ biến" value={topPreference} icon={<Heart />} progress={topCount / total} hint={`${topCount} khách quan tâm`} />
-        <StatTile label="Đơn trung bình mỗi khách" value={decimal.format(avgOrders)} unit="đơn" icon={<ShoppingBag />} progress={buyers / total} hint={`${buyers} khách đã mua ít nhất 1 đơn`} />
+        <StatTile label="Đơn trung bình mỗi khách" value={decimal.format(avgOrders)} unit="đơn" icon={<ShoppingBag />} hint={`Tính trên toàn bộ ${customers.length} khách hàng`} />
       </div>
       <DataTable data={customers} columns={columns} getRowId={(row) => row.id} caption="Khách hàng" filters={buildFilters(customers)} loading={loading} error={error} onRetry={retry} renderCard={(row) => <CustomerCard row={row} />} cardsUntil="wide"
         emptyTitle="Không tìm thấy khách hàng" emptyDescription="Thử từ khóa khác hoặc bỏ bớt bộ lọc." />

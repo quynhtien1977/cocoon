@@ -45,7 +45,7 @@ export function ManagerProductsPage() {
     const controller = new AbortController();
     loadManagerProducts(AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]))
       .then(data => { if (!controller.signal.aborted) setProducts(data); })
-      .catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError && reason.status === 501 ? "Danh sách sản phẩm hiện chưa khả dụng. Vui lòng quay lại sau." : "Chưa thể tải sản phẩm. Vui lòng thử lại."); })
+      .catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError && reason.status === 501 ? "Danh sách sản phẩm hiện chưa khả dụng. Vui lòng quay lại sau." : "Chưa tải được sản phẩm. Kiểm tra kết nối rồi thử lại."); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [attempt, preview]);

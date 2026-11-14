@@ -48,7 +48,7 @@ export function SurveysPage() {
     const controller = new AbortController();
     loadSurveys(AbortSignal.any([controller.signal, AbortSignal.timeout(12000)]))
       .then(data => { if (!controller.signal.aborted) setItems(data); })
-      .catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError && reason.status === 501 ? "Khảo sát hiện chưa khả dụng. Bạn hãy quay lại sau nhé." : "Chưa thể tải khảo sát. Vui lòng thử lại."); })
+      .catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError && reason.status === 501 ? "Khảo sát hiện chưa khả dụng. Bạn hãy quay lại sau nhé." : "Chưa tải được khảo sát. Kiểm tra kết nối rồi thử lại."); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [attempt, preview]);

@@ -9,7 +9,6 @@ import { PageHeader } from "@/components/brand/page-header";
 import { StatusBadge } from "@/components/brand/status-badge";
 import { emptySegmentFilter, SegmentFilterBuilder, segmentAgeError, type SegmentOption } from "@/components/data/segment-filter-builder";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { activatePlan, createPlan, previewSegment, updatePlan } from "../api";
 import { MAX_PLAN_PRODUCTS, segmentSummary, validatePlanDetails } from "../schemas";
@@ -38,7 +37,6 @@ export interface PlanEditorProps {
 }
 
 export function PlanEditor({ initial, planId: initialId, products, preferences, categories }: PlanEditorProps) {
-  const s = screen("M14");
   const id = useId();
   const [draft, setDraft] = useState<PlanDraft>(() => initial ?? emptyDraft());
   const [step, setStep] = useState(0);
@@ -144,7 +142,7 @@ export function PlanEditor({ initial, planId: initialId, products, preferences, 
   if (activated) {
     return (
       <>
-        <PageHeader eyebrow={s.code} title="Đã kích hoạt kế hoạch" description={draft.name.trim()} actions={<StatusBadge kind="recommendationPlan" status="Active" />} />
+        <PageHeader title="Đã kích hoạt kế hoạch" description={draft.name.trim()} actions={<StatusBadge kind="recommendationPlan" status="Active" />} />
         <section role="status" className={card}>
           <p className="flex gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" />Kế hoạch áp dụng cho {activated.audienceCount} khách hàng với {selected.length} sản phẩm, tạo {activated.recommendationCount} gợi ý.</p>
           <Link href="/manager/recommendations" className={cn(buttonVariants(), "mt-4 h-12 px-4")}>Về tổng quan gợi ý</Link>
@@ -159,7 +157,7 @@ export function PlanEditor({ initial, planId: initialId, products, preferences, 
   return (
     <>
       <Link href="/manager/recommendations" className="mb-3 inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Tổng quan gợi ý</Link>
-      <PageHeader eyebrow={planId ? `${s.code} · KP-${planId}` : s.code} title={planId ? "Sửa kế hoạch gợi ý" : "Tạo kế hoạch gợi ý sản phẩm"} description="Thiết lập sản phẩm hiển thị trong mục Gợi ý cho bạn của nhóm khách hàng phù hợp." actions={<StatusBadge kind="recommendationPlan" status="Draft" />} />
+      <PageHeader eyebrow={planId ? `KP-${planId}` : undefined} title={planId ? "Sửa kế hoạch gợi ý" : "Tạo kế hoạch gợi ý sản phẩm"} description="Thiết lập sản phẩm hiển thị trong mục Gợi ý cho bạn của nhóm khách hàng phù hợp." actions={<StatusBadge kind="recommendationPlan" status="Draft" />} />
 
       <ol aria-label="Các bước tạo kế hoạch" className={cn(card, "mb-6 grid gap-2 md:grid-cols-3")}>
         {steps.map(([title, hint], index) => (
@@ -173,7 +171,7 @@ export function PlanEditor({ initial, planId: initialId, products, preferences, 
       </ol>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        <aside aria-labelledby={`${id}-summary`} className={cn(card, "order-last space-y-4 lg:sticky lg:top-6 lg:order-first")}>
+        <aside aria-labelledby={`${id}-summary`} className={cn(card, "order-last space-y-4 lg:sticky lg:top-22 lg:order-first")}>
           <h2 id={`${id}-summary`} className="border-b border-border pb-3 font-heading text-lg">Hồ sơ kế hoạch</h2>
           <dl className="space-y-3 text-sm">
             <div><dt className="text-muted-foreground">Tên kế hoạch</dt><dd className="font-semibold break-words">{draft.name.trim() || "Chưa đặt tên"}</dd></div>

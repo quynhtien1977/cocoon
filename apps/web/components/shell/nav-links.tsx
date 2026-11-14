@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, House, LayoutDashboard, MessageSquare, Package, ScrollText, Sparkles, UserRound, UserRoundPlus, UsersRound, type LucideIcon } from "lucide-react";
+import { ClipboardList, House, LayoutDashboard, MessageSquare, Package, ScrollText, Lightbulb, UserRound, UserRoundPlus, UsersRound, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { isNavActive, type NavItem } from "@/lib/navigation";

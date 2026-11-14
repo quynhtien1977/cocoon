@@ -52,7 +52,7 @@ export async function loadSurveys(signal?: AbortSignal): Promise<CustomerSurvey[
     if (items.length >= result.totalCount) return items;
     if (!result.items.length) break;
   }
-  throw new Error("Chưa thể tải đầy đủ khảo sát. Vui lòng thử lại.");
+  throw new Error("Chưa tải được đầy đủ khảo sát. Kiểm tra kết nối rồi thử lại.");
 }
 
 export const previewSurveys: CustomerSurvey[] = [

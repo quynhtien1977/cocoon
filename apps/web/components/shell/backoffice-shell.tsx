@@ -39,7 +39,7 @@ export function BackofficeShell({ variant, nav, children }: { variant: keyof typ
         </div>
       </aside>
       <div className="min-w-0 flex-1">
-        <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-background px-4 md:px-6 print:hidden">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-border bg-background px-4 md:px-6 print:hidden">
           <div className="flex min-w-0 items-center gap-3">
             <MobileNavigation items={nav} title={labels[variant]} home={home} tone="ink" />
             <p className="font-label text-sm uppercase tracking-wider">Cocoon <span className="text-muted-foreground">/ {labels[variant]}</span></p>

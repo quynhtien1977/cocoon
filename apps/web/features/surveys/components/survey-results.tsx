@@ -8,7 +8,6 @@ import { PageHeader } from "@/components/brand/page-header";
 import { StatTile } from "@/components/brand/stat-tile";
 import { StatusBadge } from "@/components/brand/status-badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { screen } from "@/lib/screens";
 import { useApiData } from "@/lib/api/use-api-data";
 import { cn } from "@/lib/utils";
 import { loadResults } from "../api";
@@ -70,7 +69,7 @@ function RatingBody({ question }: { question: RatingResult }) {
 function TextBody({ question }: { question: TextResult }) {
   if (question.answers.length === 0) return <p className="text-sm text-muted-foreground">Chưa có câu trả lời.</p>;
   return (
-    <ul className="space-y-3">
+    <ul tabIndex={0} aria-label={`${question.answers.length} câu trả lời`} className="max-h-80 space-y-3 overflow-y-auto pr-2 focus-visible:outline-2 focus-visible:outline-ring">
       {question.answers.map((answer, index) => (
         <li key={index} className="rounded-md border-l-2 border-gold bg-muted p-3">
           <p className="text-sm italic">“{answer.content}”</p>
@@ -109,12 +108,11 @@ export function SurveyResultsPage({ id }: { id: number }) {
 }
 
 export function SurveyResults({ survey, results }: { survey: SurveyInfo; results: readonly QuestionResult[] }) {
-  const s = screen("M10");
   const code = `KS-${String(survey.id).padStart(4, "0")}`;
   const back = <Link href="/manager/surveys" className="mb-3 inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Danh sách khảo sát</Link>;
 
   if (survey.status === "Draft") {
-    return <>{back}<PageHeader eyebrow={`${s.code} · ${code}`} title={survey.title} /><EmptyState title="Chưa có kết quả" description="Khảo sát còn là bản nháp. Gửi khảo sát cho khách để bắt đầu thu câu trả lời." action={<Link href={`/manager/surveys/${survey.id}/send`} className={cn(buttonVariants(), "h-12 px-4")}>Gửi khảo sát</Link>} /></>;
+    return <>{back}<PageHeader eyebrow={code} title={survey.title} /><EmptyState title="Chưa có kết quả" description="Khảo sát còn là bản nháp. Gửi khảo sát cho khách để bắt đầu thu câu trả lời." action={<Link href={`/manager/surveys/${survey.id}/send`} className={cn(buttonVariants(), "h-12 px-4")}>Gửi khảo sát</Link>} /></>;
   }
 
   const rate = ratio(survey.responseCount, survey.recipientCount);
@@ -123,7 +121,7 @@ export function SurveyResults({ survey, results }: { survey: SurveyInfo; results
   return (
     <>
       {back}
-      <PageHeader eyebrow={`${s.code} · ${code}`} title={`Kết quả khảo sát: ${survey.title}`} actions={
+      <PageHeader eyebrow={code} title={`Kết quả khảo sát: ${survey.title}`} actions={
         <Button type="button" variant="outline" className="h-12 px-4" onClick={() => downloadCsv(survey, results)}><Download aria-hidden="true" />Xuất CSV</Button>
       } />
       <p className="-mt-3 mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">

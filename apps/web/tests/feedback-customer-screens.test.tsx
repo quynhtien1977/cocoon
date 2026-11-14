@@ -264,6 +264,8 @@ test("M3 reports invalid fields and posts the customer without preferences", asy
 
   await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }));
   assert.ok(await screen.findByText(/Đã lưu hồ sơ Nguyễn Thu Hà/));
+  assert.equal(screen.queryByText("Tam!1234"), null, "temporary password is masked until revealed");
+  await user.click(screen.getByRole("button", { name: "Hiện" }));
   assert.ok(screen.getByText("Tam!1234"));
   const post = requests.find((request) => request.method === "POST")!;
   assert.equal(post.url, "/api/v1/customers");

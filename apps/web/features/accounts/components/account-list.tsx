@@ -9,7 +9,6 @@ import { StatusBadge } from "@/components/brand/status-badge";
 import { DataTable, type DataColumn, type DataFilter } from "@/components/data/data-table";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { AccountRole } from "@/lib/auth/roles";
-import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { useApiData } from "@/lib/api/use-api-data";
 import { changeAccountRole, changeAccountStatus, deleteAccount, loadAccounts } from "../api";
@@ -60,7 +59,6 @@ const filters: DataFilter<AccountListItem>[] = [
 ];
 
 export function AccountList() {
-  const s = screen("A1");
   const { data, loading, error, retry } = useApiData(loadAccounts, "Chưa tải được danh sách tài khoản. Kiểm tra kết nối rồi thử lại.");
   // Rows after confirmed changes; null until the first change, reset when the list reloads.
   const [edited, setEdited] = useState<AccountListItem[] | null>(null);
@@ -81,15 +79,15 @@ export function AccountList() {
       cell: (row) => <span className="block min-w-48"><span className="block font-semibold">{row.fullName}</span><span className="block text-xs text-muted-foreground">{row.email}</span></span>,
     },
     { id: "phone", header: "Số điện thoại", value: (row) => row.phone, cell: (row) => row.phone ?? <span className="text-muted-foreground">—</span> },
-    { id: "role", header: "Vai trò", value: (row) => roleLabels[row.role], searchable: false, cell: (row) => <StatusBadge kind="role" status={row.role} className="whitespace-nowrap" /> },
-    { id: "status", header: "Trạng thái", value: (row) => row.status, searchable: false, cell: (row) => <StatusBadge kind="account" status={row.status} className="whitespace-nowrap" /> },
+    { id: "role", header: "Vai trò", value: (row) => roleLabels[row.role], searchable: false, cell: (row) => <StatusBadge kind="role" status={row.role} /> },
+    { id: "status", header: "Trạng thái", value: (row) => row.status, searchable: false, cell: (row) => <StatusBadge kind="account" status={row.status} /> },
     { id: "lastLogin", header: "Lần đăng nhập cuối", value: (row) => row.lastLoginAt, sortable: true, searchable: false, cell: (row) => <span className={cn("whitespace-nowrap", !row.lastLoginAt && "text-muted-foreground")}>{lastLogin(row)}</span> },
     { id: "actions", header: "Thao tác", value: () => null, searchable: false, cell: (row) => <AccountActions row={row} {...handlers} /> },
   ];
 
   return (
     <>
-      <PageHeader eyebrow={s.code} title="Quản trị tài khoản" description="Quản lý tài khoản và phân quyền người dùng trong toàn hệ thống Cocoon CRM." actions={
+      <PageHeader title="Quản trị tài khoản" description="Quản lý tài khoản và phân quyền người dùng trong toàn hệ thống Cocoon CRM." actions={
         <Link href="/admin/accounts/new" className={cn(buttonVariants(), "h-12 px-4")}><Plus aria-hidden="true" />Tạo tài khoản mới</Link>
       } />
       <DataTable data={accounts} columns={columns} getRowId={(row) => row.id} caption="Tài khoản" filters={filters} loading={loading} error={error} onRetry={() => { setEdited(null); retry(); }} cardsUntil="xl" renderCard={(row) => (
@@ -98,7 +96,7 @@ export function AccountList() {
             <span className="min-w-0"><span className="block font-semibold">{row.fullName}</span><span className="block truncate text-xs text-muted-foreground">{row.email}</span></span>
             <StatusBadge kind="account" status={row.status} className="shrink-0 whitespace-nowrap" />
           </header>
-          <span className="flex flex-wrap items-center gap-2"><StatusBadge kind="role" status={row.role} className="whitespace-nowrap" /><span className="text-sm text-muted-foreground">{row.phone ?? "Chưa có số điện thoại"}</span></span>
+          <span className="flex flex-wrap items-center gap-2"><StatusBadge kind="role" status={row.role} /><span className="text-sm text-muted-foreground">{row.phone ?? "Chưa có số điện thoại"}</span></span>
           <span className="text-sm text-muted-foreground">Đăng nhập cuối: {lastLogin(row)}</span>
           <div className="mt-auto border-t border-border pt-1"><AccountActions row={row} {...handlers} /></div>
         </article>

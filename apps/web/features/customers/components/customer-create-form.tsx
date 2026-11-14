@@ -4,8 +4,8 @@ import { useId, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { CircleCheck, Save } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
+import { TemporaryPassword } from "@/components/brand/temporary-password";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
 import { createCustomer, type CustomerCreated } from "../api";
@@ -19,7 +19,6 @@ const emptyDraft: CustomerDraft = { fullName: "", email: "", phone: "", dateOfBi
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" });
 
 export function CustomerCreateForm() {
-  const s = screen("M3");
   const id = useId();
   const [draft, setDraft] = useState(emptyDraft);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -41,7 +40,7 @@ export function CustomerCreateForm() {
       setCreated({ ...(await createCustomer(request)), fullName: request.fullName });
       setDraft(emptyDraft);
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Không kết nối được máy chủ. Thử lại sau.";
+      const message = error instanceof ApiError ? error.message : "Mất kết nối. Kiểm tra mạng rồi thử lại.";
       if (error instanceof ApiError && error.status === 409) setErrors({ email: message });
       else setSubmitError(message);
     } finally {
@@ -55,7 +54,7 @@ export function CustomerCreateForm() {
 
   return (
     <>
-      <PageHeader eyebrow={s.code} title="Thêm hồ sơ khách hàng mới" description="Tạo hồ sơ với thông tin định danh cơ bản của khách hàng." />
+      <PageHeader title="Thêm hồ sơ khách hàng mới" description="Tạo hồ sơ với thông tin định danh cơ bản của khách hàng." />
       <form onSubmit={submit} noValidate className="max-w-[1020px] space-y-8 rounded-lg border border-border border-t-4 border-t-gold bg-card p-4 sm:p-8">
         <section aria-labelledby={`${id}-identity`} className="space-y-5">
           <h2 id={`${id}-identity`} className={sectionTitle}><span className="font-bold text-gold-strong">01</span><span aria-hidden="true">/</span>Thông tin định danh cơ bản</h2>
@@ -100,7 +99,7 @@ export function CustomerCreateForm() {
           <div aria-live="polite" className="min-w-0 text-sm">
             {Object.keys(errors).length > 0 ? <p className="text-destructive">Chưa lưu được: còn {Object.keys(errors).length} lỗi. Sửa các ô được đánh dấu rồi lưu lại.</p>
               : submitError ? <p role="alert" className="text-destructive">Chưa lưu được: {submitError}</p>
-              : created ? <p className="flex items-start gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>Đã lưu hồ sơ {created.fullName}. Mật khẩu tạm để khách đăng nhập lần đầu: <code className="font-mono font-semibold text-foreground">{created.temporaryPassword}</code>. <Link href={`/manager/customers/${created.id}`} className="font-semibold underline">Xem hồ sơ</Link></span></p> : null}
+              : created ? <p className="flex items-start gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>Đã lưu hồ sơ {created.fullName}. Mật khẩu tạm: <TemporaryPassword value={created.temporaryPassword} /> Chỉ hiện một lần. Gửi riêng cho khách; khách phải đổi mật khẩu khi đăng nhập lần đầu. <Link href={`/manager/customers/${created.id}`} className="font-semibold underline">Xem hồ sơ</Link></span></p> : null}
           </div>
           <div className="flex w-full gap-3 sm:ml-auto sm:w-auto">
             <Link href="/manager/customers" className={cn(buttonVariants({ variant: "outline" }), "h-12 flex-1 px-6 sm:flex-none")}>Hủy</Link>

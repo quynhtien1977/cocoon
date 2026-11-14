@@ -37,5 +37,5 @@ export type StatusBadgeProps = {
 export function StatusBadge({ kind, status, className }: StatusBadgeProps) {
   const group: Record<string, readonly [string, keyof typeof tones]> | undefined = Object.hasOwn(statusMap, kind) ? statusMap[kind] : undefined;
   const [label, tone] = group && Object.hasOwn(group, status) ? group[status] : ["Không xác định", "gray"] as const;
-  return <Badge className={cn("h-auto max-w-full whitespace-normal break-words px-2 py-1", tones[tone], className)}>{label}</Badge>;
+  return <Badge className={cn("h-auto max-w-full whitespace-nowrap px-2 py-1", tones[tone], className)}>{label}</Badge>;
 }

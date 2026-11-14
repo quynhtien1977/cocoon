@@ -52,13 +52,21 @@ public sealed partial class AccountManagementService(AppDbContext db, IAccountPa
         return new(items, total, page, size);
     }
 
-    public Task<AccountCreated> CreateAsync(int actor, string email, string fullName, AccountRole role, CancellationToken ct) =>
-        Write(() => CreateCoreAsync(actor, email, fullName, role, ct), ct);
+    public Task<AccountCreated> CreateAsync(int actor, string email, string fullName, AccountRole role, string? phone, CancellationToken ct) =>
+        Write(() => CreateCoreAsync(actor, email, fullName, role, ct, phone), ct);
 
-    private async Task<AccountCreated> CreateCoreAsync(int actor, string email, string fullName, AccountRole role, CancellationToken ct)
+    /// <summary>Managers are the escalation contact for staff, so their profile must carry a phone number.</summary>
+    public static void RequireManagerPhone(AccountRole role, string? phone)
+    {
+        if (role == AccountRole.Manager && string.IsNullOrWhiteSpace(phone)) Invalid("phone", "Quản lý cần có số điện thoại.");
+    }
+
+    private async Task<AccountCreated> CreateCoreAsync(int actor, string email, string fullName, AccountRole role, CancellationToken ct, string? phone = null)
     {
         email = email.Trim().ToLowerInvariant();
         fullName = fullName.Trim();
+        phone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
+        RequireManagerPhone(role, phone);
         if (email.Length > 256 || !new EmailAddressAttribute().IsValid(email)) Invalid("email", "Email không hợp lệ.");
         if (fullName.Length is < 2 or > 200) Invalid("fullName", "Họ tên cần từ 2 đến 200 ký tự.");
         if (!Enum.IsDefined(role)) Invalid("role", "Vai trò không hợp lệ.");
@@ -69,7 +77,7 @@ public sealed partial class AccountManagementService(AppDbContext db, IAccountPa
         account.PasswordHash = passwords.Hash(account, temporary);
         if (role == AccountRole.Customer)
             db.Add(new CustomerProfile { Account = account, FullName = fullName, FullNameNormalized = SearchText.Normalize(fullName) });
-        else db.Add(new StaffProfile { Account = account, FullName = fullName, Position = role.ToString() });
+        else db.Add(new StaffProfile { Account = account, FullName = fullName, Phone = phone, Position = role.ToString() });
         await db.SaveChangesAsync(ct);
         Audit(actor, account.Id, "AccountCreated");
         return new AccountCreated(account.Id, email, role, temporary, true);

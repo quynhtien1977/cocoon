@@ -18,9 +18,12 @@ const profile = z.object({
   phone: z.string().trim().max(32, "Số điện thoại tối đa 32 ký tự.").refine((value) => !value || (/^\+?[\d\s().-]+$/.test(value) && value.replace(/\D/g, "").length >= 8 && value.replace(/\D/g, "").length <= 15), "Nhập số điện thoại hợp lệ (8–15 chữ số)."),
 });
 
-export function validateProfileDraft(draft: ProfileDraft): Record<string, string> {
+/** requirePhone: manager accounts must keep a phone number (the API rejects a blank one). */
+export function validateProfileDraft(draft: ProfileDraft, requirePhone = false): Record<string, string> {
   const result = profile.safeParse(draft);
-  return result.success ? {} : firstErrors(result.error.issues);
+  const errors = result.success ? {} : firstErrors(result.error.issues);
+  if (requirePhone && !draft.phone.trim()) errors.phone ??= "Quản lý cần có số điện thoại.";
+  return errors;
 }
 
 // Mirrors AccountManagementService.ChangePasswordAsync so most mistakes are caught before the request.

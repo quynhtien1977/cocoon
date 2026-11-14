@@ -6092,6 +6092,13 @@
                 "$ref": "#/components/schemas/AccountRole"
               }
             ]
+          },
+          "phone": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
           }
         }
       },

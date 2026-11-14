@@ -8,7 +8,6 @@ import { PageHeader } from "@/components/brand/page-header";
 import { StatusBadge } from "@/components/brand/status-badge";
 import type { SegmentOption } from "@/components/data/segment-filter-builder";
 import { Button } from "@/components/ui/button";
-import { screen } from "@/lib/screens";
 import { endPlan } from "../api";
 import { segmentSummary } from "../schemas";
 import type { PlanProduct, RecommendationPlan } from "../types";
@@ -19,7 +18,6 @@ const card = "min-w-0 rounded-lg border border-border bg-card p-4 sm:p-6";
 
 /** Read-only view of an Active or Ended plan: only drafts can be edited. */
 export function PlanDetail({ initial, products, preferences, categories }: { initial: RecommendationPlan; products: readonly PlanProduct[]; preferences: readonly SegmentOption[]; categories: readonly SegmentOption[] }) {
-  const s = screen("M14");
   const [plan, setPlan] = useState(initial);
   const [ended, setEnded] = useState(false);
   const selected = plan.productIds.flatMap((id) => products.find((item) => item.id === id) ?? []);
@@ -34,7 +32,7 @@ export function PlanDetail({ initial, products, preferences, categories }: { ini
   return (
     <>
       <Link href="/manager/recommendations" className="mb-3 inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Tổng quan gợi ý</Link>
-      <PageHeader eyebrow={`${s.code} · KP-${plan.id}`} title={plan.name} description={plan.goal ?? undefined} actions={<>
+      <PageHeader eyebrow={`KP-${plan.id}`} title={plan.name} description={plan.goal ?? undefined} actions={<>
         <StatusBadge kind="recommendationPlan" status={plan.status} className="self-center whitespace-nowrap" />
         {plan.status === "Active" && (
           <ConfirmDialog portal="manager" title="Kết thúc kế hoạch?" description={`“${plan.name}” sẽ dừng ngay và không chạy lại được. Số liệu đã có vẫn được giữ.`} confirmLabel="Kết thúc kế hoạch"

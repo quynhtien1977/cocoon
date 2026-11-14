@@ -64,7 +64,7 @@ test("M9 counts the segment with the API, publishes a draft and sends the segmen
   await user.click(screen.getByRole("button", { name: "Nam" }));
   assert.ok(await screen.findByText("Hiển thị 2 / 3 người nhận"));
   assert.ok(screen.getAllByText("Lê Minh Quân").length > 0);
-  await user.click(screen.getByRole("button", { name: "Xem lại và gửi khảo sát" }));
+  await user.click(screen.getByRole("button", { name: "Gửi khảo sát" }));
   const dialog = await screen.findByRole("alertdialog");
   assert.match(dialog.textContent ?? "", /gửi cho 3 khách hàng/);
   await user.click(within(dialog).getByRole("button", { name: "Gửi khảo sát" }));
@@ -82,15 +82,15 @@ test("M9 reports an invalid age range and an empty manual selection, then sends 
   render(<SurveySend survey={survey("Open")} {...sendProps} />);
   await user.type(screen.getByLabelText("Từ"), "40");
   await user.type(screen.getByLabelText("Đến"), "20");
-  await user.click(screen.getByRole("button", { name: "Xem lại và gửi khảo sát" }));
+  await user.click(screen.getByRole("button", { name: "Gửi khảo sát" }));
   assert.match(screen.getByRole("alert").textContent ?? "", /khoảng tuổi không hợp lệ/);
   await user.click(screen.getByRole("tab", { name: "Chọn thủ công" }));
-  await user.click(screen.getByRole("button", { name: "Xem lại và gửi khảo sát" }));
+  await user.click(screen.getByRole("button", { name: "Gửi khảo sát" }));
   assert.match(screen.getByRole("alert").textContent ?? "", /chưa chọn khách nào/);
   await user.click(screen.getByRole("checkbox", { name: /Trúc Nguyễn/ }));
   assert.ok(screen.getByText("Đã chọn 1 khách"));
   assert.equal(screen.queryByRole("alert"), null);
-  await user.click(screen.getByRole("button", { name: "Xem lại và gửi khảo sát" }));
+  await user.click(screen.getByRole("button", { name: "Gửi khảo sát" }));
   await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Gửi khảo sát" }));
   assert.ok(await screen.findByText(/Đã gửi cho 1 khách hàng. Khảo sát hiện có 21 người nhận/));
   assert.deepEqual(sends(), [["POST", "/api/v1/surveys/83/recipients", { segment: null, customerIds: [108] }]]);
@@ -101,7 +101,7 @@ test("M9 keeps the dialog open with the API message when the survey is no longer
   const user = userEvent.setup();
   render(<SurveySend survey={survey("Open")} {...sendProps} />);
   await screen.findByText("Hiển thị 3 / 12 người nhận");
-  await user.click(screen.getByRole("button", { name: "Xem lại và gửi khảo sát" }));
+  await user.click(screen.getByRole("button", { name: "Gửi khảo sát" }));
   await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Gửi khảo sát" }));
   assert.match((await within(screen.getByRole("alertdialog")).findByRole("alert")).textContent ?? "", /không ở trạng thái đang mở/);
   assert.equal(screen.queryByText(/Đã gửi cho/), null);
@@ -124,7 +124,7 @@ test("M9 does not offer sending for a closed survey", () => {
   stubFetch((url, init) => preview(init));
   render(<SurveySend survey={survey("Closed")} {...sendProps} />);
   assert.ok(screen.getByText("Khảo sát đã đóng"));
-  assert.equal(screen.queryByRole("button", { name: "Xem lại và gửi khảo sát" }), null);
+  assert.equal(screen.queryByRole("button", { name: "Gửi khảo sát" }), null);
 });
 
 const results: QuestionResult[] = [

@@ -129,9 +129,11 @@ test("A2 reports missing fields, follows the role summary and creates the accoun
   await user.type(screen.getByLabelText(/Email đăng nhập/), "an@cocoon.demo");
   await user.click(screen.getByRole("button", { name: "Tạo tài khoản" }));
   assert.ok(await screen.findByText(/Đã tạo tài khoản an@cocoon.demo/));
+  assert.equal(screen.queryByText("Coc!TEMP9a"), null, "temporary password is masked until revealed");
+  await user.click(screen.getByRole("button", { name: "Hiện" }));
   assert.ok(screen.getByText("Coc!TEMP9a"));
   assert.equal((screen.getByLabelText(/Email đăng nhập/) as HTMLInputElement).value, "");
-  assert.deepEqual(sent(), [["POST", "/api/v1/admin/accounts", { email: "an@cocoon.demo", fullName: "Nguyễn Văn An", role: 0 }]]);
+  assert.deepEqual(sent(), [["POST", "/api/v1/admin/accounts", { email: "an@cocoon.demo", fullName: "Nguyễn Văn An", role: 0, phone: null }]]);
 });
 
 test("A2 shows EMAIL_TAKEN next to the email field and keeps the draft", async () => {
@@ -148,8 +150,10 @@ test("A2 shows EMAIL_TAKEN next to the email field and keeps the draft", async (
 });
 
 test("account draft maps to CreateAccountRequest with API role ordinals", () => {
-  assert.equal(validateAccountDraft({ fullName: "A", email: "khong-hop-le", role: "Staff" }).email, "Email không hợp lệ.");
-  assert.deepEqual(toCreateAccountRequest({ fullName: " Nguyễn An ", email: " an@cocoon.demo ", role: "Manager" }), { email: "an@cocoon.demo", fullName: "Nguyễn An", role: 1 });
-  assert.equal(toCreateAccountRequest({ fullName: "A", email: "a@b.vn", role: "Admin" }).role, 0);
-  assert.equal(toCreateAccountRequest({ fullName: "A", email: "a@b.vn", role: "Customer" }).role, 3);
+  assert.equal(validateAccountDraft({ fullName: "A", email: "khong-hop-le", phone: "", role: "Staff" }).email, "Email không hợp lệ.");
+  assert.equal(validateAccountDraft({ fullName: "A", email: "a@b.vn", phone: " ", role: "Manager" }).phone, "Quản lý cần có số điện thoại.");
+  assert.deepEqual(validateAccountDraft({ fullName: "A", email: "a@b.vn", phone: "", role: "Staff" }), {});
+  assert.deepEqual(toCreateAccountRequest({ fullName: " Nguyễn An ", email: " an@cocoon.demo ", phone: " 0912 345 678 ", role: "Manager" }), { email: "an@cocoon.demo", fullName: "Nguyễn An", role: 1, phone: "0912 345 678" });
+  assert.equal(toCreateAccountRequest({ fullName: "A", email: "a@b.vn", phone: "", role: "Admin" }).phone, null);
+  assert.equal(toCreateAccountRequest({ fullName: "A", email: "a@b.vn", phone: "", role: "Customer" }).role, 3);
 });

@@ -57,7 +57,7 @@ test("M1 overview renders API tiles and previews and sends the chosen period", a
   assert.ok(await screen.findByText("Từ 61 lượt đánh giá"));
   assert.ok(screen.getByText("82"));
   assert.match(screen.getByText("Điểm trung bình").closest("dl")!.textContent!, /2,7\/5/);
-  assert.ok(screen.getByText(/Tổng 61 phản hồi, 49,2\s?% ≤ 2 sao/));
+  assert.ok(screen.getByText(/Tổng 61 phản hồi, 82\s?% ≤ 4 sao/));
   assert.ok(await screen.findByText("Chưa cung cấp"));
   assert.match(screen.getByText(/^Thuần chay:/).textContent!, /50,7\s?%/);
   assert.equal(screen.getByRole("link", { name: /Hộp phản hồi \(12 mới\)/ }).getAttribute("href"), "/manager/feedback");

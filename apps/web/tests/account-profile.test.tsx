@@ -41,7 +41,7 @@ test("S3 shows the Stitch layout with live stats and saves name and phone throug
   assert.ok(within(summary).getByText("3"));
   assert.equal(screen.queryByText(/Phân quyền thao tác/), null, "scope box is removed");
   assert.equal(screen.queryByText(/Trạng thái/), null, "status row is removed");
-  assert.equal(screen.queryByLabelText("Mật khẩu hiện tại"), null, "no password form without a temporary password");
+  assert.ok(screen.getByRole("heading", { name: "Đổi mật khẩu" }), "every account can change its password");
   assert.equal(screen.getByLabelText("Email nội bộ").hasAttribute("readonly"), true);
   await user.clear(screen.getByLabelText("Họ và tên"));
   await user.type(screen.getByLabelText("Họ và tên"), "  Nguyễn An  ");
@@ -132,7 +132,7 @@ test("validation mirrors the API's password and profile rules", () => {
   assert.equal(staffCode("ADM", 1), "ADM-0001");
 });
 
-test("each internal portal links its profile in the navigation", () => {
+test("internal portals reach the profile from the header avatar, not the sidebar", () => {
   for (const [portal, href] of [["admin", "/admin/profile"], ["manager", "/manager/profile"], ["staff", "/staff/profile"]] as const)
-    assert.ok(navFor(portal).some((item) => item.href === href), portal);
+    assert.ok(!navFor(portal).some((item) => item.href === href), portal);
 });

@@ -10,7 +10,6 @@ import { StatTile } from "@/components/brand/stat-tile";
 import { StatusBadge, statusMap } from "@/components/brand/status-badge";
 import { DataTable, type DataColumn, type DataFilter } from "@/components/data/data-table";
 import { updateTableParams } from "@/components/data/table-state";
-import { screen } from "@/lib/screens";
 import { cn } from "@/lib/utils";
 import { loadFeedback } from "../api";
 import { useApiData } from "@/lib/api/use-api-data";
@@ -42,7 +41,7 @@ const columns: DataColumn<FeedbackListItem>[] = [
   },
   { id: "rating", header: "Điểm", value: (row) => row.rating, sortable: true, searchable: false, cell: (row) => <span className="flex flex-col gap-1 whitespace-nowrap"><RatingStars value={row.rating} /><LowRating row={row} /></span> },
   { id: "content", header: "Nội dung", value: (row) => row.content, cell: (row) => <span className="line-clamp-3 w-48 whitespace-normal text-muted-foreground">{row.content}</span> },
-  { id: "status", header: "Trạng thái", value: (row) => statuses.indexOf(row.status), sortable: true, searchable: false, cell: (row) => <StatusBadge kind="feedback" status={row.status} className="whitespace-nowrap" /> },
+  { id: "status", header: "Trạng thái", value: (row) => statuses.indexOf(row.status), sortable: true, searchable: false, cell: (row) => <StatusBadge kind="feedback" status={row.status} /> },
   { id: "assignee", header: "Phụ trách", value: (row) => row.assigneeName, cell: (row) => row.assigneeName ?? <span className="text-muted-foreground">Chưa giao</span> },
   { id: "createdAt", header: "Ngày gửi", value: (row) => row.createdAt, sortable: true, searchable: false, cell: (row) => <time dateTime={row.createdAt} className="block w-20 whitespace-normal">{dateTime.format(new Date(row.createdAt))}</time> },
   { id: "actions", header: "Thao tác", value: () => null, searchable: false, cell: (row) => <ProcessLink row={row} label={`Xử lý phản hồi #${row.id}`} /> },
@@ -85,7 +84,6 @@ function StatusTabs({ rows }: { rows: readonly FeedbackListItem[] }) {
 }
 
 export function FeedbackInbox() {
-  const s = screen("M5");
   const { data, loading, error, retry } = useApiData(loadFeedback, "Chưa tải được phản hồi. Kiểm tra kết nối rồi thử lại.");
   const feedback = data ?? [];
   const ready = data !== null;
@@ -95,7 +93,7 @@ export function FeedbackInbox() {
 
   return (
     <>
-      <PageHeader eyebrow={s.code} title="Hộp phản hồi" description="Tiếp nhận phản hồi mới, giao cho nhân viên và đóng khi khách đã được trả lời." />
+      <PageHeader title="Hộp phản hồi" description="Tiếp nhận phản hồi mới, giao cho nhân viên và đóng khi khách đã được trả lời." />
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatTile label="Chờ tiếp nhận" value={ready ? count("New") : "—"} icon={<MessageSquareWarning />} hint={ready ? `${feedback.filter((row) => row.status === "New" && row.rating <= 2).length} phản hồi ≤ 2 sao` : undefined} />
         <StatTile label="Đang xử lý" value={ready ? count("Accepted", "Assigned") : "—"} icon={<Hourglass />} hint="Đã tiếp nhận hoặc đã giao" />

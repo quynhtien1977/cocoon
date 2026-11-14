@@ -47,6 +47,19 @@ public sealed class AdminAccountsApiTests : AccountApiTestBase
     }
 
     [Fact]
+    public async Task Managers_must_have_a_phone_on_create_and_on_profile_save()
+    {
+        var admin = await Actor(AccountRole.Admin);
+        await Problem(await Send(HttpMethod.Post, "/api/v1/admin/accounts", "Admin", admin,
+            new { email = "manager-no-phone@example.test", fullName = "Quản lý", role = "Manager", phone = "  " }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+        var manager = await Actor(AccountRole.Manager);
+        await Problem(await Send(HttpMethod.Put, "/api/v1/me", "Manager", manager,
+            new { fullName = "Quản lý", phone = (string?)null, consentPersonalData = false }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Put, "/api/v1/me", "Manager", manager,
+            new { fullName = "Quản lý", phone = "0901234567", consentPersonalData = false })).StatusCode);
+    }
+
+    [Fact]
     public async Task Profile_updates_use_current_role_even_when_old_customer_profile_remains()
     {
         var admin = await Actor(AccountRole.Admin);
@@ -70,7 +83,7 @@ public sealed class AdminAccountsApiTests : AccountApiTestBase
         {
             var email = $"{role}@example.test";
             using var response = await Send(HttpMethod.Post, "/api/v1/admin/accounts", "Admin", admin,
-                new { email = email.ToUpperInvariant(), fullName = "  Đặng Ánh  ", role = role.ToString() });
+                new { email = email.ToUpperInvariant(), fullName = "  Đặng Ánh  ", role = role.ToString(), phone = "0912345678" });
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
             Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
             var created = await Json(response);

@@ -32,7 +32,7 @@ function PreferenceEditor({ product, preview, onSaved }: { product: ManagerProdu
     const controller = new AbortController();
     loadPreferenceCatalog(AbortSignal.any([controller.signal, AbortSignal.timeout(12000)]))
       .then(data => { if (!controller.signal.aborted) setOptions(data); })
-      .catch(() => { if (!controller.signal.aborted) setLoadError("Chưa thể tải danh mục sở thích."); })
+      .catch(() => { if (!controller.signal.aborted) setLoadError("Chưa tải được danh mục sở thích. Kiểm tra kết nối rồi thử lại."); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [preview, attempt]);
@@ -80,7 +80,7 @@ function Insights({ id, preview }: { id: number; preview: boolean }) {
     const controller = new AbortController();
     loadProductInsights(id, AbortSignal.any([controller.signal, AbortSignal.timeout(12000)]))
       .then(result => { if (!controller.signal.aborted) setData(result); })
-      .catch(() => { if (!controller.signal.aborted) setError("Chưa thể tải phân tích phản hồi của sản phẩm."); });
+      .catch(() => { if (!controller.signal.aborted) setError("Chưa tải được phân tích phản hồi. Kiểm tra kết nối rồi thử lại."); });
     return () => controller.abort();
   }, [id, preview, attempt]);
   return <Panel title="Phản hồi từ khách hàng" icon={<MessageSquare size={19} />} description="Tổng hợp đánh giá giúp bạn hiểu rõ hơn trải nghiệm sử dụng.">{preview ? <p className={styles.subtle}>Chế độ mẫu chưa có dữ liệu phân tích phản hồi.</p> : error ? <div role="alert" className={styles.error}>{error}<button type="button" className={styles.outline} onClick={() => { setError(""); setAttempt(value => value + 1); }}>Thử lại</button></div> : !data ? <p role="status">Đang tải phản hồi…</p> : <><div className={styles.metrics}><div><strong>{data.averageRating?.toFixed(1) ?? "—"}</strong><span>Đánh giá trung bình / 5</span></div><div><strong>{data.totalFeedback}</strong><span>Phản hồi đã ghi nhận</span></div></div><div className={styles.ratings}>{[5, 4, 3, 2, 1].map(rating => { const count = data.ratingDistribution.find(row => row.rating === rating)?.count ?? 0; return <div key={rating}><span>{rating} <Star size={12} /></span><meter min={0} max={Math.max(1, data.totalFeedback)} value={count} aria-label={`${rating} sao: ${count} phản hồi`} /><span>{count}</span></div>; })}</div></>}</Panel>;
@@ -97,7 +97,7 @@ export function ManagerProductDetailPage({ id, preview = false }: { id: string; 
     const controller = new AbortController();
     loadManagerProduct(id, preview, AbortSignal.any([controller.signal, AbortSignal.timeout(12000)]))
       .then(data => { if (!controller.signal.aborted) setProduct(data); })
-      .catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError && reason.status === 501 ? "Chi tiết sản phẩm hiện chưa khả dụng." : "Không thể tải thông tin sản phẩm. Vui lòng kiểm tra lại hoặc thử lại."); })
+      .catch(reason => { if (!controller.signal.aborted) setError(reason instanceof ApiError && reason.status === 501 ? "Chi tiết sản phẩm hiện chưa khả dụng." : "Chưa tải được sản phẩm. Kiểm tra kết nối rồi thử lại."); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [id, preview, attempt]);

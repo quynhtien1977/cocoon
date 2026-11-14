@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
-import { CircleCheck, Info, KeyRound, LoaderCircle, ShieldAlert } from "lucide-react";
+import { CircleCheck, KeyRound, LoaderCircle, ShieldAlert } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,23 +23,20 @@ const dateTime = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-di
 /** Copy from the Stitch S3, M15 and A4 screens. */
 const variants = {
   staff: {
-    code: "S3", loginHref: "/login", prefix: "STF",
+    loginHref: "/login", prefix: "STF",
     title: "Hồ sơ Nhân viên Chăm sóc khách hàng", description: "Thông tin cá nhân và liên hệ công vụ của nhân viên Cocoon.",
-    notice: "Màn hình hồ sơ phục vụ xác nhận thông tin liên lạc. Hệ thống không cung cấp chức năng đổi mật khẩu tại đây nhằm đảm bảo tính toàn vẹn quản trị nội bộ.",
     section: "Thông tin định danh nhân sự", note: "Cập nhật họ tên và số điện thoại liên lạc",
     codeLabel: "Mã nhân viên", emailLabel: "Email nội bộ", phoneLabel: "Số điện thoại liên lạc", reset: "Hủy thay đổi", save: "Lưu thông tin hồ sơ",
   },
   manager: {
-    code: "M15", loginHref: "/login", prefix: "MGR",
+    loginHref: "/login", prefix: "MGR",
     title: "Hồ sơ Quản lý CRM", description: "Thông tin trưởng nhóm điều phối chăm sóc khách hàng và giám sát chất lượng.",
-    notice: "Tính năng đổi mật khẩu không hỗ trợ tại giao diện này. Nếu cần thay đổi thông tin định danh, vui lòng liên hệ Ban Quản trị viên (Admin Console) để xác minh nội bộ.",
     section: "Thông tin cá nhân & Liên hệ công vụ", note: "Cập nhật thông tin phối hợp liên bộ phận",
     codeLabel: "Mã quản lý", emailLabel: "Email công tác", phoneLabel: "Số điện thoại trực", reset: "Hủy chỉnh sửa", save: "Cập nhật hồ sơ",
   },
   admin: {
-    code: "A4", loginHref: "/admin/login", prefix: "ADM",
+    loginHref: "/admin/login", prefix: "ADM",
     title: "Hồ sơ quản trị viên", description: "Thông tin tài khoản công vụ của quản trị viên hệ thống Cocoon CRM.",
-    notice: "Hệ thống không kích hoạt tính năng tự đổi mật khẩu trực tiếp tại màn hình này. Mọi thay đổi định danh bảo mật được kiểm soát qua quy trình cấp tài khoản nội bộ.",
     section: "Thông tin công vụ", note: "Chỉ cập nhật thông tin liên hệ hành chính",
     codeLabel: "Mã cán bộ quản trị", emailLabel: "Email công vụ", phoneLabel: "Số điện thoại nội bộ", reset: "Khôi phục mặc định", save: "Lưu cập nhật thông tin",
   },
@@ -49,7 +46,7 @@ type Copy = (typeof variants)[ProfileVariant];
 type Stat = { label: string; value: number | null };
 
 const initials = (name: string) => name.trim().split(/\s+/).filter(Boolean).slice(-2).map((part) => part[0]).join("").toUpperCase() || "?";
-const failure = (reason: unknown) => reason instanceof ApiError ? reason.message : "Chưa kết nối được máy chủ. Kiểm tra mạng rồi thử lại.";
+const failure = (reason: unknown) => reason instanceof ApiError ? reason.message : "Mất kết nối. Kiểm tra mạng rồi thử lại.";
 /** Display code derived from the account id, like the API's KH-0001 for customers; accounts have no stored staff code. */
 export const staffCode = (prefix: string, id: number) => `${prefix}-${String(id).padStart(4, "0")}`;
 
@@ -95,12 +92,13 @@ function ProfileForm({ profile, code, copy, onSaved }: { profile: StaffProfile; 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [problem, setProblem] = useState<string | null>(null);
+  const phoneRequired = profile.role === "Manager";
   const dirty = draft.fullName !== saved.fullName || draft.phone !== saved.phone;
   const update = (patch: Partial<ProfileDraft>) => { setDraft((current) => ({ ...current, ...patch })); setStatus("idle"); setProblem(null); };
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const found = validateProfileDraft(draft);
+    const found = validateProfileDraft(draft, phoneRequired);
     setErrors(found);
     if (Object.keys(found).length || status === "saving") return;
     if (!dirty) { setProblem("Chưa có thay đổi nào để lưu."); return; }
@@ -135,8 +133,8 @@ function ProfileForm({ profile, code, copy, onSaved }: { profile: StaffProfile; 
         <Field id={`${id}-email`} label={copy.emailLabel} hint="Liên hệ quản trị viên để đổi email.">
           <input id={`${id}-email`} value={profile.email} readOnly aria-describedby={`${id}-email-hint`} className={fieldClass} />
         </Field>
-        <Field id={`${id}-phone`} label={copy.phoneLabel} error={errors.phone} hint="Không bắt buộc.">
-          <input id={`${id}-phone`} type="tel" inputMode="tel" value={draft.phone} maxLength={32} autoComplete="tel" onChange={(event) => update({ phone: event.target.value })} aria-invalid={!!errors.phone} aria-describedby={describedBy("phone", true)} className={fieldClass} />
+        <Field id={`${id}-phone`} label={copy.phoneLabel} error={errors.phone} hint={phoneRequired ? "Bắt buộc với tài khoản quản lý." : "Không bắt buộc."}>
+          <input id={`${id}-phone`} type="tel" inputMode="tel" value={draft.phone} maxLength={32} required={phoneRequired} autoComplete="tel" onChange={(event) => update({ phone: event.target.value })} aria-invalid={!!errors.phone} aria-describedby={describedBy("phone", true)} className={fieldClass} />
         </Field>
       </div>
       <div aria-live="polite" className="text-sm empty:hidden">
@@ -150,8 +148,8 @@ function ProfileForm({ profile, code, copy, onSaved }: { profile: StaffProfile; 
   );
 }
 
-/** Only shown while the account still has the temporary password an admin issued (Stitch keeps password changes off this screen). */
-function PasswordForm({ loginHref }: { loginHref: string }) {
+/** forced: the account still has the temporary password an admin issued. */
+function PasswordForm({ loginHref, forced }: { loginHref: string; forced: boolean }) {
   const id = useId();
   const [draft, setDraft] = useState(emptyPassword);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -195,8 +193,8 @@ function PasswordForm({ loginHref }: { loginHref: string }) {
   );
 
   return (
-    <form onSubmit={submit} noValidate aria-labelledby={`${id}-title`} className={cn(card, "space-y-5 border-status-danger-fg")}>
-      <h2 id={`${id}-title`} className="flex items-center gap-2 border-b border-border pb-3 font-heading text-xl"><KeyRound className="size-5 text-gold-strong" aria-hidden="true" />Đổi mật khẩu tạm</h2>
+    <form onSubmit={submit} noValidate aria-labelledby={`${id}-title`} className={cn(card, "space-y-5", forced && "border-status-danger-fg")}>
+      <h2 id={`${id}-title`} className="flex items-center gap-2 border-b border-border pb-3 font-heading text-xl"><KeyRound className="size-5 text-gold-strong" aria-hidden="true" />{forced ? "Đổi mật khẩu tạm" : "Đổi mật khẩu"}</h2>
       <div className="grid gap-5 sm:grid-cols-3">
         <Field id={`${id}-currentPassword`} label="Mật khẩu hiện tại" error={errors.currentPassword}>{input("currentPassword", "current-password")}</Field>
         <Field id={`${id}-newPassword`} label="Mật khẩu mới" error={errors.newPassword} hint="8–128 ký tự, có cả chữ và số.">{input("newPassword", "new-password", true)}</Field>
@@ -208,6 +206,26 @@ function PasswordForm({ loginHref }: { loginHref: string }) {
         <Button type="submit" className="h-12 px-6" aria-busy={pending}>{pending ? <><LoaderCircle className="animate-spin" aria-hidden="true" />Đang đổi…</> : "Đổi mật khẩu"}</Button>
       </div>
     </form>
+  );
+}
+
+/** Password card for pages outside this module (the customer profile); the route composes it so features stay separate. */
+export function MyPasswordSection({ loginHref }: { loginHref: string }) {
+  const [forced, setForced] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    loadMyProfile(controller.signal).then((me) => setForced(me.mustChangePassword === true)).catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+  return (
+    <div className="space-y-4">
+      {forced && (
+        <p role="alert" className="flex gap-2 rounded-md border border-status-danger-fg bg-status-danger-bg p-4 text-sm text-status-danger-fg">
+          <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Bạn đang dùng mật khẩu tạm. Hãy đổi mật khẩu để dùng đầy đủ tài khoản.
+        </p>
+      )}
+      <PasswordForm loginHref={loginHref} forced={forced} />
+    </div>
   );
 }
 
@@ -258,7 +276,7 @@ export function AccountProfile({ variant, logout }: AccountProfileProps) {
     return () => controller.abort();
   }, [attempt]);
 
-  const header = <PageHeader eyebrow={copy.code} title={copy.title} description={copy.description} actions={profile ? logout : undefined} />;
+  const header = <PageHeader title={copy.title} description={copy.description} actions={profile ? logout : undefined} />;
 
   if (!profile) {
     return (
@@ -283,18 +301,16 @@ export function AccountProfile({ variant, logout }: AccountProfileProps) {
   return (
     <>
       {header}
-      {profile.mustChangePassword ? (
+      {profile.mustChangePassword && (
         <p role="alert" className="mb-6 flex gap-2 rounded-md border border-status-danger-fg bg-status-danger-bg p-4 text-sm text-status-danger-fg">
           <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Bạn đang dùng mật khẩu tạm do quản trị viên cấp. Hãy đổi mật khẩu ở cuối trang trước khi tiếp tục làm việc.
         </p>
-      ) : (
-        <p className="mb-6 flex gap-2 rounded-r-md border-l-4 border-gold bg-card p-4 text-sm text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0 text-gold-strong" aria-hidden="true" />{copy.notice}</p>
       )}
       <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <SummaryCard profile={profile} code={code} rows={rows} stats={stats} />
         <div className="min-w-0 space-y-6">
           <ProfileForm profile={profile} code={code} copy={copy} onSaved={(draft) => setProfile((current) => current && { ...current, fullName: draft.fullName, phone: draft.phone || null })} />
-          {profile.mustChangePassword && <PasswordForm loginHref={copy.loginHref} />}
+          <PasswordForm loginHref={copy.loginHref} forced={profile.mustChangePassword} />
         </div>
       </div>
     </>

@@ -86,7 +86,7 @@ public sealed class ReportService(AppDbContext db) : IReportService
         decimal? average = total == 0 ? null : distribution.Sum(g => (decimal)g.Rating * g.Count) / total;
         var months = await rows.GroupBy(f => new { f.CreatedAt.Year, f.CreatedAt.Month }).Select(g => new
         {
-            g.Key.Year, g.Key.Month, Count = g.Count(), Average = g.Average(f => (decimal)f.Rating), Low = g.Count(f => f.Rating <= 2)
+            g.Key.Year, g.Key.Month, Count = g.Count(), Average = g.Average(f => (decimal)f.Rating), Low = g.Count(f => f.Rating <= 4)
         }).ToListAsync(ct);
         // IgnoreQueryFilters preserves feedback of products/customers that were later deleted.
         var products = await (from f in rows join p in db.Set<Product>().IgnoreQueryFilters() on f.ProductId equals p.Id

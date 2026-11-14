@@ -32,6 +32,13 @@ for (const [role, portal, destination] of [["Customer", "shared", "/account"], [
   });
 }
 
+for (const [role, portal, destination] of [["Customer", "shared", "/account/profile"], ["Manager", "shared", "/manager/profile"], ["Admin", "admin", "/admin/profile"]]) {
+  test(`${role} with a temporary password lands on the profile to change it`, async () => {
+    globalThis.fetch = async (url) => url === "/api/v1/me" ? Response.json({ role, mustChangePassword: true }) : new Response(null, { status: 204 });
+    assert.equal(await signIn("person@example.com", "test-password", portal), destination);
+  });
+}
+
 for (const [role, portal] of [["Admin", "shared"], ["Customer", "admin"], ["Unknown", "shared"], ["Staff", "customer"], ["Manager", "customer"], ["Admin", "customer"]]) {
   test(`wrong or unknown role ${role} is rejected and its session is cleared`, async () => {
     const calls = [];

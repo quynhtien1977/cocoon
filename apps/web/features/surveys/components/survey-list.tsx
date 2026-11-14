@@ -9,7 +9,6 @@ import { StatTile } from "@/components/brand/stat-tile";
 import { StatusBadge } from "@/components/brand/status-badge";
 import { DataTable, type DataColumn, type DataFilter } from "@/components/data/data-table";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { screen } from "@/lib/screens";
 import { useApiData } from "@/lib/api/use-api-data";
 import { cn } from "@/lib/utils";
 import { closeSurvey, deleteSurvey, loadSurveys, publishSurvey } from "../api";
@@ -87,7 +86,6 @@ const filters: DataFilter<SurveyListItem>[] = [
 ];
 
 export function SurveyList() {
-  const s = screen("M7");
   const { data, loading, error, retry } = useApiData(loadSurveys, "Chưa tải được danh sách khảo sát. Kiểm tra kết nối rồi thử lại.");
   const surveys = data ?? [];
   const count = (status: SurveyStatus) => surveys.filter((row) => row.status === status).length;
@@ -100,14 +98,14 @@ export function SurveyList() {
     },
     { id: "purpose", header: "Mục đích", value: (row) => purposeLabels[row.purpose], searchable: false, cell: (row) => <PurposeChip purpose={row.purpose} /> },
     { id: "period", header: "Thời gian", value: (row) => row.openAt, sortable: true, searchable: false, cell: (row) => <span className={cn("whitespace-nowrap text-sm", !row.openAt && "text-muted-foreground")}>{period(row)}</span> },
-    { id: "status", header: "Trạng thái", value: (row) => row.status, searchable: false, cell: (row) => <StatusBadge kind="survey" status={row.status} className="whitespace-nowrap" /> },
+    { id: "status", header: "Trạng thái", value: (row) => row.status, searchable: false, cell: (row) => <StatusBadge kind="survey" status={row.status} /> },
     { id: "progress", header: "Tiến độ phản hồi", value: responseRate, sortable: true, searchable: false, cell: (row) => <Progress row={row} /> },
     { id: "actions", header: "Thao tác", value: () => null, searchable: false, cell: (row) => <Actions row={row} onChanged={retry} /> },
   ];
 
   return (
     <>
-      <PageHeader eyebrow={s.code} title="Quản lý khảo sát khách hàng" description="Theo dõi khảo sát mức độ hài lòng và nghiên cứu sản phẩm mới: trạng thái, thời gian và tiến độ phản hồi." actions={
+      <PageHeader title="Quản lý khảo sát khách hàng" description="Theo dõi khảo sát mức độ hài lòng và nghiên cứu sản phẩm mới: trạng thái, thời gian và tiến độ phản hồi." actions={
         <Link href="/manager/surveys/new" className={cn(buttonVariants(), "h-12 px-4")}><Plus aria-hidden="true" />Tạo khảo sát mới</Link>
       } />
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
