@@ -31,6 +31,10 @@ test("status badges distinguish the same enum value across domains", () => {
   assert.match(screen.getByText("Đã khóa").className, /bg-status-danger-bg/);
   rerender(<StatusBadge kind="product" status="Upcoming" />);
   assert.ok(screen.getByText("Sắp ra mắt"));
+  rerender(<StatusBadge kind="order" status="Placed" />);
+  assert.match(screen.getByText("Chờ xác nhận").className, /bg-status-lotus-bg/);
+  rerender(<StatusBadge kind="order" status="Delivering" />);
+  assert.match(screen.getByText("Đang giao").className, /bg-status-turmeric-bg/);
 });
 
 test("empty state exposes its title, description and caller-owned action", async () => {

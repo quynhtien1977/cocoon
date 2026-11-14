@@ -6,14 +6,19 @@ import { ArrowRight, Check, PackageCheck, Search, ShoppingBag, Star } from "luci
 import { ApiError } from "@/lib/api/client";
 import { EmptyState } from "@/components/brand/empty-state";
 import { RatingStars } from "@/components/brand/rating-stars";
-import { filterOrders, loadOrders, type CustomerOrder, type OrderFilter } from "./orders-service";
+import { StatusBadge } from "@/components/brand/status-badge";
+import { ConfirmDialog } from "@/components/brand/confirm-dialog";
+import { filterOrders, loadOrders, cancelOrder, confirmOrderReceived, type CustomerOrder, type OrderFilter } from "./orders-service";
 import { previewOrders } from "./orders-preview";
 import styles from "./orders.module.css";
 
 const tabs = [
-  { key: "all", label: "Tất cả" }, { key: "delivered", label: "Đã giao" },
-  { key: "shipping", label: "Đang giao", disabled: true }, { key: "pending", label: "Chờ xác nhận", disabled: true },
-  { key: "reviewed", label: "Đã đánh giá" }, { key: "unreviewed", label: "Chờ đánh giá" },
+  { key: "all", label: "Tất cả" },
+  { key: "pending", label: "Chờ xác nhận" },
+  { key: "shipping", label: "Đang giao" },
+  { key: "delivered", label: "Đã giao" },
+  { key: "reviewed", label: "Đã đánh giá" },
+  { key: "unreviewed", label: "Chờ đánh giá" },
 ] as const;
 const money = (value: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value);
 const date = (value: string) => new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value));
@@ -63,22 +68,105 @@ export function OrdersPage({ initialFilter = "all", initialPreview = false }: { 
       <div><Star size={24} /><span><strong>{ready ? awaiting : "—"}</strong> sản phẩm chờ đánh giá</span></div>
       <div><Check size={24} /><span><strong>{ready ? reviewed : "—"}</strong> sản phẩm đã đánh giá</span></div>
     </div>
-    <div className={styles.filters} aria-label="Lọc đơn hàng">{tabs.map((tab) => <button key={tab.key} type="button" disabled={"disabled" in tab} aria-pressed={filter === tab.key} onClick={() => select(tab.key as OrderFilter)}>{tab.label}</button>)}</div>
+    <div className={styles.filters} aria-label="Lọc đơn hàng">{tabs.map((tab) => <button key={tab.key} type="button" aria-pressed={filter === tab.key} onClick={() => select(tab.key)}>{tab.label}</button>)}</div>
     <div className={styles.toolbar}><p aria-live="polite">{ready ? `${visible.length} đơn hàng${query ? " phù hợp" : ""}` : "Lịch sử mua hàng"}</p><label className={styles.search}><Search size={18} /><span className="sr-only">Tìm theo mã đơn hoặc tên sản phẩm</span><input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Tìm mã đơn hoặc tên sản phẩm…" /></label></div>
     {!preview && pending ? <div className={styles.loading} role="status">Đang tải đơn hàng của bạn…<div /><div /></div> : !preview && error ? <div className={styles.unavailable}><ShoppingBag size={36} /><h2>Hẹn bạn với những trải nghiệm mới</h2><p role="alert">{error}</p><div><button type="button" onClick={() => { setPending(true); setError(""); setAttempt((value) => value + 1); }}>Thử lại</button><button type="button" className={styles.primary} onClick={() => { setPreview(true); setQuery(""); select("all"); }}>Xem giao diện mẫu</button></div></div> : !visible.length ? <EmptyState title={filter === "unreviewed" ? "Không có sản phẩm chờ đánh giá" : "Chưa có đơn hàng phù hợp"} description={query ? "Thử tìm theo tên sản phẩm hoặc mã đơn khác." : "Các đơn hàng tương ứng sẽ được hiển thị tại đây."} action={<button type="button" className={styles.shop} onClick={() => { setQuery(""); select("all"); }}>Xem tất cả đơn hàng <ArrowRight size={16} /></button>} /> : <div className={styles.list}>
       {visible.slice((page - 1) * 5, page * 5).map((order) => <article key={order.id} className={styles.card}>
-        <div className={styles.cardHeader}><div><span className={styles.orderCode}>Đơn #{order.code}</span><span className={styles.date}>Đặt ngày {date(order.orderedAt)}</span></div><span className={styles.status}><PackageCheck size={16} />{order.status === "Completed" ? "Đã giao" : order.status === "Cancelled" ? "Đã hủy" : "Đã trả hàng"}</span></div>
+        <div className={styles.cardHeader}>
+          <div>
+            <span className={styles.orderCode}>Đơn #{order.code}</span>
+            <span className={styles.date}>Đặt ngày {date(order.orderedAt)}</span>
+            {order.confirmedAt && <span className={styles.date}>· Xác nhận: {date(order.confirmedAt)}</span>}
+            {order.completedAt && <span className={styles.date}>· Hoàn thành: {date(order.completedAt)}</span>}
+            {order.cancelledAt && <span className={styles.date}>· Đã hủy: {date(order.cancelledAt)}</span>}
+          </div>
+          <div className={styles.headerStatus}>
+            <StatusBadge kind="order" status={order.status} />
+          </div>
+        </div>
+        {order.shippingAddress && (
+          <div className={styles.shippingAddress}>
+            <span>Địa chỉ nhận hàng:</span>
+            <strong>{order.shippingAddress}</strong>
+          </div>
+        )}
         {order.items.length !== order.originalItemCount && <p className={styles.partial}>Đang hiển thị {order.items.length}/{order.originalItemCount} sản phẩm phù hợp trong đơn.</p>}
         {order.items.map((item) => {
           const feedbackHref = item.review ? `/account/feedback/${item.review.id}${preview ? "?preview=1" : ""}` : null;
           const content = <>
           <OrderImage src={item.imageUrl} name={item.name} />
-          <div className={styles.itemInfo}><h3>{!feedbackHref && item.productSlug ? <Link href={`/account/products/${encodeURIComponent(item.productSlug)}`}>{item.name}</Link> : item.name}</h3><p>{item.variant}</p><span>Số lượng: {item.quantity}</span><div className={styles.reviewState}>{item.review ? <><RatingStars value={item.review.rating} /><span>Đã đánh giá</span></> : order.status === "Completed" ? <span>Chờ bạn chia sẻ trải nghiệm</span> : null}</div></div>
-          <div className={styles.itemAction}><strong>{money(item.unitPrice * item.quantity)}</strong>{item.quantity > 1 && <small>{money(item.unitPrice)} / sản phẩm</small>}{feedbackHref ? <span className={`${styles.secondary} ${styles.feedbackAction}`}>Xem phản hồi <ArrowRight size={14} /></span> : order.status === "Completed" && <Link className={styles.primary} href={preview ? `/account/feedback/new?preview=1&item=${item.id}` : `/account/feedback/new?orderItemId=${item.id}`}>Đánh giá sản phẩm</Link>}</div>
+          <div className={styles.itemInfo}>
+            <h3>{!feedbackHref && item.productSlug ? <Link href={`/account/products/${encodeURIComponent(item.productSlug)}`}>{item.name}</Link> : item.name}</h3>
+            <p>{item.variant}</p>
+            <span>Số lượng: {item.quantity}</span>
+            <div className={styles.reviewState}>
+              {item.review ? (
+                <><RatingStars value={item.review.rating} /><span>Đã đánh giá</span></>
+              ) : order.status === "Completed" ? (
+                <span>Chờ bạn chia sẻ trải nghiệm</span>
+              ) : order.status === "Placed" ? (
+                <span>Chờ xác nhận</span>
+              ) : order.status === "Delivering" ? (
+                <span>Đang giao hàng</span>
+              ) : order.status === "Cancelled" ? (
+                <span>Đã hủy</span>
+              ) : null}
+            </div>
+          </div>
+          <div className={styles.itemAction}>
+            <strong>{money(item.unitPrice * item.quantity)}</strong>
+            {item.quantity > 1 && <small>{money(item.unitPrice)} / sản phẩm</small>}
+            {feedbackHref ? (
+              <span className={`${styles.secondary} ${styles.feedbackAction}`}>Xem phản hồi <ArrowRight size={14} /></span>
+            ) : order.status === "Completed" ? (
+              <Link className={styles.primary} href={preview ? `/account/feedback/new?preview=1&item=${item.id}` : `/account/feedback/new?orderItemId=${item.id}`}>Đánh giá sản phẩm</Link>
+            ) : null}
+          </div>
           </>;
           return feedbackHref ? <Link href={feedbackHref} className={`${styles.item} ${styles.reviewedItem}`} key={item.id} aria-label={`Xem phản hồi về ${item.name}`}>{content}</Link> : <div className={styles.item} key={item.id}>{content}</div>;
         })}
-        <div className={styles.cardFooter}><span>{order.status === "Completed" ? "Cảm ơn bạn đã lựa chọn Cocoon." : "Thông tin được cập nhật theo đơn hàng."}</span><p>Tổng đơn hàng <strong>{money(order.totalAmount)}</strong></p></div>
+        <div className={styles.cardFooter}>
+          <div className={styles.footerActions}>
+            <span>
+              {order.status === "Completed"
+                ? "Cảm ơn bạn đã lựa chọn Cocoon."
+                : order.status === "Placed"
+                ? "Đơn hàng đang chờ Cocoon kiểm tra và xác nhận."
+                : order.status === "Delivering"
+                ? "Đơn hàng đang trên đường giao đến bạn."
+                : order.status === "Cancelled"
+                ? "Đơn hàng đã được hủy."
+                : "Thông tin được cập nhật theo đơn hàng."}
+            </span>
+            {order.canCancel && !preview && (
+              <ConfirmDialog
+                title="Hủy đơn hàng"
+                description={`Bạn có chắc chắn muốn hủy đơn hàng #${order.code}? Thao tác này không thể hoàn tác.`}
+                confirmLabel="Hủy đơn hàng"
+                cancelLabel="Giữ lại đơn"
+                trigger={<button type="button" className={styles.secondary}>Hủy đơn</button>}
+                onConfirm={async () => {
+                  await cancelOrder(order.id);
+                  setAttempt((value) => value + 1);
+                }}
+              />
+            )}
+            {order.canConfirmReceived && !preview && (
+              <ConfirmDialog
+                title="Xác nhận đã nhận hàng"
+                description={`Xác nhận bạn đã nhận được đầy đủ sản phẩm trong đơn hàng #${order.code}? Sau khi xác nhận, bạn có thể đánh giá từng sản phẩm trong đơn.`}
+                confirmLabel="Đã nhận hàng"
+                cancelLabel="Chưa nhận"
+                trigger={<button type="button" className={styles.primary}>Đã nhận hàng</button>}
+                onConfirm={async () => {
+                  await confirmOrderReceived(order.id);
+                  setAttempt((value) => value + 1);
+                }}
+              />
+            )}
+          </div>
+          <p>Tổng đơn hàng <strong>{money(order.totalAmount)}</strong></p>
+        </div>
       </article>)}
     </div>}
     {ready && pageCount > 1 && <nav className={styles.pagination} aria-label="Phân trang đơn hàng"><button type="button" disabled={page === 1} onClick={() => setPage(page - 1)}>Trang trước</button><span>{page}/{pageCount}</span><button type="button" disabled={page === pageCount} onClick={() => setPage(page + 1)}>Trang sau</button></nav>}
