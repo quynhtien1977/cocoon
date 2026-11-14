@@ -29,8 +29,6 @@ test("portal navigation selects only the relevant section", () => {
     ["customer", "/account/feedback/new", "C3"],
     ["manager", "/manager/surveys/example/edit", "M7"],
     ["staff", "/staff/feedback/example", "S1"],
-    ["staff", "/staff/orders/12", "S4"],
-    ["manager", "/manager/orders/12", "M16"],
     ["admin", "/admin/accounts/new", "A2"],
     ["admin", "/admin/activity", "A3"],
   ]) {

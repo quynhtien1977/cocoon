@@ -35,7 +35,6 @@ test("notifications use existing customer endpoints and safe internal destinatio
   };
   const [item] = await loadNotifications();
   assert.equal(notificationHref(item), "/account/feedback/12");
-  assert.equal(notificationHref({ ...item, type: "order", refType: "Order", refId: 5 }), "/account/orders");
   assert.equal(notificationHref({ ...item, refType: "https://evil.example" }), null);
   globalThis.fetch = async (url, options) => {
     assert.equal(url, "/api/v1/me/notifications/9/read");

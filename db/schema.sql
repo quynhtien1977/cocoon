@@ -573,29 +573,3 @@ VALUES ('20261112115534_AddFeedbackCustomerEdits', '10.0.12');
 
 COMMIT;
 
-START TRANSACTION;
-ALTER TABLE "Order" ADD "CancelledAt" timestamp with time zone;
-
-ALTER TABLE "Order" ADD "CompletedAt" timestamp with time zone;
-
-ALTER TABLE "Order" ADD "ConfirmedAt" timestamp with time zone;
-
-ALTER TABLE "Order" ADD "ConfirmedBy" integer;
-
-ALTER TABLE "Order" ADD "ShippingAddress" character varying(1000);
-
-CREATE INDEX "IX_Order_ConfirmedBy" ON "Order" ("ConfirmedBy");
-
-CREATE INDEX "IX_Order_Status_OrderedAt" ON "Order" ("Status", "OrderedAt" DESC);
-
-ALTER TABLE "Order" ADD CONSTRAINT "CK_Order_Confirmed" CHECK (("ConfirmedAt" IS NULL) = ("ConfirmedBy" IS NULL));
-
-ALTER TABLE "Order" ADD CONSTRAINT "FK_Order_Account_ConfirmedBy" FOREIGN KEY ("ConfirmedBy") REFERENCES "Account" ("Id") ON DELETE RESTRICT;
-
-UPDATE "Order" SET "CompletedAt" = "OrderedAt" WHERE "Status" = 'Completed' AND "CompletedAt" IS NULL;
-
-INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
-VALUES ('20261112162454_AddWebsiteOrders', '10.0.12');
-
-COMMIT;
-

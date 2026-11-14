@@ -421,9 +421,6 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime?>("CancelledAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("Channel")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -434,24 +431,11 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("ConfirmedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("ConfirmedBy")
-                        .HasColumnType("integer");
-
                     b.Property<int>("CustomerId")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("OrderedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ShippingAddress")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -467,18 +451,10 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.HasIndex("ConfirmedBy");
-
                     b.HasIndex("CustomerId", "OrderedAt")
                         .IsDescending(false, true);
 
-                    b.HasIndex("Status", "OrderedAt")
-                        .IsDescending(false, true);
-
-                    b.ToTable("Order", t =>
-                        {
-                            t.HasCheckConstraint("CK_Order_Confirmed", "(\"ConfirmedAt\" IS NULL) = (\"ConfirmedBy\" IS NULL)");
-                        });
+                    b.ToTable("Order");
                 });
 
             modelBuilder.Entity("Cocoon.Domain.Entities.OrderItem", b =>
@@ -1239,11 +1215,6 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Cocoon.Domain.Entities.Order", b =>
                 {
-                    b.HasOne("Cocoon.Domain.Entities.Account", null)
-                        .WithMany()
-                        .HasForeignKey("ConfirmedBy")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("Cocoon.Domain.Entities.CustomerProfile", null)
                         .WithMany()
                         .HasForeignKey("CustomerId")

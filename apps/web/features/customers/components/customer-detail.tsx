@@ -127,17 +127,7 @@ export function CustomerDetail({ initial, scoreBreakdown }: { initial: Customer;
                 <TableCaption className="sr-only">Đơn hàng của {customer.fullName}</TableCaption>
                 <TableHeader><TableRow><TableHead>Mã đơn</TableHead><TableHead>Ngày đặt</TableHead><TableHead className="text-right">Số sản phẩm</TableHead><TableHead className="text-right">Tổng tiền</TableHead><TableHead>Trạng thái</TableHead></TableRow></TableHeader>
                 <TableBody>{customer.orders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-mono text-xs">
-                      <Link href={`/manager/orders/${order.id}`} className="font-semibold text-gold-strong underline-offset-4 hover:underline">
-                        #{order.code}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{date.format(new Date(order.placedAt))}</TableCell>
-                    <TableCell className="text-right tabular-nums">{order.itemCount}</TableCell>
-                    <TableCell className="text-right tabular-nums">{money.format(order.total)}</TableCell>
-                    <TableCell><StatusBadge kind="order" status={order.status} className="whitespace-nowrap" /></TableCell>
-                  </TableRow>
+                  <TableRow key={order.id}><TableCell className="font-mono text-xs">#{order.code}</TableCell><TableCell>{date.format(new Date(order.placedAt))}</TableCell><TableCell className="text-right tabular-nums">{order.itemCount}</TableCell><TableCell className="text-right tabular-nums">{money.format(order.total)}</TableCell><TableCell><StatusBadge kind="order" status={order.status} /></TableCell></TableRow>
                 ))}</TableBody>
               </Table>
             </section>

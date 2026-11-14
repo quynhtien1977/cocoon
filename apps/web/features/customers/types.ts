@@ -31,7 +31,7 @@ export interface CustomerDraft {
   preferences: number[];
 }
 
-export type OrderStatus = "Completed" | "Cancelled" | "Returned" | "Placed" | "Delivering";
+export type OrderStatus = "Completed" | "Cancelled" | "Returned";
 export type RecommendationState = "Clicked" | "Dismissed" | "None";
 
 export interface CustomerOrder { id: number; code: string; placedAt: string; itemCount: number; total: number; status: OrderStatus }

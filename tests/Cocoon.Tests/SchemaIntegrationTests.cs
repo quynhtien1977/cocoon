@@ -111,14 +111,6 @@ public sealed class SchemaIntegrationTests : IClassFixture<DatabaseFixture>
     });
 
     [Fact]
-    public Task Order_confirmation_keeps_time_and_actor_together() => InTransaction(async db =>
-    {
-        var (customer, _, _, _) = await AddParents(db);
-        db.Add(new Order { Code = $"T-{Guid.NewGuid():N}"[..20], CustomerId = customer, Status = OrderStatus.Delivering, ConfirmedAt = DateTime.UtcNow });
-        await AssertConstraint(db, PostgresErrorCodes.CheckViolation);
-    });
-
-    [Fact]
     public Task Feedback_closed_by_is_set_only_on_closed_feedback() => InTransaction(async db =>
     {
         var (customer, _, product, _) = await AddParents(db);

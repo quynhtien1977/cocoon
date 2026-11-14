@@ -20,8 +20,7 @@ export async function loadNotifications(signal?: AbortSignal): Promise<CustomerN
 
 export function notificationHref(item: CustomerNotification): string | null {
   if (!validId(item.refId)) return null;
-  const ref = item.refType ? item.refType.toLowerCase() : (item.type || "").toLowerCase();
-  switch (ref) {
+  switch (item.refType.toLowerCase()) {
     case "feedback": return `/account/feedback/${item.refId}`;
     case "survey": return `/account/surveys/${item.refId}`;
     case "order": return "/account/orders";

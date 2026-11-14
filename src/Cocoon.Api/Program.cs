@@ -10,7 +10,6 @@ using Cocoon.Infrastructure.Accounts;
 using Cocoon.Application.Reports;
 using Cocoon.Infrastructure.Reports;
 using Cocoon.Infrastructure.Surveys;
-using Cocoon.Infrastructure.Shop;
 using Cocoon.Api.Feedbacks;
 using Cocoon.Infrastructure.Feedbacks;
 using Cocoon.Domain.Entities;
@@ -58,7 +57,6 @@ builder.Services.AddScoped<CustomerFactsService>();
 builder.Services.AddScoped<RecommendationService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<CustomerSurveyService>();
-builder.Services.AddScoped<ShopService>();
 builder.Services.AddOptions<FeedbackOptions>().BindConfiguration("Feedback")
     .Validate(o => o.AutoCloseDays is >= FeedbackOptions.MinDays and <= FeedbackOptions.MaxDays, "Feedback:AutoCloseDays must be 1-30.")
     .ValidateOnStart();
