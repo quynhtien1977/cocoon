@@ -5,6 +5,8 @@ export type ApiProductVariant = {
   name: string;
   price: number;
   imageUrl: string | null;
+  /** Detail gallery, main photo first; empty when the variant has no usable photo. */
+  images: string[];
 };
 
 export type ApiProduct = {
@@ -25,6 +27,9 @@ export function productId(value: string): number | null {
 
 const statusValues = ["Active", "Upcoming", "Inactive"] as const;
 
+const usableImage = (value: unknown): string | null =>
+  typeof value === "string" && /^(https?:\/\/|\/(?!\/)|data:image\/(?:png|jpeg|webp|svg\+xml);base64,)/i.test(value) ? value : null;
+
 // The endpoint exists but its response DTO is still unimplemented. Keep the
 // anticipated detail/variant shape in this adapter; never map marketing slugs to guessed IDs.
 export async function loadProduct(value: string, signal?: AbortSignal): Promise<ApiProduct> {
@@ -43,9 +48,12 @@ export async function loadProduct(value: string, signal?: AbortSignal): Promise<
   const variants = ((row.variants ?? []) as unknown[]).map(value => {
     const variant = value as Record<string, unknown> | null;
     if (!variant || typeof variant.name !== "string" || typeof variant.price !== "number" || !Number.isFinite(variant.price) || variant.price < 0 || !(variant.imageUrl == null || typeof variant.imageUrl === "string")) throw new Error("Thông tin biến thể chưa hợp lệ.");
-    const imageUrl = typeof variant.imageUrl === "string" && /^(https?:\/\/|\/(?!\/)|data:image\/(?:png|jpeg|webp|svg\+xml);base64,)/i.test(variant.imageUrl) ? variant.imageUrl : null;
+    const imageUrl = usableImage(variant.imageUrl);
     const variantId = typeof variant.id === "number" && Number.isSafeInteger(variant.id) && variant.id > 0 ? variant.id : 0;
-    return { id: variantId, name: variant.name, price: variant.price, imageUrl };
+    // Older API builds have no `images`; fall back to the main photo. Unusable URLs are dropped, not rejected.
+    const gallery = Array.isArray(variant.images) ? variant.images.map(usableImage).filter((url): url is string => url !== null) : [];
+    const images = [...new Set(gallery.length ? gallery : imageUrl ? [imageUrl] : [])];
+    return { id: variantId, name: variant.name, price: variant.price, imageUrl, images };
   });
 
   const rawStatus = row.status;

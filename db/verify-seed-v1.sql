@@ -8,6 +8,7 @@ UNION ALL SELECT 'CustomerPreference', count(*) FROM "CustomerPreference"
 UNION ALL SELECT 'Category', count(*) FROM "Category"
 UNION ALL SELECT 'Product', count(*) FROM "Product"
 UNION ALL SELECT 'ProductVariant', count(*) FROM "ProductVariant"
+UNION ALL SELECT 'ProductVariantImage', count(*) FROM "ProductVariantImage"
 UNION ALL SELECT 'ProductPreference', count(*) FROM "ProductPreference"
 UNION ALL SELECT 'Order', count(*) FROM "Order"
 UNION ALL SELECT 'OrderItem', count(*) FROM "OrderItem"
@@ -30,6 +31,16 @@ SELECT count(*) AS total_variants,
        count(*) FILTER (WHERE NOT "IsDeleted" AND ("ImageUrl" IS NULL
            OR "ImageUrl" NOT LIKE 'https://image.cocoonvietnam.com/uploads/%')) AS current_without_official_image
 FROM "ProductVariant" WHERE "Sku" ~ '^COC-V1-[0-9]{3}-[1-3]$';
+-- Photos (14/11/2026): fresh catalog has 100 extra gallery photos on 34 variants and 27 hover photos.
+-- Expect zero photos on retired variants, zero non-official photo hosts and zero hover photos equal to the main photo.
+SELECT count(*) AS gallery_photos,
+       count(DISTINCT i."ProductVariantId") AS variants_with_gallery,
+       count(*) FILTER (WHERE v."IsDeleted") AS photos_on_retired_variants,
+       count(*) FILTER (WHERE i."Url" NOT LIKE 'https://image.cocoonvietnam.com/uploads/%') AS non_official_photos
+FROM "ProductVariantImage" i JOIN "ProductVariant" v ON v."Id" = i."ProductVariantId";
+SELECT count(*) FILTER (WHERE "HoverImageUrl" IS NOT NULL) AS hover_photos,
+       count(*) FILTER (WHERE "HoverImageUrl" = "ImageUrl") AS hover_equal_to_main
+FROM "ProductVariant" WHERE NOT "IsDeleted";
 SELECT "Channel", "Status", count(*) AS total FROM "Order" GROUP BY "Channel", "Status" ORDER BY "Channel", "Status";
 SELECT count(DISTINCT date_trunc('month', "OrderedAt" AT TIME ZONE 'UTC')) AS order_months FROM "Order";
 

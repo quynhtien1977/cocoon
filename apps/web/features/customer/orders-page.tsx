@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, PackageCheck, Search, ShoppingBag, Star } from "lucide-react";
+import { ArrowRight, Check, Clock, PackageCheck, PackageX, RotateCcw, Search, ShoppingBag, Star, Truck } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { EmptyState } from "@/components/brand/empty-state";
 import { RatingStars } from "@/components/brand/rating-stars";
-import { StatusBadge } from "@/components/brand/status-badge";
 import { ConfirmDialog } from "@/components/brand/confirm-dialog";
-import { filterOrders, loadOrders, cancelOrder, confirmOrderReceived, type CustomerOrder, type OrderFilter } from "./orders-service";
+import { filterOrders, loadOrders, cancelOrder, confirmOrderReceived, type CustomerOrder, type OrderFilter, type OrderStatus } from "./orders-service";
 import { previewOrders } from "./orders-preview";
 import styles from "./orders.module.css";
 
@@ -22,6 +21,24 @@ const tabs = [
 ] as const;
 const money = (value: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value);
 const date = (value: string) => new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value));
+
+const orderStatusMeta: Record<OrderStatus, { label: string; className: string; Icon: typeof PackageCheck }> = {
+  Completed: { label: "Đã giao", className: styles.statusCompleted, Icon: PackageCheck },
+  Delivering: { label: "Đang giao", className: styles.statusDelivering, Icon: Truck },
+  Placed: { label: "Chờ xác nhận", className: styles.statusPlaced, Icon: Clock },
+  Cancelled: { label: "Đã hủy", className: styles.statusCancelled, Icon: PackageX },
+  Returned: { label: "Đã trả hàng", className: styles.statusReturned, Icon: RotateCcw },
+};
+
+function OrderStatusIndicator({ status }: { status: OrderStatus }) {
+  const { label, className, Icon } = orderStatusMeta[status] ?? orderStatusMeta.Completed;
+  return (
+    <span className={`${styles.status} ${className}`}>
+      <Icon size={16} aria-hidden="true" />
+      {label}
+    </span>
+  );
+}
 
 function OrderImage({ src, name }: { src: string | null; name: string }) {
   const [failed, setFailed] = useState<string | null>(null);
@@ -81,7 +98,7 @@ export function OrdersPage({ initialFilter = "all", initialPreview = false }: { 
             {order.cancelledAt && <span className={styles.date}>· Đã hủy: {date(order.cancelledAt)}</span>}
           </div>
           <div className={styles.headerStatus}>
-            <StatusBadge kind="order" status={order.status} />
+            <OrderStatusIndicator status={order.status} />
           </div>
         </div>
         {order.shippingAddress && (

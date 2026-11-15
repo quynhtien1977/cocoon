@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { LoaderCircle, Search } from "lucide-react";
 import { EmptyState } from "@/components/brand/empty-state";
-import { ProductCard } from "@/components/brand/product-card";
-import { loadShopCategories, loadShopProducts, type ShopCategory, type ShopProduct } from "./shop-service";
+import { ProductCarousel } from "@/features/landing/product-carousel";
+import { loadShopCategories, loadShopProducts, toCarouselProduct, type ShopCategory, type ShopProduct } from "./shop-service";
 import landing from "@/features/landing/landing.module.css";
 import styles from "./product-catalog.module.css";
 
@@ -102,12 +102,12 @@ export function ProductCatalog({ initialQuery = "" }: { initialQuery?: string })
             id="catalog-search"
             type="search"
             value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            onBlur={() => {
-              if (searchInput !== query) {
-                setQuery(searchInput);
-                setPage(1);
-              }
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              setError("");
+              setSearchInput(nextValue);
+              setQuery(nextValue);
+              setPage(1);
             }}
             placeholder="Tìm theo tên sản phẩm…"
           />
@@ -163,19 +163,12 @@ export function ProductCatalog({ initialQuery = "" }: { initialQuery?: string })
           </button>
         </div>
       ) : sortedProducts.length ? (
-        <div className={landing.productGrid}>
-          {sortedProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              name={product.name}
-              href={`/account/products/${product.id}`}
-              imageUrl={product.imageUrl}
-              minPrice={product.minPrice}
-              avgRating={product.averageRating}
-              reason={product.feedbackCount > 0 ? <span className="text-xs text-[#81745e]">{product.feedbackCount} đánh giá</span> : null}
-            />
-          ))}
-        </div>
+        <>
+          <ProductCarousel products={sortedProducts.map(toCarouselProduct)} grid />
+          <p className={landing.priceNote}>
+            Giá niêm yết từ hệ thống Cocoon CRM · Chọn sản phẩm để xem biến thể và đặt hàng.
+          </p>
+        </>
       ) : (
         <EmptyState
           title="Chưa tìm thấy sản phẩm"

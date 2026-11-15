@@ -43,6 +43,9 @@ public sealed class RecommendationsApiTests : IClassFixture<DatabaseFixture>, ID
         var item = Assert.Single(items.EnumerateArray());
         Assert.Equal(shop.TaggedId, item.GetProperty("product").GetProperty("id").GetInt32());
         Assert.Equal(145000, item.GetProperty("product").GetProperty("minPrice").GetDecimal());
+        // Same card photos as the shop catalog.
+        Assert.Equal("/uploads/gel.jpg", item.GetProperty("product").GetProperty("imageUrl").GetString());
+        Assert.Equal("/uploads/gel-back.jpg", item.GetProperty("product").GetProperty("hoverImageUrl").GetString());
         Assert.Equal(0.35m, item.GetProperty("score").GetDecimal());
         Assert.Equal($"Hợp với sở thích {shop.PreferenceName}", item.GetProperty("reasons")[0].GetProperty("label").GetString());
         var home = await Json(await Send(HttpMethod.Get, "/api/v1/me/home", customer));
@@ -168,7 +171,8 @@ public sealed class RecommendationsApiTests : IClassFixture<DatabaseFixture>, ID
         var (tagged, half, upcoming) = (Product("Gel"), Product("Toner"), Product("Kem", ProductStatus.Upcoming));
         db.AddRange(tagged, half, upcoming);
         await db.SaveChangesAsync();
-        db.AddRange(new ProductVariant { ProductId = tagged.Id, Name = "140ml", Sku = $"G-{tag}", Price = 145000 },
+        db.AddRange(new ProductVariant { ProductId = tagged.Id, Name = "140ml", Sku = $"G-{tag}", Price = 145000, ImageUrl = "/uploads/gel.jpg",
+                HoverImageUrl = "/uploads/gel-back.jpg" },
             new ProductPreference { ProductId = tagged.Id, PreferenceId = preference.Id },
             new ProductPreference { ProductId = half.Id, PreferenceId = preference.Id },
             new ProductPreference { ProductId = half.Id, PreferenceId = second.Id },

@@ -1,16 +1,53 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Leaf } from "lucide-react";
 import type { products } from "@/features/landing/products";
+import { ApiProductDetail } from "./api-product-detail";
+import { loadShopProducts } from "./shop-service";
 import styles from "./product-detail.module.css";
 import { RecommendationSection } from "./recommendation-section";
+
+const normalizeText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .trim()
+    .toLowerCase();
 
 export function ProductDetail({ product }: { product: typeof products[number] }) {
   const images = [...new Set([product.image, product.hoverImage])];
   const [selected, setSelected] = useState(images[0]);
+  const [matchedId, setMatchedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const targetName = normalizeText(product.name);
+    loadShopProducts({ search: product.name, pageSize: 10 }, controller.signal, {
+      refresh: false,
+      redirectOnUnauthorized: false,
+    })
+      .then((res) => {
+        if (controller.signal.aborted) return;
+        const match =
+          res.items.find((item) => normalizeText(item.name) === targetName) ??
+          res.items.find(
+            (item) => normalizeText(item.name).includes(targetName) || targetName.includes(normalizeText(item.name))
+          );
+        if (match) setMatchedId(String(match.id));
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [product.name]);
+
+  if (matchedId) {
+    return <ApiProductDetail id={matchedId} />;
+  }
+
   return <article className={styles.detail}>
     <nav aria-label="Đường dẫn" className={styles.breadcrumb}><Link href="/account">Trang chủ</Link><span>/</span><Link href="/account/products">Sản phẩm</Link><span>/</span><span aria-current="page">{product.name}</span></nav>
     <div className={styles.layout}>

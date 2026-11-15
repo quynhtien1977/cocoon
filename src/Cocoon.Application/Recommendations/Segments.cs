@@ -4,7 +4,8 @@ namespace Cocoon.Application.Recommendations;
 
 /// <summary>GET me/recommendations item (spec 6.3).</summary>
 public sealed record RecommendationItem(int Id, decimal Score, RecommendedProduct Product, IReadOnlyList<RecommendationReason> Reasons);
-public sealed record RecommendedProduct(int Id, string Name, decimal? MinPrice, string? ImageUrl, double? AvgRating);
+/// <summary>ImageUrl and HoverImageUrl are those of the shop card (GET shop/products), so both sections look the same.</summary>
+public sealed record RecommendedProduct(int Id, string Name, decimal? MinPrice, string? ImageUrl, double? AvgRating, string? HoverImageUrl);
 /// <summary>M4 tab row with the stored breakdown for ScoreBreakdown.</summary>
 public sealed record CustomerRecommendationRow(int Id, int ProductId, string ProductName, decimal Score, RecommendationStatus Status, int? PlanId,
     IReadOnlyList<RecommendationReason> Reasons, IReadOnlyDictionary<string, decimal> Breakdown, DateTime GeneratedAt, DateTime? InteractedAt);

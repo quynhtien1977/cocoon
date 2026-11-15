@@ -3,7 +3,7 @@ import { apiRequest } from "../../lib/api/client";
 export type CustomerRecommendation = {
   id: number;
   score: number;
-  product: { id: number; name: string; minPrice: number | null; imageUrl: string | null; avgRating: number | null };
+  product: { id: number; name: string; minPrice: number | null; imageUrl: string | null; avgRating: number | null; hoverImageUrl: string | null };
   reasons: { code: string; label: string }[];
 };
 const validId = (id: unknown): id is number => typeof id === "number" && Number.isInteger(id) && id > 0 && id <= 2147483647;
@@ -28,7 +28,7 @@ export function parseRecommendations(payload: unknown): CustomerRecommendation[]
       if (typeof reason.code !== "string" || typeof reason.label !== "string" || !reason.label.trim()) throw new Error("Lý do gợi ý chưa hợp lệ.");
       return { code: reason.code, label: reason.label };
     });
-    return { id: row.id, score: row.score, product: { id: product.id, name: product.name, minPrice: product.minPrice, imageUrl: imageUrl(product.imageUrl), avgRating: product.avgRating }, reasons };
+    return { id: row.id, score: row.score, product: { id: product.id, name: product.name, minPrice: product.minPrice, imageUrl: imageUrl(product.imageUrl), avgRating: product.avgRating, hoverImageUrl: imageUrl(product.hoverImageUrl) }, reasons };
   });
 }
 export async function loadRecommendations(signal?: AbortSignal): Promise<CustomerRecommendation[]> {

@@ -10,6 +10,7 @@ import { ProductSpotlight } from "./product-spotlight";
 import { ProductCarousel } from "./product-carousel";
 import { LandingFrame } from "./landing-frame";
 import { products } from "./products";
+import { loadShopCategories, loadShopProducts, toCarouselProduct, type ShopCategory, type ShopProduct } from "../customer/shop-service";
 import { RecommendationSection } from "../customer/recommendation-section";
 import { RecommendationHomeLink } from "../customer/recommendation-home-link";
 
@@ -34,14 +35,65 @@ export function LandingPage({ customer = false }: { customer?: boolean }) {
   const [slide, setSlide] = useState(0);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("Tất cả");
+  const [apiCategories, setApiCategories] = useState<ShopCategory[] | null>(null);
+  const [apiProducts, setApiProducts] = useState<ShopProduct[] | null>(null);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setSlide((previous) => (previous + 1) % slides.length);
     }, 2000);
     return () => window.clearTimeout(timer);
   }, [slide]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+    Promise.all([
+      loadShopCategories(signal, { refresh: false, redirectOnUnauthorized: false }),
+      loadShopProducts({ page: 1, pageSize: 40 }, signal, { refresh: false, redirectOnUnauthorized: false }),
+    ])
+      .then(([cats, page]) => {
+        if (signal.aborted) return;
+        setApiCategories(cats);
+        setApiProducts(page.items);
+      })
+      .catch(() => {
+        // Fallback silently to static reference products when API is unreachable.
+      });
+    return () => controller.abort();
+  }, []);
+
   const current = slides[slide];
-  const visibleProducts = products.filter((product) => (category === "Tất cả" || product.category === category) && product.name.toLocaleLowerCase("vi").includes(query.trim().toLocaleLowerCase("vi")));
+  const usingApi = apiProducts !== null && apiProducts.length > 0;
+  const apiTabs = usingApi
+    ? [
+        "Tất cả",
+        ...(apiCategories ?? [])
+          .filter((cat) => apiProducts.some((item) => item.categoryId === cat.id || item.categoryName === cat.name))
+          .map((cat) => cat.name),
+      ]
+    : ["Tất cả", "Chăm sóc da", "Chăm sóc tóc"];
+  const categoryTabs = apiTabs.length > 1
+    ? apiTabs
+    : usingApi
+      ? ["Tất cả", ...Array.from(new Set(apiProducts.map((item) => item.categoryName).filter(Boolean)))]
+      : apiTabs;
+  const activeCategory = categoryTabs.includes(category) ? category : "Tất cả";
+  const normalizedQuery = query.trim().toLocaleLowerCase("vi");
+  const visibleProducts = usingApi
+    ? apiProducts
+        .filter(
+          (product) =>
+            (activeCategory === "Tất cả" || product.categoryName === activeCategory) &&
+            product.name.toLocaleLowerCase("vi").includes(normalizedQuery)
+        )
+        .map(toCarouselProduct)
+    : products.filter(
+        (product) =>
+          (activeCategory === "Tất cả" || product.category === activeCategory) &&
+          product.name.toLocaleLowerCase("vi").includes(normalizedQuery)
+      );
+
   const content = <>
         <section className={styles.hero} aria-label="Bộ sưu tập nổi bật" aria-roledescription="carousel">
           <div className={styles.heroImage}><Image key={current.image} src={current.image} alt={current.title} fill priority sizes="(min-width: 900px) 55vw, 100vw" /></div>
@@ -57,10 +109,10 @@ export function LandingPage({ customer = false }: { customer?: boolean }) {
         <ProductSpotlight />
         <section className={styles.certifications} aria-label="Chứng nhận của thương hiệu Cocoon"><span className={styles.eyebrow}>Được chứng nhận bởi các tổ chức quốc tế</span><div>{["Leaping Bunny", "The Vegan Society", "PETA"].map((name, index) => <a href="https://cocoonvietnam.com/trang/gia-tri-cot-loi" target="_blank" rel="noreferrer" key={name}><Image src={image(`cert-${index}` as keyof typeof assets)} alt={name} width={100} height={80} /><h3>{name}</h3><p>{["Cam kết không thử nghiệm trên động vật", "Mỹ phẩm không có thành phần từ động vật", "Tôn trọng sự sống của muôn loài"][index]}</p></a>)}</div></section>
         <section id="san-pham" className={styles.products}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>Được yêu thích mỗi ngày</span><h2>Sản phẩm bán chạy</h2></div><RecommendationHomeLink customer={customer} className={styles.textLink}>GỢI Ý CHO BẠN <ArrowRight size={18} /></RecommendationHomeLink></div>
-          <div className={styles.tabs} aria-label="Lọc danh mục">{["Tất cả", "Chăm sóc da", "Chăm sóc tóc"].map((name) => <button type="button" key={name} aria-pressed={category === name} onClick={() => setCategory(name)}>{name}</button>)}</div>
-          {visibleProducts.length > 0 && <ProductCarousel key={`${category}:${query}`} products={visibleProducts} />}
+          <div className={styles.tabs} aria-label="Lọc danh mục">{categoryTabs.map((name) => <button type="button" key={name} aria-pressed={activeCategory === name} onClick={() => setCategory(name)}>{name}</button>)}</div>
+          {visibleProducts.length > 0 && <ProductCarousel key={`${activeCategory}:${query}:${usingApi ? "api" : "ref"}`} products={visibleProducts} />}
           {!visibleProducts.length && <p role="status" className={styles.noResults}>Không tìm thấy sản phẩm. <button type="button" onClick={() => { setQuery(""); setCategory("Tất cả"); }}>Xem tất cả sản phẩm</button></p>}
-          <p className={styles.priceNote}>Giá tham khảo từ website Cocoon. Xem sản phẩm trên website thương hiệu để biết giá hiện tại.</p>
+          <p className={styles.priceNote}>{usingApi ? "Giá niêm yết từ hệ thống Cocoon CRM. Chọn sản phẩm để xem chi tiết, chọn dung tích và đặt hàng." : "Giá tham khảo từ website Cocoon. Xem sản phẩm trên website thương hiệu để biết giá hiện tại."}</p>
         </section>
         {customer && <RecommendationSection home />}
         <section id="nguyen-lieu" className={styles.ingredients}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>Hồn Việt trong từng sản phẩm</span><h2>Câu chuyện nguyên liệu</h2></div><p>Những vùng đất thân quen.<br />Những món quà thiên nhiên đầy cảm hứng.</p></div><div className={styles.ingredientGrid}>{ingredients.map((item) => <a href="https://cocoonvietnam.com/trang/tim-hieu-nguyen-lieu" target="_blank" rel="noreferrer" key={item.name}><div><Image src={item.image} alt={item.name} fill sizes="(min-width: 900px) 25vw, 50vw" /></div><span>{item.region}</span><h3>{item.name} <ArrowUpRight size={20} /></h3></a>)}</div></section>

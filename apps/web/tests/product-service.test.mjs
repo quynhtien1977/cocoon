@@ -38,3 +38,17 @@ test("API errors never silently replace a real product with reference data", asy
   globalThis.fetch = async () => Response.json({ id: 12 });
   await assert.rejects(loadProduct("12"));
 });
+
+test("each size keeps its own gallery, main photo first, and drops unusable photo URLs", async () => {
+  const photo = name => `https://image.cocoonvietnam.com/uploads/${name}`;
+  globalThis.fetch = async () => Response.json({
+    id: 12, name: "Gel bí đao", variants: [
+      { id: 1, name: "140ml", price: 120000, imageUrl: photo("a.jpg"), images: [photo("a.jpg"), photo("a-2.jpg"), "javascript:alert(1)", photo("a-2.jpg")] },
+      // An older API build without `images` still shows the main photo.
+      { id: 2, name: "310ml", price: 190000, imageUrl: photo("b.jpg") },
+      { id: 3, name: "500ml", price: 250000, imageUrl: null, images: [] },
+    ],
+  });
+  const item = await loadProduct("12");
+  assert.deepEqual(item.variants.map(v => v.images), [[photo("a.jpg"), photo("a-2.jpg")], [photo("b.jpg")], []]);
+});

@@ -3,6 +3,7 @@ using Cocoon.Domain;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
 using Cocoon.Infrastructure.Persistence;
+using Cocoon.Infrastructure.Shop;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,8 +21,14 @@ public sealed class ProductsController(AppDbContext db) : ApiStubController
             .SingleOrDefaultAsync(cancellationToken);
         if (product is null) return NotFound();
         var p = product.Product;
-        var variants = await db.Set<ProductVariant>().Where(v => v.ProductId == id).OrderBy(v => v.Price).ThenBy(v => v.Id)
-            .Select(v => new ProductVariantItem(v.Id, v.Name, v.Sku, v.Price, v.ImageUrl)).ToListAsync(cancellationToken);
+        var rows = await db.Set<ProductVariant>().Where(v => v.ProductId == id).OrderBy(v => v.Price).ThenBy(v => v.Id)
+            .Select(v => new { v.Id, v.Name, v.Sku, v.Price, v.ImageUrl, v.HoverImageUrl }).ToListAsync(cancellationToken);
+        var extras = await db.ExtraPhotosAsync(rows.Select(v => v.Id).ToArray(), cancellationToken);
+        var variants = rows.Select(v =>
+        {
+            var gallery = ProductPhotos.Gallery(v.ImageUrl, extras[v.Id]);
+            return new ProductVariantItem(v.Id, v.Name, v.Sku, v.Price, v.ImageUrl, ProductPhotos.Hover(v.ImageUrl, v.HoverImageUrl, gallery), gallery);
+        }).ToList();
         var preferences = await db.Set<ProductPreference>().Where(x => x.ProductId == id)
             .Join(db.Set<Preference>(), x => x.PreferenceId, x => x.Id, (_, preference) => preference)
             .OrderBy(x => x.Name).Select(x => new PreferenceItem(x.Id, x.Name)).ToListAsync(cancellationToken);
@@ -128,7 +135,9 @@ public sealed record ProductListItem(int Id, string Name, string Sku, int Catego
 public sealed record CategoryItem(int Id, string Name);
 public sealed record RatingCount(int Rating, int Count);
 public sealed record ProductInsights(int TotalFeedback, double? AverageRating, IReadOnlyList<RatingCount> RatingDistribution);
-public sealed record ProductVariantItem(int Id, string Name, string Sku, decimal Price, string? ImageUrl);
+/// <summary>Images is the detail gallery, main photo first; HoverImageUrl is null when the variant has a single photo.</summary>
+public sealed record ProductVariantItem(int Id, string Name, string Sku, decimal Price, string? ImageUrl, string? HoverImageUrl,
+    IReadOnlyList<string> Images);
 public sealed record ProductDetail(int Id, string Name, string Sku, string Description, string Ingredients, string Benefits, string Usage,
     int CategoryId, string CategoryName, ProductStatus Status, string? ImageUrl, IReadOnlyList<ProductVariantItem> Variants,
     double? AverageRating, int FeedbackCount, string[] Preferences, int[] PreferenceIds);

@@ -28,6 +28,7 @@ const sampleProduct = {
       name: "200ml",
       price: 125000,
       imageUrl: null,
+      images: [],
     },
   ],
 };
@@ -64,7 +65,8 @@ test("shop-service loadShopProducts and loadShopCategories fetch correctly", asy
           imageUrl: null,
           averageRating: 4.8,
           feedbackCount: 12,
-          variants: [{ id: 25, name: "200ml", price: 125000, imageUrl: null }],
+          variants: [{ id: 25, name: "200ml", price: 125000, imageUrl: null, hoverImageUrl: null, images: [] }],
+          hoverImageUrl: null,
         },
       ],
       totalCount: 1,
