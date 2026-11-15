@@ -10,15 +10,17 @@ using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Cocoon.Tests;
 
-/// <summary>Survey cover photo and YouTube preview (decision 15/11/2026) against cocoon_tests, with MinIO replaced in memory.</summary>
+/// <summary>Optional photos and YouTube videos on survey questions (decision 15/11/2026), with MinIO replaced in memory.</summary>
 public sealed class SurveyMediaApiTests : IClassFixture<DatabaseFixture>, IDisposable
 {
     private static readonly byte[] Jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 4];
     private static readonly byte[] Png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 9, 9];
+    private const string Video = "https://youtu.be/dQw4w9WgXcQ?si=x";
     private readonly DatabaseFixture _database;
     private readonly MemoryStorage _storage = new();
     private readonly WebApplicationFactory<Program> _factory;
@@ -59,71 +61,118 @@ public sealed class SurveyMediaApiTests : IClassFixture<DatabaseFixture>, IDispo
     public void Anything_else_is_rejected(string? link) => Assert.Null(YoutubeLink.VideoId(link));
 
     [Fact]
-    public async Task Manager_sets_photo_and_video_on_a_draft_and_only_recipients_see_them_once_sent()
+    public async Task Text_only_surveys_stay_valid_and_videos_need_no_upload()
     {
         var shop = await Seed();
         var manager = FoundationFactory.Token("Manager", shop.ManagerId);
-        Assert.Equal(HttpStatusCode.BadRequest, (await Send(HttpMethod.Post, "/api/v1/surveys", manager, Draft("https://vimeo.com/1"))).StatusCode);
-        var survey = await Json(await Send(HttpMethod.Post, "/api/v1/surveys", manager, Draft("https://youtu.be/dQw4w9WgXcQ?si=x")));
-        var id = survey.GetProperty("id").GetInt32();
-        Assert.Equal("dQw4w9WgXcQ", survey.GetProperty("youtubeVideoId").GetString());
-        Assert.Equal("https://www.youtube.com/watch?v=dQw4w9WgXcQ", survey.GetProperty("videoUrl").GetString());
-        Assert.Equal(JsonValueKind.Null, survey.GetProperty("imageUrl").ValueKind);
+        var plain = await Json(await Send(HttpMethod.Post, "/api/v1/surveys", manager, Draft(Question("Bạn chấm mấy sao?"))));
+        Assert.Empty(plain.GetProperty("questions")[0].GetProperty("media").EnumerateArray());
 
-        Assert.Equal(HttpStatusCode.BadRequest, (await Upload(id, manager, "fake.jpg", "image/jpeg", "not an image"u8.ToArray())).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await Upload(id, manager, "big.png", "image/png", [.. Png, .. new byte[2 * 1024 * 1024]])).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await Upload(id, FoundationFactory.Token("Staff", shop.StaffId), "a.png", "image/png", Png)).StatusCode);
-        var first = (await Json(await Upload(id, manager, "a.png", "image/png", Png))).GetProperty("imageUrl").GetString()!;
-        var second = (await Json(await Upload(id, manager, "b.jpg", "image/jpeg", Jpeg))).GetProperty("imageUrl").GetString()!;
-        Assert.NotEqual(first, second);
-        Assert.Single(_storage.Objects);  // replacing the photo removes the old object
-        using (var read = await Send(HttpMethod.Get, second, manager))
+        var withVideo = await Json(await Send(HttpMethod.Post, "/api/v1/surveys", manager,
+            Draft(Question("Xem video rồi chấm điểm", new { type = "Video", videoUrl = Video }))));
+        var media = Assert.Single(withVideo.GetProperty("questions")[0].GetProperty("media").EnumerateArray());
+        Assert.Equal("Video", media.GetProperty("type").GetString());
+        Assert.Equal("dQw4w9WgXcQ", media.GetProperty("youtubeVideoId").GetString());
+        Assert.Equal("https://www.youtube.com/watch?v=dQw4w9WgXcQ", media.GetProperty("videoUrl").GetString());
+        Assert.Equal(JsonValueKind.Null, media.GetProperty("url").ValueKind);
+        Assert.Empty(_storage.Objects);
+    }
+
+    [Fact]
+    public async Task Manager_puts_several_photos_and_a_video_on_a_question_and_only_recipients_see_them()
+    {
+        var shop = await Seed();
+        var manager = FoundationFactory.Token("Manager", shop.ManagerId);
+        var id = (await Json(await Send(HttpMethod.Post, "/api/v1/surveys", manager, Draft(Question("Bạn thích mẫu nào?"))))).GetProperty("id").GetInt32();
+        var first = await Json(await Upload(id, manager, "a.png", "image/png", Png));
+        var second = await Json(await Upload(id, manager, "b.jpg", "image/jpeg", Jpeg));
+        var (firstId, secondId) = (first.GetProperty("id").GetInt32(), second.GetProperty("id").GetInt32());
+
+        var saved = await Json(await Send(HttpMethod.Put, $"/api/v1/surveys/{id}", manager, Draft(Question("Bạn thích mẫu nào?",
+            new { type = "Image", imageId = secondId }, new { type = "Image", imageId = firstId }, new { type = "Video", videoUrl = Video }))));
+        var media = saved.GetProperty("questions")[0].GetProperty("media").EnumerateArray().ToList();
+        Assert.Equal(["Image", "Image", "Video"], media.Select(m => m.GetProperty("type").GetString()));
+        Assert.Equal([secondId, firstId], media.Take(2).Select(m => m.GetProperty("imageId").GetInt32()));
+        var url = media[0].GetProperty("url").GetString()!;
+        Assert.Equal(second.GetProperty("url").GetString(), url);
+        using (var read = await Send(HttpMethod.Get, url, manager))
         {
             Assert.Equal(HttpStatusCode.OK, read.StatusCode);
             Assert.Equal("image/jpeg", read.Content.Headers.ContentType!.MediaType);
             Assert.Equal(Jpeg, await read.Content.ReadAsByteArrayAsync());
         }
-        Assert.Equal(second, (await Json(await Send(HttpMethod.Get, $"/api/v1/surveys/{id}", manager))).GetProperty("imageUrl").GetString());
 
         var customer = FoundationFactory.Token("Customer", shop.CustomerId);
-        Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Get, second, customer)).StatusCode);  // draft, not sent
-        Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Get, second, FoundationFactory.Token("Staff", shop.StaffId))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Get, url, customer)).StatusCode);  // draft, not sent
+        Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Get, url, FoundationFactory.Token("Staff", shop.StaffId))).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Post, $"/api/v1/surveys/{id}/publish", manager)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Post, $"/api/v1/surveys/{id}/recipients", manager, new { customerIds = new[] { shop.CustomerId } })).StatusCode);
 
-        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, second, customer)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Get, second, FoundationFactory.Token("Customer", shop.OtherCustomerId))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, url, customer)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Get, url, FoundationFactory.Token("Customer", shop.OtherCustomerId))).StatusCode);
         var mine = await Json(await Send(HttpMethod.Get, $"/api/v1/me/surveys/{id}", customer));
-        Assert.Equal(second, mine.GetProperty("imageUrl").GetString());
-        Assert.Equal("dQw4w9WgXcQ", mine.GetProperty("youtubeVideoId").GetString());
+        var shown = mine.GetProperty("questions")[0].GetProperty("media").EnumerateArray().ToList();
+        Assert.Equal([url, first.GetProperty("url").GetString(), null], shown.Select(m => m.GetProperty("url").GetString()));
+        Assert.Equal("dQw4w9WgXcQ", shown[2].GetProperty("youtubeVideoId").GetString());
+        Assert.False(mine.TryGetProperty("imageUrl", out _));  // no survey-level cover any more
 
-        // Published surveys keep the media they were sent with.
+        // A sent survey keeps the media it was sent with.
         await AssertProblem(await Upload(id, manager, "c.png", "image/png", Png), HttpStatusCode.Conflict, "SURVEY_NOT_DRAFT");
-        await AssertProblem(await Send(HttpMethod.Delete, $"/api/v1/surveys/{id}/image", manager), HttpStatusCode.Conflict, "SURVEY_NOT_DRAFT");
-        Assert.Single(_storage.Objects);
     }
 
     [Fact]
-    public async Task Removing_the_photo_or_clearing_the_link_leaves_a_plain_draft()
+    public async Task Bad_files_foreign_photos_and_too_much_media_are_refused()
     {
         var shop = await Seed();
         var manager = FoundationFactory.Token("Manager", shop.ManagerId);
-        var id = (await Json(await Send(HttpMethod.Post, "/api/v1/surveys", manager, Draft("dQw4w9WgXcQ")))).GetProperty("id").GetInt32();
-        await Json(await Upload(id, manager, "a.png", "image/png", Png));
-        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Delete, $"/api/v1/surveys/{id}/image", manager)).StatusCode);
-        Assert.Empty(_storage.Objects);
-        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Delete, $"/api/v1/surveys/{id}/image", manager)).StatusCode);
-        var updated = await Json(await Send(HttpMethod.Put, $"/api/v1/surveys/{id}", manager, Draft("")));
-        Assert.Equal(JsonValueKind.Null, updated.GetProperty("imageUrl").ValueKind);
-        Assert.Equal(JsonValueKind.Null, updated.GetProperty("youtubeVideoId").ValueKind);
+        var id = (await Json(await Send(HttpMethod.Post, "/api/v1/surveys", manager, Draft(Question("Câu 1"))))).GetProperty("id").GetInt32();
+        var other = (await Json(await Send(HttpMethod.Post, "/api/v1/surveys", manager, Draft(Question("Câu 1"))))).GetProperty("id").GetInt32();
+        Assert.Equal(HttpStatusCode.BadRequest, (await Upload(id, manager, "fake.jpg", "image/jpeg", "not an image"u8.ToArray())).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await Upload(id, manager, "big.png", "image/png", [.. Png, .. new byte[2 * 1024 * 1024]])).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await Upload(id, FoundationFactory.Token("Staff", shop.StaffId), "a.png", "image/png", Png)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await Upload(2147483000, manager, "a.png", "image/png", Png)).StatusCode);
+        var foreign = (await Json(await Upload(other, manager, "a.png", "image/png", Png))).GetProperty("id").GetInt32();
+        var mine = (await Json(await Upload(id, manager, "a.png", "image/png", Png))).GetProperty("id").GetInt32();
+
+        async Task Refused(object body, string path) =>
+            await AssertProblem(await Send(path == "create" ? HttpMethod.Post : HttpMethod.Put, path == "create" ? "/api/v1/surveys" : $"/api/v1/surveys/{id}", manager, body),
+                HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+        await Refused(Draft(Question("Câu 1", new { type = "Image", imageId = mine })), "create");  // photos need a saved draft
+        await Refused(Draft(Question("Câu 1", new { type = "Image", imageId = foreign })), "update");
+        await Refused(Draft(Question("Câu 1", new { type = "Image" })), "update");
+        await Refused(Draft(Question("Câu 1", new { type = "Video", videoUrl = "https://vimeo.com/1" })), "update");
+        await Refused(Draft(Question("Câu 1", Enumerable.Repeat<object>(new { type = "Video", videoUrl = Video }, 7).ToArray())), "update");
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Put, $"/api/v1/surveys/{id}", manager,
+            Draft(Question("Câu 1", Enumerable.Repeat<object>(new { type = "Image", imageId = mine }, 6).ToArray())))).StatusCode);
     }
 
-    private static object Draft(string? videoUrl) => new
+    [Fact]
+    public async Task Saving_the_draft_removes_old_photos_no_question_uses()
     {
-        title = "Trải nghiệm gel bí đao", description = "Xem video rồi trả lời giúp Cocoon.", purpose = "Satisfaction",
-        productId = (int?)null, openAt = (DateTime?)null, closeAt = DateTime.UtcNow.AddDays(7), videoUrl,
-        questions = new[] { new { text = "Bạn chấm sản phẩm mấy sao?", type = "Rating", isRequired = true, options = Array.Empty<object>() } },
+        var shop = await Seed();
+        var manager = FoundationFactory.Token("Manager", shop.ManagerId);
+        var id = (await Json(await Send(HttpMethod.Post, "/api/v1/surveys", manager, Draft(Question("Câu 1"))))).GetProperty("id").GetInt32();
+        var kept = (await Json(await Upload(id, manager, "a.png", "image/png", Png))).GetProperty("id").GetInt32();
+        var dropped = (await Json(await Upload(id, manager, "b.png", "image/png", Png))).GetProperty("id").GetInt32();
+        var fresh = (await Json(await Upload(id, manager, "c.png", "image/png", Png))).GetProperty("id").GetInt32();
+        await using (var db = _database.CreateContext())
+            await db.Set<SurveyImage>().Where(i => i.Id == kept || i.Id == dropped)
+                .ExecuteUpdateAsync(s => s.SetProperty(i => i.CreatedAt, i => i.CreatedAt.AddHours(-1)));
+
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Put, $"/api/v1/surveys/{id}", manager,
+            Draft(Question("Câu 1", new { type = "Image", imageId = kept })))).StatusCode);
+        await using (var db = _database.CreateContext())
+            Assert.Equal([kept, fresh], await db.Set<SurveyImage>().Where(i => i.SurveyId == id).OrderBy(i => i.Id).Select(i => i.Id).ToListAsync());
+        Assert.Equal(2, _storage.Objects.Count);  // the dropped photo left storage; the fresh one may still be in a form
+    }
+
+    private static object Question(string text, params object[] media) =>
+        new { text, type = "Rating", isRequired = true, options = Array.Empty<object>(), media };
+
+    private static object Draft(object question) => new
+    {
+        title = "Ý kiến về bao bì mới", description = "Xem ảnh rồi trả lời giúp Cocoon.", purpose = "Satisfaction",
+        productId = (int?)null, openAt = (DateTime?)null, closeAt = DateTime.UtcNow.AddDays(7), questions = new[] { question },
     };
 
     private sealed record Shop(int ManagerId, int StaffId, int CustomerId, int OtherCustomerId);
@@ -146,7 +195,7 @@ public sealed class SurveyMediaApiTests : IClassFixture<DatabaseFixture>, IDispo
         part.Headers.ContentType = new MediaTypeHeaderValue(type);
         form.Add(part, "image", name);
         using var client = _factory.CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/surveys/{surveyId}/image") { Content = form };
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/surveys/{surveyId}/images") { Content = form };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return await client.SendAsync(request);
     }
