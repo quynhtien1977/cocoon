@@ -37,12 +37,19 @@ if [ -z "$FOUND" ]; then
   exit 2
 fi
 
-STAMP=$(date -u +%Y%m%d-%H%M%S)
+# scripts/backup-db.* truyền BACKUP_STAMP để bản ảnh MinIO cùng tên với bản dump.
+STAMP=${BACKUP_STAMP:-$(date -u +%Y%m%d-%H%M%S)}
+if ! printf '%s' "$STAMP" | grep -qE '^[0-9]{8}-[0-9]{6}$'; then
+  echo "BACKUP_STAMP không hợp lệ: $STAMP" >&2
+  exit 2
+fi
 NAME="$SOURCE-$STAMP.dump"
 INVENTORY="$SOURCE-$STAMP.inventory"
+KEYS="$SOURCE-$STAMP.photo-keys"
 PART="$DIR/.$NAME.part"
 INVENTORY_PART="$DIR/.$INVENTORY.part"
-trap 'rm -f "$PART" "$INVENTORY_PART" /tmp/backup-before.txt' EXIT
+KEYS_PART="$DIR/.$KEYS.part"
+trap 'rm -f "$PART" "$INVENTORY_PART" "$KEYS_PART" /tmp/backup-before.txt' EXIT
 
 inventory() {
   psql --username "$POSTGRES_USER" --dbname "$SOURCE" --no-align --tuples-only \
@@ -63,18 +70,26 @@ if ! cmp -s /tmp/backup-before.txt "$INVENTORY_PART"; then
   exit 3
 fi
 
+# Khóa ảnh MinIO mà bản dump tham chiếu (chỉ đường dẫn object, không có dữ liệu khách hàng).
+# db/photos-check.sh dùng danh sách này để chắc bản ảnh MinIO có đủ mọi ảnh của bản dump.
+sh /workspace/db/photo-keys.sh "$SOURCE" > "$KEYS_PART"
+
 # File kiểm kê vào trước, nên một file .dump đã có tên chính thức luôn đi kèm kiểm kê của nó.
 mv "$INVENTORY_PART" "$DIR/$INVENTORY"
+mv "$KEYS_PART" "$DIR/$KEYS"
 mv "$PART" "$DIR/$NAME"
 echo "created  $NAME  ($(wc -c < "$DIR/$NAME") bytes)"
 echo "created  $INVENTORY  ($(wc -l < "$DIR/$INVENTORY") dòng)"
+echo "created  $KEYS  ($(wc -l < "$DIR/$KEYS") ảnh MinIO)"
 
 # Giữ KEEP bản gần nhất: tên chứa timestamp UTC nên thứ tự chữ cái trùng thứ tự thời gian.
 PATTERN="^$SOURCE-[0-9]{8}-[0-9]{6}\.dump$"
 ls "$DIR" | grep -E "$PATTERN" | sort | head -n "-$KEEP" > /tmp/backup-prune.txt || true
 while IFS= read -r old; do
   [ -n "$old" ] || continue
-  rm -f -- "$DIR/$old" "$DIR/${old%.dump}.inventory"
+  # Bản ảnh MinIO đi cùng bản dump nên bị xóa cùng lúc; tên đã qua PATTERN nên không thể rỗng.
+  rm -rf -- "$DIR/$old" "$DIR/${old%.dump}.inventory" "$DIR/${old%.dump}.photo-keys" \
+    "$DIR/${old%.dump}.photos" "$DIR/${old%.dump}.photos.sha256"
   echo "pruned   $old"
 done < /tmp/backup-prune.txt
 rm -f /tmp/backup-prune.txt

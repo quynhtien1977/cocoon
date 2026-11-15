@@ -1,10 +1,11 @@
-# Sao lưu và phục hồi CSDL — COC-54 / NFR-07
+# Sao lưu và phục hồi CSDL và ảnh phản hồi — COC-54 / NFR-07
 
-Phương án sao lưu và phục hồi cho PostgreSQL 18 của Cocoon CRM. Phạm vi: môi trường local trong Docker
-Compose của đồ án. Ba nguyên tắc không thay đổi:
+Phương án sao lưu và phục hồi cho PostgreSQL 18 và ảnh phản hồi trong MinIO của Cocoon CRM. Phạm vi:
+môi trường local trong Docker Compose của đồ án. Ba nguyên tắc không thay đổi:
 
-1. Sao lưu chỉ đọc database nguồn.
-2. Phục hồi luôn vào một **database mới**; script từ chối ghi lên database chính.
+1. Sao lưu chỉ đọc database và bucket nguồn.
+2. Phục hồi luôn vào một **database mới** và một **bucket mới**; script từ chối ghi lên database hay
+   bucket chính.
 3. Mỗi lần phục hồi đều tự đối chiếu bản phục hồi với kiểm kê lưu lúc sao lưu và trả về PASS/FAIL, nên
    vẫn dùng được khi database chính đã hỏng hoặc không còn.
 
@@ -17,13 +18,18 @@ Compose của đồ án. Ba nguyên tắc không thay đổi:
 | [db/backup.sh](backup.sh) | container `db` | `pg_dump`, lưu kiểm kê và luật giữ 7 bản |
 | [db/restore.sh](restore.sh) | container `db` | `createdb` + `pg_restore` + đối chiếu |
 | [db/verify-restore.sql](verify-restore.sql) | container `db` | Kiểm kê chỉ đọc, chạy lúc sao lưu và lúc phục hồi |
+| [db/photos-mirror.sh](photos-mirror.sh) | container `minio` | `mc mirror` bucket ảnh ra `./backups`, hoặc nạp bản ảnh vào bucket mới rồi `mc diff` |
+| [db/photos-check.sh](photos-check.sh) | container `db` | Bản ảnh phải có mọi ảnh bản dump tham chiếu; ghi và kiểm checksum SHA-256 |
 
-Container `db` phải có mount ghi được `./backups:/workspace/backups` (khai báo trong
-[docker-compose.yml](../docker-compose.yml)). Sau khi thêm mount cần `rtk docker compose up -d db` để
-container được tạo lại; việc này không xóa volume dữ liệu.
+Container `db` và `minio` phải có mount ghi được `./backups:/workspace/backups`; `minio` còn cần
+`./db:/workspace/db:ro` để chạy script (khai báo trong [docker-compose.yml](../docker-compose.yml)). Sau
+khi thêm mount cần `rtk docker compose up -d db minio` để container được tạo lại; việc này không xóa volume
+dữ liệu hay ảnh.
 
 Script không nhận mật khẩu từ dòng lệnh. Chúng chạy trong container và đọc `POSTGRES_USER` /
-`POSTGRES_DB` từ environment của container, kết nối qua Unix socket nội bộ.
+`POSTGRES_DB` từ environment của container, kết nối qua Unix socket nội bộ. `photos-mirror.sh` đọc
+`MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` từ environment của `minio`, ghi cấu hình `mc` vào thư mục tạm
+rồi xóa khi xong.
 
 ## 2. Lệnh
 
@@ -39,8 +45,15 @@ rtk sh scripts/restore-db.sh cocoon-20261107-171033.dump cocoon_restore_demo
 ```
 
 Trên PowerShell dùng `rtk powershell -File scripts\backup-db.ps1` và
-`rtk powershell -File scripts\restore-db.ps1` với cùng tham số. Hai bản `.sh` và `.ps1` chỉ là wrapper;
-toàn bộ logic nằm trong `db/backup.sh` và `db/restore.sh` nên hai hệ điều hành cho kết quả giống nhau.
+`rtk powershell -File scripts\restore-db.ps1` với cùng tham số. Hai bản `.sh` và `.ps1` chỉ gọi lần lượt
+các script trong container; logic nằm trong `db/*.sh` nên hai hệ điều hành cho kết quả giống nhau. Sao
+lưu một database khác database chính thì bỏ qua ảnh, vì bucket chỉ thuộc database chính.
+
+Xóa một bucket ảnh đã phục hồi sau khi kiểm tra xong (thay tên bucket):
+
+```text
+rtk docker compose exec -T minio sh -c 'export MC_CONFIG_DIR=/tmp/mc-rb; mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" > /dev/null && mc rb --force local/cocoon-feedback-restore-20261115071953; rm -rf /tmp/mc-rb'
+```
 
 Xóa một database đã phục hồi sau khi kiểm tra xong:
 
@@ -68,6 +81,33 @@ cùng database. Bản sao lưu của các database khác không bị tính chung
 
 Chu kỳ đề nghị cho giai đoạn chấm đồ án: chạy sao lưu trước mỗi lần chạy migration, chạy seed lại,
 hoặc trước mỗi buổi demo. Không có cron trong đồ án này; sao lưu là lệnh người vận hành gọi.
+
+### Ảnh phản hồi (MinIO)
+
+Ảnh khách gửi kèm phản hồi và ảnh bìa khảo sát nằm trong bucket MinIO (`MINIO_BUCKET`, mặc định
+`cocoon-feedback`); database chỉ giữ đường dẫn (`FeedbackPhoto.ObjectKey`, `Survey.ImageObjectKey`), danh sách
+lấy bằng [db/photo-keys.sh](photo-keys.sh). Mỗi lần sao lưu database chính tạo thêm, cùng tên:
+
+| File | Nội dung |
+|---|---|
+| `<bản>.photo-keys` | Danh sách `ObjectKey` bản dump tham chiếu, lấy ngay sau kiểm kê |
+| `<bản>.photos/` | Bản chép bucket bằng `mc mirror` (giữ nguyên đường dẫn object) |
+| `<bản>.photos.sha256` | SHA-256 của từng file trong `<bản>.photos/` |
+
+- Ảnh được chép **sau** `pg_dump`. `photos-check.sh seal` yêu cầu mọi khóa trong `.photo-keys` có file;
+  thiếu nghĩa là có xóa ảnh trong lúc sao lưu, khi đó bản ảnh bị hủy (mã 3) và cần dừng `api` rồi chạy
+  lại. Bản dump vẫn dùng được cho database.
+- Bucket chưa tồn tại (chưa ai gửi ảnh) cho bản ảnh rỗng, không phải lỗi.
+- Bản ảnh được giữ và xóa cùng bản dump theo luật 7 bản.
+- Phục hồi: kiểm checksum, kiểm database vừa phục hồi tham chiếu đúng danh sách ảnh lúc sao lưu, nạp vào
+  bucket mới `<bucket>-restore-<thời điểm UTC>` rồi `mc diff` (tên và kích thước) với bản ảnh. Muốn chạy
+  ứng dụng trên bản phục hồi thì đặt `MINIO_BUCKET` bằng bucket mới và trỏ api tới database phục hồi.
+- Bản sao lưu tạo trước 15/11/2026 không có ảnh; script chỉ phục hồi database và báo rõ.
+
+Đã chạy ngày 15/11/2026 với 2 ảnh thử: sao lưu bằng `.sh`, phục hồi bằng `.ps1` cho ba dòng PASS
+(database, checksum ảnh, bucket mới). Sửa 1 byte trong bản ảnh → `FAIL` mã 3; thiếu ảnh lúc sao lưu →
+hủy bản ảnh, mã 3; phục hồi vào bucket chính → từ chối, mã 2. Ảnh thử, database và bucket phục hồi đã
+xóa sau khi chạy.
 
 ## 4. Phục hồi
 

@@ -69,6 +69,9 @@ services:
       - "127.0.0.1:${MINIO_CONSOLE_PORT:-9011}:9001"
     volumes:
       - minio-data:/data
+      # Sao lưu ảnh (db/photos-mirror.sh): đọc script, ghi bản ảnh cạnh bản dump trong ./backups.
+      - ./db:/workspace/db:ro
+      - ./backups:/workspace/backups
 
 volumes:
   postgres-data:
