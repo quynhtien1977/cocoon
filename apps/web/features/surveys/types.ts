@@ -11,12 +11,19 @@ export interface OptionDraft {
   preferenceId: number | null;
 }
 
+/** Optional photo (uploaded with uploadQuestionImage) or YouTube link shown with a question, in order. */
+export type QuestionMediaDraft =
+  | { key: string; type: "Image"; imageId: number; url: string }
+  | { key: string; type: "Video"; videoUrl: string };
+
 export interface QuestionDraft {
   key: string;
   text: string;
   type: QuestionType;
   isRequired: boolean;
   options: OptionDraft[];
+  /** Optional; missing or empty for a text-only question. At most 6 items. */
+  media?: QuestionMediaDraft[];
 }
 
 export interface SurveyDraft {
@@ -28,8 +35,6 @@ export interface SurveyDraft {
   openAt: string;
   closeAt: string;
   questions: QuestionDraft[];
-  /** Optional YouTube link shown above the questions; empty or missing means no video. */
-  videoUrl?: string;
 }
 
 export interface PreferenceOption { id: number; name: string }
@@ -60,12 +65,16 @@ export interface SurveyDetail extends SurveyInfo {
   description: string | null;
   productId: number | null;
   createdAt: string;
-  questions: { id: number; text: string; type: QuestionType; isRequired: boolean; options: { id: number; text: string; preferenceId: number | null }[] }[];
-  /** GET survey-images/{id}?v=…, or null without a cover photo. Changed through uploadSurveyImage/deleteSurveyImage. */
-  imageUrl?: string | null;
-  youtubeVideoId?: string | null;
-  /** Canonical watch link of youtubeVideoId, to refill the form. */
-  videoUrl?: string | null;
+  questions: { id: number; text: string; type: QuestionType; isRequired: boolean; options: { id: number; text: string; preferenceId: number | null }[]; media?: QuestionMediaView[] }[];
+}
+
+/** GET surveys/{id} question media: imageId/url for an Image, youtubeVideoId/videoUrl for a Video. */
+export interface QuestionMediaView {
+  type: "Image" | "Video";
+  imageId: number | null;
+  url: string | null;
+  youtubeVideoId: string | null;
+  videoUrl: string | null;
 }
 
 /** Customer row from POST segments/preview sample or GET customers, enough to show and pick a recipient. */

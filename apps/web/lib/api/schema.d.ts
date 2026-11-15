@@ -2725,6 +2725,7 @@ export interface components {
             type: components["schemas"]["QuestionType"];
             isRequired: boolean;
             options: components["schemas"]["OptionInput"][];
+            media?: null | ({ type: "Image" | "Video" | number; imageId?: null | number; videoUrl?: null | string } | null)[];
         };
         QuestionType: number;
         RecipientsRequest: {
@@ -2779,7 +2780,6 @@ export interface components {
             /** Format: date-time */
             closeAt: null | string;
             questions: components["schemas"]["QuestionInput"][];
-            videoUrl?: null | string;
         };
         UpdateProfileRequest: {
             fullName: string;
