@@ -225,3 +225,64 @@ test("survey draft maps to SurveyUpsertRequest with API enum ordinals and back f
   assert.deepEqual([back.openAt, back.closeAt], ["2026-11-01", "2026-11-15"], "UTC instants map back to the Vietnam calendar day");
   assert.deepEqual(toSurveyUpsertRequest(back), toSurveyUpsertRequest(draft));
 });
+
+test("M8 question media requires saving draft before image upload, validates files and YouTube links, reorders, and previews", async () => {
+  let imageSeq = 40;
+  const rawWrites: { method: string; url: string }[] = [];
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    const method = init?.method ?? "GET";
+    rawWrites.push({ method, url: String(url) });
+    if (String(url).endsWith("/images") && method === "POST") {
+      imageSeq += 1;
+      return json({ id: imageSeq, url: `/api/v1/survey-media/${imageSeq}` }, 201);
+    }
+    return json(detail(95, "Draft"), method === "POST" ? 201 : 200);
+  }) as typeof fetch;
+
+  const user = userEvent.setup({ applyAccept: false });
+  render(<SurveyBuilder preferences={preferences} products={products} />);
+
+  // 1. Before saving draft, image upload button is disabled with guidance
+  assert.equal((screen.getByRole("button", { name: "Thêm ảnh" }) as HTMLButtonElement).disabled, true);
+  assert.ok(screen.getByText((_, node) => node?.tagName === "P" && /Lưu bản nháp trước/.test(node.textContent ?? "")));
+
+  // 2. Add a video item with an invalid link and verify per-field error without API call
+  await user.type(screen.getByLabelText(/Tên khảo sát/), "Khảo sát mẫu mới");
+  await user.type(screen.getByLabelText("Nội dung câu hỏi"), "Bạn thích mẫu nào?");
+  for (const [index, input] of screen.getAllByPlaceholderText(/Lựa chọn/).entries()) await user.type(input, `Mẫu ${index + 1}`);
+  await user.click(screen.getByRole("button", { name: "Thêm video YouTube" }));
+  const videoInput = screen.getByLabelText(/Link video YouTube #1/);
+  await user.type(videoInput, "https://vimeo.com/12345");
+  await user.click(screen.getByRole("button", { name: "Lưu bản nháp" }));
+  assert.match(screen.getByText(/Video cần là link YouTube/).textContent ?? "", /YouTube/);
+  assert.equal(rawWrites.length, 0);
+
+  // 3. Fix video URL and save draft -> enables image upload
+  await user.clear(videoInput);
+  await user.type(videoInput, "https://youtu.be/dQw4w9WgXcQ");
+  await user.click(screen.getByRole("button", { name: "Lưu bản nháp" }));
+  assert.ok(await screen.findByText(/Đã lưu bản nháp/));
+  assert.equal((screen.getByRole("button", { name: "Thêm ảnh" }) as HTMLButtonElement).disabled, false);
+
+  // 4. Invalid file type & oversized file fail client-side without API calls
+  const fileInput = screen.getByLabelText("Thêm ảnh cho câu 1") as HTMLInputElement;
+  await user.upload(fileInput, new File(["txt"], "bad.txt", { type: "text/plain" }));
+  assert.match(screen.getByRole("alert").textContent ?? "", /JPG, PNG hoặc WebP/);
+  await user.upload(fileInput, new File([new Uint8Array(2 * 1024 * 1024 + 10)], "big.png", { type: "image/png" }));
+  assert.match(screen.getByRole("alert").textContent ?? "", /tối đa 2 MB/);
+  assert.equal(rawWrites.filter((w) => w.url.endsWith("/images")).length, 0);
+
+  // 5. Upload 2 valid images sequentially
+  const png1 = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "a.png", { type: "image/png" });
+  const png2 = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "b.png", { type: "image/png" });
+  await user.upload(fileInput, [png1, png2]);
+  assert.ok(await screen.findByText("Ảnh minh họa #2"));
+  assert.equal(rawWrites.filter((w) => w.url === "/api/v1/surveys/95/images").length, 2);
+
+  // 6. Reorder item 2 up and open Preview sheet
+  await user.click(screen.getByRole("button", { name: "Đưa mục 2 của câu 1 lên" }));
+  await user.click(screen.getByRole("button", { name: "Xem trước khảo sát" }));
+  const dialog = await screen.findByRole("dialog");
+  assert.ok(within(dialog).getByTitle(/Video minh họa cho câu hỏi: Bạn thích mẫu nào\?/));
+  assert.equal(within(dialog).getAllByAltText(/Ảnh minh họa/).length, 2);
+});

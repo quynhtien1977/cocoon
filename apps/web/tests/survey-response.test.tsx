@@ -127,3 +127,34 @@ test("an API error does not silently become sample questions; explicit preview m
   await screen.findByRole("radio", { name: /Buổi sáng và buổi tối/ });
   assert.ok(screen.getByText("Giao diện mẫu"));
 });
+
+test("C7 renders question photos and youtube-nocookie iframe in order above options and omits empty media", async () => {
+  const withMedia: CustomerSurveyDetail = {
+    ...survey,
+    questions: [
+      {
+        ...survey.questions[0],
+        media: [
+          { type: "Image", url: "/api/v1/survey-media/101" },
+          { type: "Image", url: "/api/v1/survey-media/102" },
+          { type: "Video", youtubeVideoId: "dQw4w9WgXcQ" },
+        ],
+      },
+      survey.questions[1],
+    ],
+  };
+  const view = render(<SurveyStepper survey={withMedia} storageKey="media-c7" onExit={() => {}} onSubmit={async () => {}} />);
+  const imgs = screen.getAllByAltText(/Ảnh minh họa \d+ cho câu hỏi: Loại da của bạn\?/) as HTMLImageElement[];
+  assert.equal(imgs.length, 2);
+  assert.equal(imgs[0].getAttribute("src"), "/api/v1/survey-media/101");
+  const iframe = screen.getByTitle(/Video minh họa cho câu hỏi: Loại da của bạn\?/) as HTMLIFrameElement;
+  assert.equal(iframe.getAttribute("src"), "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0");
+
+  // Move to question 2 (text-only) -> no media rendered
+  fireEvent.click(screen.getByRole("radio", { name: "Da dầu" }));
+  fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/ }));
+  await screen.findByRole("heading", { name: "Nhu cầu của bạn?" });
+  assert.equal(screen.queryByAltText(/Ảnh minh họa/), null);
+  assert.equal(screen.queryByTitle(/Video minh họa/), null);
+  view.unmount();
+});
