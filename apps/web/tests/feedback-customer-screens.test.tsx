@@ -276,7 +276,7 @@ test("M3 reports invalid fields and posts the customer without preferences", asy
   assert.equal(screen.queryByText(/Nhu cầu ban đầu/), null);
 
   await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }));
-  assert.ok(await screen.findByText(/Đã cập nhật thông tin khách hàng Nguyễn Thu Hà/));
+  assert.ok(await screen.findByText(/Đã tạo hồ sơ khách hàng Nguyễn Thu Hà\. Đã gửi email kích hoạt tới/));
   assert.equal(screen.queryByText(/Tam!1234/), null, "temporary password is never shown");
   assert.equal(screen.queryByText(/Mật khẩu tạm/), null);
   assert.equal(screen.queryByRole("button", { name: "Hiện" }), null);
