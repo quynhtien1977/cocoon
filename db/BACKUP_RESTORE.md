@@ -84,8 +84,8 @@ hoặc trước mỗi buổi demo. Không có cron trong đồ án này; sao lư
 
 ### Ảnh phản hồi (MinIO)
 
-Ảnh khách gửi kèm phản hồi và ảnh bìa khảo sát nằm trong bucket MinIO (`MINIO_BUCKET`, mặc định
-`cocoon-feedback`); database chỉ giữ đường dẫn (`FeedbackPhoto.ObjectKey`, `Survey.ImageObjectKey`), danh sách
+Ảnh khách gửi kèm phản hồi và ảnh câu hỏi khảo sát nằm trong bucket MinIO (`MINIO_BUCKET`, mặc định
+`cocoon-feedback`); database chỉ giữ đường dẫn (`FeedbackPhoto.ObjectKey`, `SurveyImage.ObjectKey`), danh sách
 lấy bằng [db/photo-keys.sh](photo-keys.sh). Mỗi lần sao lưu database chính tạo thêm, cùng tên:
 
 | File | Nội dung |
