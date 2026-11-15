@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { components } from "@/lib/api/schema";
 import type { SegmentFilterValue } from "@/components/data/segment-filter-builder";
 import type { QuestionResult, QuestionType, SurveyDetail, SurveyDraft, SurveyPurpose } from "./types";
+import { youtubeVideoId } from "./youtube";
 
 type SurveyUpsertRequest = components["schemas"]["SurveyUpsertRequest"];
 type RecipientsRequest = components["schemas"]["RecipientsRequest"];
@@ -49,7 +50,9 @@ export const surveyDraftSchema = z.object({
   openAt: z.string(),
   closeAt: z.string(),
   questions: z.array(question).min(1, "Thêm ít nhất một câu hỏi."),
+  videoUrl: z.string().max(500, "Link video tối đa 500 ký tự.").optional(),
 }).superRefine((value, ctx) => {
+  if (value.videoUrl?.trim() && !youtubeVideoId(value.videoUrl)) ctx.addIssue({ code: "custom", path: ["videoUrl"], message: "Video cần là link YouTube (youtube.com/watch?v=…, youtu.be/…, /shorts/…)." });
   if (value.purpose === "NewProduct" && value.productId === null) ctx.addIssue({ code: "custom", path: ["productId"], message: "Chọn sản phẩm sắp ra mắt cho khảo sát sản phẩm mới." });
   if (value.openAt && value.closeAt && value.closeAt <= value.openAt) ctx.addIssue({ code: "custom", path: ["closeAt"], message: "Ngày kết thúc phải sau ngày bắt đầu." });
 });
@@ -80,6 +83,8 @@ export function toSurveyUpsertRequest(draft: SurveyDraft): SurveyUpsertRequest {
       isRequired: item.isRequired,
       options: isChoice(item.type) ? item.options.map((choice) => ({ text: choice.text.trim(), preferenceId: choice.preferenceId })) : [],
     })),
+    // Sent whenever the form carries the field; fromSurveyDetail always fills it, so editing keeps the video.
+    ...(draft.videoUrl !== undefined && { videoUrl: draft.videoUrl.trim() || null }),
   };
 }
 
@@ -99,6 +104,8 @@ export function fromSurveyDetail(survey: SurveyDetail): SurveyDraft {
       key: `q${item.id}`, text: item.text, type: item.type, isRequired: item.isRequired,
       options: item.options.map((choice) => ({ key: `o${choice.id}`, text: choice.text, preferenceId: choice.preferenceId })),
     })),
+    // The API always returns videoUrl (null without a video); keep it as "" so the next save sends it back.
+    ...(survey.videoUrl !== undefined && { videoUrl: survey.videoUrl ?? "" }),
   };
 }
 

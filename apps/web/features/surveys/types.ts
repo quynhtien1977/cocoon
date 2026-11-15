@@ -28,6 +28,8 @@ export interface SurveyDraft {
   openAt: string;
   closeAt: string;
   questions: QuestionDraft[];
+  /** Optional YouTube link shown above the questions; empty or missing means no video. */
+  videoUrl?: string;
 }
 
 export interface PreferenceOption { id: number; name: string }
@@ -59,6 +61,11 @@ export interface SurveyDetail extends SurveyInfo {
   productId: number | null;
   createdAt: string;
   questions: { id: number; text: string; type: QuestionType; isRequired: boolean; options: { id: number; text: string; preferenceId: number | null }[] }[];
+  /** GET survey-images/{id}?v=…, or null without a cover photo. Changed through uploadSurveyImage/deleteSurveyImage. */
+  imageUrl?: string | null;
+  youtubeVideoId?: string | null;
+  /** Canonical watch link of youtubeVideoId, to refill the form. */
+  videoUrl?: string | null;
 }
 
 /** Customer row from POST segments/preview sample or GET customers, enough to show and pick a recipient. */

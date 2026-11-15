@@ -72,7 +72,8 @@ public sealed class CustomerSurveyService(AppDbContext db)
             questions.Select(q => new CustomerSurveyQuestion(q.Id, q.Text, q.Type, q.IsRequired,
                 options[q.Id].Select(o => new CustomerSurveyOption(o.Id, o.Text)).ToList())).ToList(),
             answers.GroupBy(a => a.QuestionId).Select(g => new CustomerSurveyAnswerValue(g.Key,
-                g.Where(a => a.OptionId != null).Select(a => a.OptionId!.Value).ToArray(), g.First().NumericValue, g.First().TextValue)).ToList());
+                g.Where(a => a.OptionId != null).Select(a => a.OptionId!.Value).ToArray(), g.First().NumericValue, g.First().TextValue)).ToList(),
+            SurveyMedia.ImageUrl(survey.Id, survey.ImageObjectKey), survey.YoutubeVideoId);
     }
 
     public async Task<CustomerSurveySubmitted> SubmitAsync(int customerId, int surveyId, IReadOnlyList<CustomerSurveyAnswerValue?>? answers, CancellationToken ct)

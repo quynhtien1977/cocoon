@@ -1034,6 +1034,14 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
+                    b.Property<string>("ImageContentType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ImageObjectKey")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
@@ -1058,6 +1066,10 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<string>("YoutubeVideoId")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedBy");
@@ -1067,6 +1079,8 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.ToTable("Survey", t =>
                         {
                             t.HasCheckConstraint("CK_Survey_Dates", "\"CloseAt\" >= \"OpenAt\"");
+
+                            t.HasCheckConstraint("CK_Survey_Image", "(\"ImageObjectKey\" IS NULL AND \"ImageContentType\" IS NULL) OR (\"ImageObjectKey\" IS NOT NULL AND \"ImageContentType\" IS NOT NULL)");
                         });
                 });
 
