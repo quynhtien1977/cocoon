@@ -9,6 +9,7 @@ export type ManagerProductDetail = ManagerProduct & {
   ingredients: string; benefits: string; usage: string;
 };
 export type ProductInsights = { totalFeedback: number; averageRating: number | null; ratingDistribution: { rating: number; count: number }[] };
+export type ProductFeedbackItem = { id: number; customerName: string; rating: number; content: string; createdAt?: string };
 const validId = (id: number) => Number.isSafeInteger(id) && id > 0 && id <= 2147483647;
 const validIds = (ids: unknown): ids is number[] => Array.isArray(ids) && ids.every(validId) && new Set(ids).size === ids.length;
 const assertId = (id: number) => { if (!validId(id)) throw new Error("Mã sản phẩm không hợp lệ."); };
@@ -64,4 +65,33 @@ export async function loadProductInsights(id: number, signal?: AbortSignal): Pro
   const data = await apiRequest<ProductInsights>(`/products/${id}/insights`, { signal });
   if (!data || !Number.isSafeInteger(data.totalFeedback) || data.totalFeedback < 0 || !(data.averageRating === null || typeof data.averageRating === "number" && data.averageRating >= 1 && data.averageRating <= 5) || !Array.isArray(data.ratingDistribution) || data.ratingDistribution.some(row => !Number.isInteger(row.rating) || row.rating < 1 || row.rating > 5 || !Number.isSafeInteger(row.count) || row.count < 0) || new Set(data.ratingDistribution.map(row => row.rating)).size !== data.ratingDistribution.length || data.ratingDistribution.reduce((sum, row) => sum + row.count, 0) !== data.totalFeedback) throw new Error("Dữ liệu phản hồi chưa hợp lệ.");
   return data;
+}
+
+export async function loadProductFeedback(id: number, signal?: AbortSignal): Promise<ProductFeedbackItem[]> {
+  assertId(id);
+  const items: ProductFeedbackItem[] = [];
+  const seen = new Set<number>();
+  let fetched = 0;
+  for (let page = 1; page <= 100; page++) {
+    const payload = await apiRequest<{ items?: unknown; totalCount?: unknown } | unknown[]>(`/feedback?productId=${id}&page=${page}&pageSize=100`, { signal });
+    const rawRows = Array.isArray(payload) ? payload : payload?.items;
+    if (!Array.isArray(rawRows)) break;
+    fetched += rawRows.length;
+    for (const raw of rawRows) {
+      const row = raw as Record<string, unknown>;
+      if (!row || typeof row.id !== "number" || seen.has(row.id) || typeof row.content !== "string") continue;
+      if (typeof row.productId === "number" && row.productId !== id) continue;
+      seen.add(row.id);
+      items.push({
+        id: row.id,
+        customerName: typeof row.customerName === "string" && row.customerName.trim() ? row.customerName : "Khách hàng",
+        rating: typeof row.rating === "number" ? row.rating : 0,
+        content: row.content,
+        createdAt: typeof row.createdAt === "string" ? row.createdAt : undefined,
+      });
+    }
+    const totalCount = Array.isArray(payload) ? rawRows.length : typeof payload?.totalCount === "number" ? payload.totalCount : rawRows.length;
+    if (rawRows.length === 0 || fetched >= totalCount) break;
+  }
+  return items;
 }

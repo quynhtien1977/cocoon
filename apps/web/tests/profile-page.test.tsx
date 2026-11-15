@@ -24,7 +24,11 @@ test("registered information pre-fills the two forms; undo and independent saves
   render(<ProfilePage />);
   const name = await screen.findByLabelText(/Họ và tên/);
   assert.equal((name as HTMLInputElement).value, "Nguyễn An");
-  assert.equal((screen.getByLabelText("Email đăng ký") as HTMLInputElement).readOnly, true);
+  const email = screen.getByLabelText("Email đăng ký") as HTMLInputElement;
+  assert.equal(email.readOnly, true);
+  assert.match(email.className, /\bread-only:cursor-not-allowed\b/);
+  assert.match(email.className, /\bread-only:bg-muted\b/);
+  assert.match(email.className, /\bread-only:text-muted-foreground\b/);
   await screen.findByRole("button", { name: "Lưu sở thích" });
   fireEvent.change(name, { target: { value: "Tên mới" } });
   fireEvent.click(screen.getByRole("button", { name: "Hoàn tác thông tin" }));
