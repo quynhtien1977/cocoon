@@ -1,17 +1,23 @@
 "use client";
 
-import { useCallback, useId, useState, type ReactNode } from "react";
+import { useCallback, useId, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowRight, ClipboardList, FileDown, MessageSquareWarning, Star, UserPlus, Users } from "lucide-react";
+import { ArrowRight, ChevronDown, ClipboardList, FileDown, FileSpreadsheet, FileText, MessageSquareWarning, Star, UserPlus, Users } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { StatTile } from "@/components/brand/stat-tile";
 import { ChartCard, chartColor } from "@/components/data/chart-card";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApiData } from "@/lib/api/use-api-data";
-import { loadActivityReports, loadCustomerReports, periodRange, reportPeriods, type ReportPeriod } from "../api";
+import { downloadXlsx } from "@/lib/xlsx";
+import { loadActivityReports, loadCustomerReports } from "../api";
+import { filterLabel, presetFilter, toReportRange, type ReportFilter } from "../date-range";
+import { reportFileName, reportSheets } from "../export-excel";
+import { downloadElementPdf } from "../export-pdf";
 import type { ActivityReports, CategoryPurchaseReport, CustomerReports } from "../types";
+import { DateRangePicker } from "./date-range-picker";
 
 const percent = new Intl.NumberFormat("vi-VN", { style: "percent", maximumFractionDigits: 1 });
 const rating = new Intl.NumberFormat("vi-VN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -29,14 +35,14 @@ const card = "min-w-0 rounded-lg border border-border bg-card p-4 sm:p-6";
 const linkClass = "inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-gold-strong hover:underline";
 
 type Tab = "overview" | "customers" | "analytics";
+const tabLabels: Record<Tab, string> = { overview: "Tổng quan", customers: "Báo cáo khách hàng", analytics: "Phân tích" };
 interface LoadState { loading: boolean; error: string | null; retry: () => void }
 
 export function ManagerDashboard() {
-  const id = useId();
   const [tab, setTab] = useState<Tab>("overview");
-  const [period, setPeriod] = useState<ReportPeriod>("all");
+  const [filter, setFilter] = useState<ReportFilter>(() => presetFilter("all"));
   const customers = useApiData(loadCustomerReports, "Chưa tải được báo cáo khách hàng. Kiểm tra kết nối rồi thử lại.");
-  const loadActivity = useCallback((signal: AbortSignal) => loadActivityReports(periodRange(period), signal), [period]);
+  const loadActivity = useCallback((signal: AbortSignal) => loadActivityReports(toReportRange(filter.range), signal), [filter]);
   const activity = useApiData(loadActivity, "Chưa tải được số liệu trong kỳ. Kiểm tra kết nối rồi thử lại.");
   const overview = activity.data?.overview;
   const ratings = activity.data?.ratings;
@@ -46,22 +52,50 @@ export function ManagerDashboard() {
   const chartState = { loading: activity.loading, error: activity.error, onRetry: activity.retry };
   const people = customers.data ?? undefined;
   const customerChartState = { loading: customers.loading, error: customers.error, onRetry: customers.retry };
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const exportExcel = () => {
+    setExportError(null);
+    if (activity.data && customers.data) downloadXlsx(reportFileName(filter), reportSheets(filter, activity.data, customers.data));
+  };
+  const exportPdf = async () => {
+    if (!reportRef.current || pdfBusy) return;
+    setExportError(null);
+    setPdfBusy(true);
+    try {
+      await downloadElementPdf(reportRef.current, reportFileName(filter, "pdf"));
+    } catch {
+      setExportError("Chưa xuất được PDF. Đợi biểu đồ tải xong rồi thử lại.");
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+  const loaded = !!activity.data && !!customers.data;
 
   return (
-    <>
+    <div ref={reportRef} className="group/report">
       <PageHeader title="Tổng quan quản trị CRM & Khách hàng" description="Dữ liệu khách hàng, phản hồi và khảo sát của Cocoon trong kỳ báo cáo." actions={
-        <>
-          <label htmlFor={`${id}-period`} className="sr-only">Kỳ báo cáo</label>
+        <div data-export="skip" className="flex flex-wrap gap-2">
           {/* Retry with the period change so the loading state shows and a previous error clears. */}
-          <select id={`${id}-period`} value={period} onChange={(event) => { setPeriod(event.target.value as ReportPeriod); activity.retry(); }}
-            className="min-h-12 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring print:hidden">
-            {reportPeriods.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-          </select>
-          <Button type="button" className="h-12 px-4 print:hidden" onClick={() => window.print()}><FileDown aria-hidden="true" />Xuất báo cáo PDF</Button>
-        </>
+          <DateRangePicker value={filter} onChange={(next) => { setFilter(next); activity.retry(); }} />
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button type="button" className="h-12 px-4 print:hidden" disabled={pdfBusy} />}>
+              <FileDown aria-hidden="true" />{pdfBusy ? "Đang tạo PDF…" : "Xuất dữ liệu"}<ChevronDown aria-hidden="true" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 p-1.5">
+              <DropdownMenuItem className="min-h-11 gap-2 px-3" disabled={!loaded} onClick={() => void exportPdf()}><FileText aria-hidden="true" />Xuất báo cáo PDF</DropdownMenuItem>
+              <DropdownMenuItem className="min-h-11 gap-2 px-3" disabled={!loaded} onClick={exportExcel}><FileSpreadsheet aria-hidden="true" />Xuất file Excel</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       } />
+      {exportError && <p role="alert" className="mb-4 text-sm text-destructive">{exportError}</p>}
+      <p className="mb-4 hidden text-sm group-data-exporting/report:block print:block">
+        Kỳ báo cáo: <strong>{filterLabel(filter)}</strong> · Mục: <strong>{tabLabels[tab]}</strong> · Xuất lúc {new Date().toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" })}
+      </p>
       <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)} className="gap-6">
-        <TabsList variant="line" className="h-auto w-full justify-start overflow-x-auto border-b border-border print:hidden">
+        <TabsList data-export="skip" variant="line" className="h-auto w-full justify-start overflow-x-auto border-b border-border print:hidden">
           <TabsTrigger value="overview" className={tabTrigger}>Tổng quan</TabsTrigger>
           <TabsTrigger value="customers" className={tabTrigger}>Báo cáo khách hàng</TabsTrigger>
           <TabsTrigger value="analytics" className={tabTrigger}>Phân tích</TabsTrigger>
@@ -108,7 +142,7 @@ export function ManagerDashboard() {
           <RevenueHeatmap data={activity.data?.purchases} state={activity} />
         </TabsContent>
       </Tabs>
-    </>
+    </div>
   );
 }
 
