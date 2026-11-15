@@ -2,19 +2,19 @@ import { apiRequest } from "../../lib/api/client";
 import type { QuestionType, SurveyStatus } from "../surveys/types";
 import type { components } from "../../lib/api/schema";
 
+/** Optional photo (url served by the API) or YouTube video (embed with youtubeEmbedUrl), in display order. */
+export type SurveyQuestionMedia = { type: "Image"; url: string } | { type: "Video"; youtubeVideoId: string };
 export type SurveyQuestion = {
   id: number; text: string; description: string; section: string;
   type: QuestionType; isRequired: boolean;
   options: { id: number; text: string; description: string }[];
+  /** Empty for a text-only question. */
+  media?: SurveyQuestionMedia[];
 };
 export type CustomerSurveyDetail = {
   id: number; title: string; description: string; status: SurveyStatus;
   openAt: string | null; closeAt: string | null; completedAt: string | null;
   questions: SurveyQuestion[];
-  /** Cover photo served by the API (survey-images), or null. parseCustomerSurvey always sets both. */
-  imageUrl?: string | null;
-  /** YouTube id to embed with youtubeEmbedUrl, or null. */
-  youtubeVideoId?: string | null;
 };
 export type SurveyAnswer = { optionIds: number[]; numericValue: number | null; textValue: string | null };
 export type SurveyAnswers = Record<number, SurveyAnswer>;
@@ -44,12 +44,16 @@ export function parseCustomerSurvey(payload: unknown): CustomerSurveyDetail {
       ids.add(option.id); return { id: option.id, text: option.text, description: optionalText(option.description) };
     });
     if ((type === "SingleChoice" || type === "MultiChoice") && (options.length < 2 || options.length > 30)) throw new Error("Câu chọn lựa chưa có đủ lựa chọn.");
-    return { id: q.id, text: q.text, description: optionalText(q.description), section: optionalText(q.section), type: type as QuestionType, isRequired: q.isRequired, options };
+    // Media is optional decoration: anything unexpected is dropped instead of failing the survey.
+    const media = (Array.isArray(q.media) ? q.media : []).flatMap((raw): SurveyQuestionMedia[] => {
+      const item = record(raw);
+      if (item.type === "Image" && typeof item.url === "string" && /^\/api\/v1\/survey-media\/\d+$/.test(item.url)) return [{ type: "Image", url: item.url }];
+      if (item.type === "Video" && typeof item.youtubeVideoId === "string" && /^[A-Za-z0-9_-]{11}$/.test(item.youtubeVideoId)) return [{ type: "Video", youtubeVideoId: item.youtubeVideoId }];
+      return [];
+    });
+    return { id: q.id, text: q.text, description: optionalText(q.description), section: optionalText(q.section), type: type as QuestionType, isRequired: q.isRequired, options, media };
   });
-  // Media is optional decoration: anything unexpected is dropped instead of failing the survey.
-  const imageUrl = typeof data.imageUrl === "string" && /^\/api\/v1\/survey-images\/\d+(\?v=[A-Za-z0-9]+)?$/.test(data.imageUrl) ? data.imageUrl : null;
-  const youtubeVideoId = typeof data.youtubeVideoId === "string" && /^[A-Za-z0-9_-]{11}$/.test(data.youtubeVideoId) ? data.youtubeVideoId : null;
-  return { id: data.id, title: data.title, description: optionalText(data.description), status: status as SurveyStatus, openAt: data.openAt, closeAt: data.closeAt, completedAt: data.completedAt, questions, imageUrl, youtubeVideoId };
+  return { id: data.id, title: data.title, description: optionalText(data.description), status: status as SurveyStatus, openAt: data.openAt, closeAt: data.closeAt, completedAt: data.completedAt, questions };
 }
 
 export async function loadCustomerSurvey(value: string, signal?: AbortSignal): Promise<CustomerSurveyDetail> {
