@@ -7,6 +7,8 @@ using Cocoon.Application.Recommendations;
 using Cocoon.Infrastructure.Recommendations;
 using Cocoon.Application.Storage;
 using Cocoon.Infrastructure.Storage;
+using Cocoon.Application.Email;
+using Cocoon.Infrastructure.Email;
 using Cocoon.Application.Accounts;
 using Cocoon.Infrastructure.Accounts;
 using Cocoon.Application.Reports;
@@ -55,6 +57,14 @@ builder.Services.AddExceptionHandler<AccountExceptionHandler>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAccountPasswords, AccountPasswords>();
 builder.Services.AddScoped<AccountManagementService>();
+builder.Services.AddOptions<SmtpOptions>().BindConfiguration("Smtp");
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddOptions<PasswordResetOptions>().Configure<IConfiguration>((options, config) =>
+{
+    options.Secret = config["Jwt:Key"] ?? "";
+    options.WebOrigin = config["Web:Origin"] ?? "http://localhost:3000";
+});
+builder.Services.AddScoped<PasswordResetService>();
 builder.Services.AddOptions<RecommendationWeights>().BindConfiguration("Recommendation:Weights");
 builder.Services.AddScoped<CustomerFactsService>();
 builder.Services.AddScoped<RecommendationService>();

@@ -133,10 +133,14 @@ public sealed partial class AccountManagementService(AppDbContext db, IAccountPa
         return true;
     }, ct);
 
+    /// <summary>One rule for every password a person picks: change, reset and invitation codes.</summary>
+    public static string? PasswordProblem(string password) =>
+        password.Length is < 8 or > 128 || !password.Any(char.IsLetter) || !password.Any(char.IsDigit)
+            ? "Mật khẩu cần 8–128 ký tự, có chữ và số." : null;
+
     public Task<bool> ChangePasswordAsync(int actor, string current, string next, CancellationToken ct) => Write(async () =>
     {
-        if (next.Length is < 8 or > 128 || !next.Any(char.IsLetter) || !next.Any(char.IsDigit))
-            Invalid("newPassword", "Mật khẩu cần 8–128 ký tự, có chữ và số.");
+        if (PasswordProblem(next) is { } problem) Invalid("newPassword", problem);
         var account = await Find(actor, ct);
         if (!passwords.Verify(account, current)) throw new AccountOperationException(400, "INVALID_CURRENT_PASSWORD", "Mật khẩu hiện tại không đúng.", "currentPassword");
         if (current == next) Invalid("newPassword", "Mật khẩu mới phải khác mật khẩu hiện tại.");
