@@ -2,12 +2,12 @@
 
 import { useId, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { CircleCheck, Save } from "lucide-react";
+import { CircleAlert, CircleCheck, Mail, Save } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
-import { createCustomer, type CustomerCreated } from "../api";
+import { createCustomer, resendInvitation, type CustomerCreated } from "../api";
 import { genderOptions, toCreateCustomerRequest, validateCustomerDraft } from "../schemas";
 import type { CustomerDraft } from "../types";
 
@@ -24,7 +24,9 @@ export function CustomerCreateForm() {
   const [created, setCreated] = useState<(CustomerCreated & { fullName: string }) | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const update = (patch: Partial<CustomerDraft>) => { setDraft((current) => ({ ...current, ...patch })); setCreated(null); setSubmitError(null); };
+  const [resending, setResending] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
+  const update = (patch: Partial<CustomerDraft>) => { setDraft((current) => ({ ...current, ...patch })); setCreated(null); setSubmitError(null); setResendError(null); };
   
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -32,6 +34,7 @@ export function CustomerCreateForm() {
     const found = validateCustomerDraft(draft, today());
     setErrors(found);
     setSubmitError(null);
+    setResendError(null);
     if (Object.keys(found).length) { setCreated(null); return; }
     setSubmitting(true);
     try {
@@ -44,6 +47,21 @@ export function CustomerCreateForm() {
       else setSubmitError(message);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleResendInvitation() {
+    if (!created || resending) return;
+    setResending(true);
+    setResendError(null);
+    try {
+      const result = await resendInvitation(created.id);
+      setCreated((current) => current && current.id === created.id ? { ...current, invitationSent: result.sent } : current);
+      if (!result.sent) setResendError("Chưa gửi được email kích hoạt. Vui lòng thử lại sau.");
+    } catch (error) {
+      setResendError(error instanceof ApiError ? error.message : "Mất kết nối. Kiểm tra mạng rồi thử lại.");
+    } finally {
+      setResending(false);
     }
   }
 
@@ -98,7 +116,25 @@ export function CustomerCreateForm() {
           <div aria-live="polite" className="min-w-0 text-sm">
             {Object.keys(errors).length > 0 ? <p className="text-destructive">Chưa lưu được: còn {Object.keys(errors).length} lỗi. Sửa các ô được đánh dấu rồi lưu lại.</p>
               : submitError ? <p role="alert" className="text-destructive">Chưa lưu được: {submitError}</p>
-              : created ? <p className="flex items-start gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>Đã cập nhật thông tin khách hàng {created.fullName}. <Link href={`/manager/customers/${created.id}`} className="font-semibold underline">Xem hồ sơ</Link></span></p> : null}
+              : created ? created.invitationSent ? (
+                <p className="flex items-start gap-2 text-status-sage-fg">
+                  <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                  <span>Đã tạo hồ sơ khách hàng {created.fullName}. Đã gửi email kích hoạt tới {created.email}. <Link href={`/manager/customers/${created.id}`} className="font-semibold underline">Xem hồ sơ</Link></span>
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <p role="alert" className="flex items-start gap-2 text-amber-800">
+                    <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                    <span>Đã tạo hồ sơ khách hàng {created.fullName}, nhưng chưa gửi được email kích hoạt tới {created.email}. <Link href={`/manager/customers/${created.id}`} className="font-semibold underline">Xem hồ sơ</Link></span>
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button type="button" variant="outline" size="sm" onClick={handleResendInvitation} disabled={resending} className="min-h-9">
+                      <Mail aria-hidden="true" />{resending ? "Đang gửi…" : "Gửi lại email"}
+                    </Button>
+                    {resendError && <span role="alert" className="text-destructive">{resendError}</span>}
+                  </div>
+                </div>
+              ) : null}
           </div>
           <div className="flex w-full gap-3 sm:ml-auto sm:w-auto">
             <Link href="/manager/customers" className={cn(buttonVariants({ variant: "outline" }), "h-12 flex-1 px-6 sm:flex-none")}>Hủy</Link>
