@@ -75,6 +75,10 @@ public sealed class CustomersController(AccountManagementService accounts, Recom
     }
 }
 
-public sealed record CreateCustomerRequest([Required, EmailAddress, StringLength(256)] string Email,
-    [Required, StringLength(200, MinimumLength = 2)] string FullName, [StringLength(32)] string? Phone = null, DateOnly? DateOfBirth = null,
-    string? Gender = null, [StringLength(1000)] string? Address = null, bool ConsentPersonalData = false, int[]? PreferenceIds = null);
+// Simple contact rules, mirrored by customerDraftSchema in apps/web/features/customers/schemas.ts.
+public sealed record CreateCustomerRequest(
+    [Required, StringLength(256), RegularExpression(@"^[^\s@]+@[^\s@]+\.[^\s@]{2,}$", ErrorMessage = "Email không hợp lệ.")] string Email,
+    [Required, StringLength(200, MinimumLength = 2)] string FullName,
+    [Required, RegularExpression(@"^0\d{9}$", ErrorMessage = "Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.")] string? Phone = null,
+    DateOnly? DateOfBirth = null, string? Gender = null,
+    [Required, StringLength(500, MinimumLength = 5, ErrorMessage = "Địa chỉ cần 5–500 ký tự.")] string? Address = null, bool ConsentPersonalData = false, int[]? PreferenceIds = null);

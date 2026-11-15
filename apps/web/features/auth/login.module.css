@@ -45,8 +45,6 @@
 .socialButtons svg { width: 34px; height: 34px; color: #111; }
 .google { font: 700 40px/1 Arial, sans-serif; color: #e83b40; }
 .facebook { display: block; width: 31px; height: 31px; border-radius: 50%; background: #548de5; color: #fff; font: 700 34px/1.15 Arial, sans-serif; overflow: hidden; }
-.unavailable { margin-top: 16px; color: #908a7d; font-size: 12px; line-height: 1.5; }
-.adminLink { display: inline-flex; align-items: center; gap: 8px; margin-top: 28px; color: #8a734a; font-size: 13px; }
 .bottomBrand { display: flex; justify-content: center; width: fit-content; margin: 8px auto 32px; opacity: .8; }
 .bottomBrand img { width: 128px; height: 48px; object-fit: contain; }
 .panel button:focus-visible, .panel input[type="checkbox"]:focus-visible { outline: 2px solid #a18149; outline-offset: 4px; }
@@ -116,8 +114,6 @@
 .modalPage .socialButtons { gap: 12px; }
 .modalPage .google { font-size: 34px; }
 .modalPage .facebook { width: 28px; height: 28px; font-size: 30px; }
-.modalPage .unavailable { margin-top: 4px; }
-.modalPage .adminLink { margin-top: 12px; font-size: 12px; }
 @media (max-width: 480px) {
   .modalPage .panel { padding: 16px 20px; }
   .modalPage .panel h1 { font-size: 24px; }
@@ -131,6 +127,5 @@
   .modalPage .field { margin-bottom: 12px; }
   .modalPage .submit { margin-top: 12px; }
   .modalPage .social { margin-top: 12px; }
-  .modalPage .adminLink { margin-top: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .submit, .inputLine, .backdrop, .popup { transition: none; } }

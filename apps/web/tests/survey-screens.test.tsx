@@ -85,7 +85,7 @@ test("M8 creates a draft with POST, then saves again with PUT to the same survey
   await user.type(screen.getByLabelText(/Tên khảo sát/), "Khảo sát mới");
   await user.type(screen.getByLabelText("Nội dung câu hỏi"), "Bạn thích gì?");
   for (const [index, input] of screen.getAllByPlaceholderText(/Lựa chọn/).entries()) await user.type(input, `Ý ${index + 1}`);
-  await user.selectOptions(screen.getByLabelText("Gắn sở thích cho lựa chọn 1"), "6");
+  await user.selectOptions(screen.getByLabelText("Gắn nhu cầu cho lựa chọn 1"), "6");
   await user.click(screen.getByRole("button", { name: "Lưu bản nháp" }));
   assert.ok(await screen.findByText(/Đã lưu bản nháp/));
   assert.equal(screen.getByRole("link", { name: "Gửi khảo sát" }).getAttribute("href"), "/manager/surveys/90/send");
@@ -115,7 +115,7 @@ test("M8 edits questions of an existing draft and sends them with PUT", async ()
   assert.equal(requests.length, 0);
   await user.click(within(screen.getAllByRole("group")[1]).getByRole("button", { name: "Xóa lựa chọn 5" }));
   for (const [index, input] of within(screen.getAllByRole("group")[2]).getAllByPlaceholderText(/Lựa chọn/).entries()) await user.type(input, `Mức ${index + 1}`);
-  await user.selectOptions(within(screen.getAllByRole("group")[2]).getByLabelText("Gắn sở thích cho lựa chọn 1"), "6");
+  await user.selectOptions(within(screen.getAllByRole("group")[2]).getByLabelText("Gắn nhu cầu cho lựa chọn 1"), "6");
   await user.click(screen.getByRole("button", { name: "Lưu bản nháp" }));
   assert.ok(await screen.findByText(/Đã lưu bản nháp/));
   const [[method, url, body]] = writes() as [string, string, ReturnType<typeof toSurveyUpsertRequest>][];

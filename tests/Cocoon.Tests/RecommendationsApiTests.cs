@@ -47,7 +47,7 @@ public sealed class RecommendationsApiTests : IClassFixture<DatabaseFixture>, ID
         Assert.Equal("/uploads/gel.jpg", item.GetProperty("product").GetProperty("imageUrl").GetString());
         Assert.Equal("/uploads/gel-back.jpg", item.GetProperty("product").GetProperty("hoverImageUrl").GetString());
         Assert.Equal(0.35m, item.GetProperty("score").GetDecimal());
-        Assert.Equal($"Hợp với sở thích {shop.PreferenceName}", item.GetProperty("reasons")[0].GetProperty("label").GetString());
+        Assert.Equal($"Hợp với nhu cầu {shop.PreferenceName}", item.GetProperty("reasons")[0].GetProperty("label").GetString());
         var home = await Json(await Send(HttpMethod.Get, "/api/v1/me/home", customer));
         Assert.Equal(1, home.GetProperty("recommendations").GetArrayLength());
 

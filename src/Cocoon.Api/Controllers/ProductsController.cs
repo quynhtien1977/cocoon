@@ -102,11 +102,11 @@ public sealed class ProductsController(AppDbContext db) : ApiStubController
     public async Task<IActionResult> SetPreferences(int id, PreferenceIdsRequest request, CancellationToken cancellationToken)
     {
         if (request.PreferenceIds is null)
-            return Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Thiếu danh sách sở thích.");
+            return Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Thiếu danh sách nhu cầu.");
         var ids = request.PreferenceIds.Distinct().ToArray();
         if (!await db.Set<Product>().AnyAsync(p => p.Id == id, cancellationToken)) return NotFound();
         if (!await AuthController.PreferencesExist(db, ids, cancellationToken))
-            return Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Có sở thích không còn tồn tại. Hãy tải lại trang.");
+            return Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Có nhu cầu không còn tồn tại. Hãy tải lại trang.");
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         await db.Set<ProductPreference>().Where(x => x.ProductId == id && !ids.Contains(x.PreferenceId)).ExecuteDeleteAsync(cancellationToken);
         var kept = await db.Set<ProductPreference>().Where(x => x.ProductId == id).Select(x => x.PreferenceId).ToListAsync(cancellationToken);

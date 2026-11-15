@@ -47,16 +47,16 @@ export async function loadManagerProduct(value: string, preview = false, signal?
 
 export async function loadPreferenceCatalog(signal?: AbortSignal): Promise<ProductPreference[]> {
   const rows = await apiRequest<unknown>("/preferences", { signal });
-  if (!Array.isArray(rows)) throw new Error("Chưa tải được danh mục sở thích. Kiểm tra kết nối rồi thử lại.");
+  if (!Array.isArray(rows)) throw new Error("Chưa tải được danh mục nhu cầu. Kiểm tra kết nối rồi thử lại.");
   const ids = new Set<number>();
   return rows.map(row => {
-    if (!row || !validId(row.id) || ids.has(row.id) || typeof row.name !== "string") throw new Error("Danh mục sở thích chưa hợp lệ.");
+    if (!row || !validId(row.id) || ids.has(row.id) || typeof row.name !== "string") throw new Error("Danh mục nhu cầu chưa hợp lệ.");
     ids.add(row.id); return { id: row.id, name: row.name };
   });
 }
 export async function saveProductPreferences(id: number, preferenceIds: number[], signal?: AbortSignal): Promise<void> {
   assertId(id);
-  if (!validIds(preferenceIds)) throw new Error("Sở thích không hợp lệ.");
+  if (!validIds(preferenceIds)) throw new Error("Nhu cầu không hợp lệ.");
   await apiRequest<void>(`/products/${id}/preferences`, { method: "PUT", json: { preferenceIds }, signal });
 }
 export async function loadProductInsights(id: number, signal?: AbortSignal): Promise<ProductInsights> {

@@ -53,7 +53,7 @@ export function CustomerSummary({ feedback }: { feedback: FeedbackDetail }) {
         <Row label="Email">{feedback.customerEmail || "—"}</Row>
         <Row label="Số đơn">{feedback.customerOrderCount}</Row>
       </dl>
-      <ul aria-label="Sở thích" className="mt-3 flex flex-wrap gap-1">{feedback.customerPreferences.map((item) => <li key={item} className="rounded-sm bg-status-beige-bg px-2 py-0.5 font-label text-xs text-status-beige-fg">{item}</li>)}</ul>
+      <ul aria-label="Nhu cầu" className="mt-3 flex flex-wrap gap-1">{feedback.customerPreferences.map((item) => <li key={item} className="rounded-sm bg-status-beige-bg px-2 py-0.5 font-label text-xs text-status-beige-fg">{item}</li>)}</ul>
     </section>
   );
 }
