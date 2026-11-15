@@ -9,6 +9,7 @@ using Cocoon.Api.Controllers;
 using Cocoon.Application.Email;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
+using Cocoon.Infrastructure.Accounts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -55,10 +56,13 @@ public sealed class PasswordResetApiTests : IClassFixture<DatabaseFixture>, IDis
         Assert.Contains("24 giờ", mail.Text);
         var code = Code(mail);
 
-        await AssertProblem(await Post("/api/v1/auth/password/reset", new { email, code, newPassword = "ngan" }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
-        Assert.Equal(HttpStatusCode.NoContent, (await Post("/api/v1/auth/password/reset", new { email = email.ToUpperInvariant(), code, newPassword = NewPassword })).StatusCode);
+        var ticket = await Ticket(email.ToUpperInvariant(), code);
+        // A weak password is refused without spending the ticket.
+        await AssertProblem(await Reset(ticket, "ngan"), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+        Assert.Equal(HttpStatusCode.NoContent, (await Reset(ticket, NewPassword)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await Post("/api/v1/auth/login", new { email, password = NewPassword })).StatusCode);
-        await AssertProblem(await Post("/api/v1/auth/password/reset", new { email, code, newPassword = "MatKhauKhac9" }), HttpStatusCode.BadRequest, "INVALID_CODE");
+        await AssertProblem(await Reset(ticket, "MatKhauKhac9"), HttpStatusCode.BadRequest, "RESET_EXPIRED");
+        await AssertProblem(await Verify(email, code), HttpStatusCode.BadRequest, "INVALID_CODE");
 
         await using var db = _database.CreateContext();
         var account = await db.Set<Account>().SingleAsync(a => a.Email == email);
@@ -83,8 +87,8 @@ public sealed class PasswordResetApiTests : IClassFixture<DatabaseFixture>, IDis
         Assert.Equal(HttpStatusCode.Accepted, (await Send(HttpMethod.Post, $"/api/v1/customers/{id}/invitation", manager)).StatusCode);
         var second = Code(_outbox.To(email).Last());
         if (first != second)
-            await AssertProblem(await Post("/api/v1/auth/password/reset", new { email, code = first, newPassword = NewPassword }), HttpStatusCode.BadRequest, "INVALID_CODE");
-        Assert.Equal(HttpStatusCode.NoContent, (await Post("/api/v1/auth/password/reset", new { email, code = second, newPassword = NewPassword })).StatusCode);
+            await AssertProblem(await Verify(email, first), HttpStatusCode.BadRequest, "INVALID_CODE");
+        Assert.Equal(HttpStatusCode.NoContent, (await Reset(await Ticket(email, second), NewPassword)).StatusCode);
     }
 
     [Fact]
@@ -107,8 +111,42 @@ public sealed class PasswordResetApiTests : IClassFixture<DatabaseFixture>, IDis
 
         var wrong = code == "000000" ? "000001" : "000000";
         for (var i = 0; i < 5; i++)
-            await AssertProblem(await Post("/api/v1/auth/password/reset", new { email, code = wrong, newPassword = NewPassword }), HttpStatusCode.BadRequest, "INVALID_CODE");
-        await AssertProblem(await Post("/api/v1/auth/password/reset", new { email, code, newPassword = NewPassword }), HttpStatusCode.BadRequest, "INVALID_CODE");
+            await AssertProblem(await Verify(email, wrong), HttpStatusCode.BadRequest, "INVALID_CODE");
+        await AssertProblem(await Verify(email, code), HttpStatusCode.BadRequest, "INVALID_CODE");
+    }
+
+    [Fact]
+    public async Task A_verified_code_gives_a_ticket_that_works_once_and_dies_with_its_code()
+    {
+        var email = await Customer();
+        await Post("/api/v1/auth/password/forgot", new { email });
+        var first = await Ticket(email, Code(Assert.Single(_outbox.To(email))));
+
+        // Changing any part of the ticket breaks its signature.
+        var forged = first[..^1] + (first[^1] == '0' ? '1' : '0');
+        await AssertProblem(await Reset(forged, NewPassword), HttpStatusCode.BadRequest, "RESET_EXPIRED");
+        await AssertProblem(await Reset("1.2.3", NewPassword), HttpStatusCode.BadRequest, "RESET_EXPIRED");
+
+        // A newer code cancels the older code and its ticket.
+        await Backdate(email);
+        await Post("/api/v1/auth/password/forgot", new { email });
+        var code = Code(_outbox.To(email).Last());
+        await AssertProblem(await Reset(first, NewPassword), HttpStatusCode.BadRequest, "RESET_EXPIRED");
+
+        // A ticket older than its lifetime is refused even though the code is still live.
+        using (var shortLived = _factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+                   services.PostConfigure<PasswordResetOptions>(o => o.TicketLifetime = TimeSpan.Zero))))
+        {
+            using var client = shortLived.CreateClient();
+            var stale = (await Json(await client.PostAsJsonAsync("/api/v1/auth/password/verify", new { email, code }))).GetProperty("ticket").GetString()!;
+            await AssertProblem(await client.PostAsJsonAsync("/api/v1/auth/password/reset", new { ticket = stale, newPassword = NewPassword }),
+                HttpStatusCode.BadRequest, "RESET_EXPIRED");
+        }
+
+        var ticket = await Ticket(email, code);
+        Assert.Equal(HttpStatusCode.NoContent, (await Reset(ticket, NewPassword)).StatusCode);
+        await AssertProblem(await Reset(ticket, "MatKhauKhac9"), HttpStatusCode.BadRequest, "RESET_EXPIRED");
+        Assert.Equal(HttpStatusCode.OK, (await Post("/api/v1/auth/login", new { email, password = NewPassword })).StatusCode);
     }
 
     [Fact]
@@ -128,12 +166,12 @@ public sealed class PasswordResetApiTests : IClassFixture<DatabaseFixture>, IDis
         await using (var db = _database.CreateContext())
             await db.Set<PasswordResetToken>().Where(t => t.AccountId == accountId)
                 .ExecuteUpdateAsync(s => s.SetProperty(t => t.ExpiresAt, DateTime.UtcNow.AddSeconds(-1)));
-        await AssertProblem(await Post("/api/v1/auth/password/reset", new { email, code, newPassword = NewPassword }), HttpStatusCode.BadRequest, "INVALID_CODE");
+        await AssertProblem(await Verify(email, code), HttpStatusCode.BadRequest, "INVALID_CODE");
 
         await Backdate(email);
         await Post("/api/v1/auth/password/forgot", new { email });
         code = Code(_outbox.To(email).Last());
-        Assert.Equal(HttpStatusCode.NoContent, (await Post("/api/v1/auth/password/reset", new { email, code, newPassword = NewPassword })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Reset(await Ticket(email, code), NewPassword)).StatusCode);
         await using (var db = _database.CreateContext())
         {
             var account = await db.Set<Account>().SingleAsync(a => a.Email == email);
@@ -177,6 +215,19 @@ public sealed class PasswordResetApiTests : IClassFixture<DatabaseFixture>, IDis
     };
 
     private static string Code(EmailMessage mail) => Regex.Match(mail.Text, @"Mã xác nhận: (\d{6})").Groups[1].Value;
+
+    private Task<HttpResponseMessage> Verify(string email, string code) => Post("/api/v1/auth/password/verify", new { email, code });
+
+    private Task<HttpResponseMessage> Reset(string ticket, string newPassword) => Post("/api/v1/auth/password/reset", new { ticket, newPassword });
+
+    /// <summary>Step 2 with the right code: the ticket that lets step 3 set the password.</summary>
+    private async Task<string> Ticket(string email, string code)
+    {
+        var body = await Json(await Verify(email, code));
+        var expiresAt = body.GetProperty("expiresAt").GetDateTime();
+        Assert.InRange(expiresAt, DateTime.UtcNow, DateTime.UtcNow.AddMinutes(11));
+        return body.GetProperty("ticket").GetString()!;
+    }
 
     /// <summary>Moves the account's codes an hour back, past the one-minute and hourly limits.</summary>
     private async Task Backdate(string email)

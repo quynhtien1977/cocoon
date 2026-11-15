@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, X } from "lucide-react";
-import { ApiError } from "@/lib/api/client";
 import { loginErrorMessage, signIn, validateLogin, type LoginPortal } from "./login-service";
-import { requestPasswordCode, validateResetDraft } from "./password-reset-service";
+import { PasswordRecovery } from "./password-recovery";
 import styles from "./login.module.css";
 
 const subscribeEmpty = () => () => {};
@@ -32,11 +31,9 @@ async function offerToSavePassword(email: string, password: string) {
 export function LoginPage({ portal = "shared", modal = false, onClose }: { portal?: LoginPortal; modal?: boolean; onClose?: () => void }) {
   const isAdmin = portal === "admin";
   const Content = modal ? "div" : "main";
-  const forgotId = useId();
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const pendingRef = useRef(false);
-  const forgotPendingRef = useRef(false);
   const activeRef = useRef(true);
   const resetSuccess = useSyncExternalStore(subscribeEmpty, readResetParam, () => false);
   const [mode, setMode] = useState<"login" | "forgot">("login");
@@ -45,10 +42,6 @@ export function LoginPage({ portal = "shared", modal = false, onClose }: { porta
   const [errors, setErrors] = useState({ email: "", password: "" });
   const [message, setMessage] = useState("");
   const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotError, setForgotError] = useState("");
-  const [forgotMessage, setForgotMessage] = useState("");
-  const [forgotNotice, setForgotNotice] = useState("");
-  const [forgotPending, setForgotPending] = useState(false);
 
   useEffect(() => {
     activeRef.current = true;
@@ -107,58 +100,12 @@ export function LoginPage({ portal = "shared", modal = false, onClose }: { porta
     if (isAdmin || pending) return;
     const currentEmail = String((formRef.current?.elements.namedItem("email") as HTMLInputElement | null)?.value ?? "").trim();
     setForgotEmail(currentEmail);
-    setForgotError("");
-    setForgotMessage("");
-    setForgotNotice("");
     setErrors({ email: "", password: "" });
     setMessage("");
     setMode("forgot");
   };
 
-  const closeForgot = () => {
-    setMode("login");
-    setForgotError("");
-    setForgotMessage("");
-    setForgotNotice("");
-  };
-
-  const sendResetCode = async (emailInput: string, focusTarget?: HTMLInputElement | null) => {
-    if (forgotPendingRef.current) return;
-    const email = emailInput.trim();
-    const emailError = validateResetDraft({ email, code: "000000", newPassword: "Password1", confirmPassword: "Password1" }).email ?? "";
-    setForgotError(emailError);
-    setForgotMessage("");
-    if (emailError) {
-      focusTarget?.focus();
-      return;
-    }
-    forgotPendingRef.current = true;
-    setForgotPending(true);
-    try {
-      const apiMessage = await requestPasswordCode(email);
-      if (activeRef.current) {
-        setForgotEmail(email);
-        setForgotNotice(apiMessage);
-      }
-    } catch (error) {
-      if (activeRef.current) {
-        setForgotMessage(error instanceof ApiError ? error.message : "Mất kết nối. Kiểm tra mạng rồi thử lại.");
-      }
-    } finally {
-      forgotPendingRef.current = false;
-      if (activeRef.current) setForgotPending(false);
-    }
-  };
-
-  const submitForgot = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const input = event.currentTarget.elements.namedItem("email") as HTMLInputElement | null;
-    await sendResetCode(forgotEmail, input);
-  };
-
   const isForgot = !isAdmin && mode === "forgot";
-  const trimmedForgotEmail = forgotEmail.trim();
-  const resetHref = trimmedForgotEmail ? `/reset-password?email=${encodeURIComponent(trimmedForgotEmail)}` : "/reset-password";
 
   return (
     <div className={isAdmin ? styles.adminPage : modal ? styles.modalPage : styles.publicPage} data-portal={isAdmin ? "admin" : "public"}>
@@ -172,28 +119,7 @@ export function LoginPage({ portal = "shared", modal = false, onClose }: { porta
         <div className={styles.panel}>
           <div className={styles.topline}><span>{isAdmin ? "ADMIN CONSOLE" : isForgot ? "Quên mật khẩu" : "Đăng nhập"}</span>{modal ? <button type="button" onClick={onClose} aria-label="Đóng đăng nhập" className={styles.close}><X size={24} strokeWidth={1.5} /></button> : <Link href="/" aria-label="Đóng đăng nhập, về trang chủ" className={styles.close}><X size={24} strokeWidth={1.5} /></Link>}</div>
           {isAdmin && <span className={styles.formMark}><ShieldCheck size={28} /></span>}
-          {isForgot ? <>
-            <h1>Quên mật khẩu</h1>
-            <p className={styles.intro}>Nhập email tài khoản để nhận mã xác nhận 6 số qua email.</p>
-            <form onSubmit={submitForgot} noValidate aria-label="Quên mật khẩu" aria-busy={forgotPending}>
-              <div className={styles.field} data-invalid={!!forgotError}>
-                <label htmlFor={`${forgotId}-email`} className={styles.visuallyHidden}>Email</label>
-                <div className={styles.inputLine}><Mail size={19} strokeWidth={1.5} aria-hidden="true" /><input id={`${forgotId}-email`} name="email" type="email" value={forgotEmail} onChange={(event) => { setForgotEmail(event.target.value); setForgotError(""); setForgotMessage(""); setForgotNotice(""); }} autoComplete="email" autoCapitalize="none" spellCheck={false} placeholder="Nhập địa chỉ email" required readOnly={forgotPending} aria-invalid={!!forgotError} aria-describedby={forgotError ? `${forgotId}-email-error` : undefined} /></div>
-                {forgotError && <p id={`${forgotId}-email-error`} className={styles.fieldError}>{forgotError}</p>}
-              </div>
-              {forgotNotice && <p role="status" className={styles.formSuccess}>{forgotNotice}</p>}
-              {forgotMessage && <p role="alert" className={styles.formError}>{forgotMessage}</p>}
-              {!forgotNotice ? (
-                <button className={styles.submit} type="submit" disabled={forgotPending}>{forgotPending ? "ĐANG GỬI MÃ…" : "GỬI MÃ XÁC NHẬN"}</button>
-              ) : (
-                <Link href={resetHref} className={styles.resetLink}>Nhập mã đặt lại mật khẩu <ArrowRight size={18} aria-hidden="true" /></Link>
-              )}
-            </form>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <button type="button" onClick={closeForgot} className={styles.backButton}><ArrowLeft size={16} aria-hidden="true" /> Quay lại đăng nhập</button>
-              {forgotNotice && <button type="button" onClick={() => void sendResetCode(forgotEmail)} disabled={forgotPending} className={styles.backButton}>{forgotPending ? "Đang gửi lại…" : "Gửi lại mã"}</button>}
-            </div>
-          </> : <>
+          {isForgot ? <PasswordRecovery initialEmail={forgotEmail} onBack={() => setMode("login")} /> : <>
             <h1>{isAdmin ? "Đăng nhập quản trị" : "Cocoon chào bạn trở lại."}</h1>
             {isAdmin ? <p className={styles.intro}>Sử dụng tài khoản quản trị viên được cấp để tiếp tục.</p> : <p className={styles.intro}>Bạn chưa có tài khoản? <Link href="/register" replace scroll={false}>Tạo tài khoản</Link></p>}
             {!isAdmin && resetSuccess && !message && <p role="status" className={styles.formSuccess}>Đã đặt mật khẩu, hãy đăng nhập.</p>}

@@ -103,7 +103,10 @@ public sealed class FoundationFactory : WebApplicationFactory<Program>
             ["Jwt:Key"] = TestKey,
             ["Jwt:Issuer"] = "cocoon-tests",
             ["Jwt:Audience"] = "cocoon-tests",
-            ["Web:Origin"] = "http://localhost:3000"
+            ["Web:Origin"] = "http://localhost:3000",
+            // Tests run in the api container, which may carry a real SMTP host (Gmail) from .env: never send mail from a test.
+            // Tests that need mail replace IEmailSender with an in-memory outbox.
+            ["Smtp:Host"] = ""
         }));
         builder.ConfigureServices(services =>
         {
