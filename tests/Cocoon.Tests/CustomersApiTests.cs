@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -27,9 +28,10 @@ public sealed class CustomersApiTests : AccountApiTestBase
         var body = await Json(created);
         var id = body.GetProperty("id").GetInt32();
         Assert.Equal("Customer", body.GetProperty("role").GetString());
-        var temporary = body.GetProperty("temporaryPassword").GetString()!;
-        using var login = await Send(HttpMethod.Post, "/api/v1/auth/login", body: new { email, password = temporary });
-        Assert.True((await Json(login)).GetProperty("mustChangePassword").GetBoolean());
+        // The generated password stays on the server; the customer sets their own from an emailed code (PasswordResetApiTests).
+        Assert.False(body.TryGetProperty("temporaryPassword", out _));
+        Assert.True(body.GetProperty("mustChangePassword").GetBoolean());
+        Assert.Equal(JsonValueKind.False, body.GetProperty("invitationSent").ValueKind);  // no SMTP host in tests
         await Problem(await Send(HttpMethod.Get, "/api/v1/me/orders", "Customer", id), HttpStatusCode.Forbidden, "PASSWORD_CHANGE_REQUIRED");
         Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Put, $"/api/v1/customers/{id}", "Manager", manager, new {
             fullName = "Đặng Thị Ánh", phone = "0911234567", dateOfBirth = birth.AddDays(1), gender = "Nữ", address = "Quận 5",

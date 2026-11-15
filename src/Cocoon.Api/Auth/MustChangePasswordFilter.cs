@@ -11,7 +11,9 @@ public sealed class MustChangePasswordFilter : IAuthorizationFilter
         if (http.Items[nameof(Domain.Entities.Account.MustChangePassword)] is not true) return;
         var allowed = http.Request.Method == "GET" && http.Request.Path == "/api/v1/me"
             || http.Request.Method == "POST" && (http.Request.Path == "/api/v1/auth/change-password"
-                || http.Request.Path == "/api/v1/auth/logout" || http.Request.Path == "/api/v1/auth/refresh");
+                || http.Request.Path == "/api/v1/auth/logout" || http.Request.Path == "/api/v1/auth/refresh"
+                // Setting the first password with the emailed code is how an invited account leaves this state.
+                || http.Request.Path.StartsWithSegments("/api/v1/auth/password"));
         if (allowed) return;
         var problem = new ProblemDetails { Status = 403, Detail = "Bạn cần đổi mật khẩu tạm trước khi sử dụng chức năng này." };
         Configuration.ApiProblems.Customize(problem, 403);

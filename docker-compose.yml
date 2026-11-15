@@ -42,6 +42,14 @@ services:
       Storage__AccessKey: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
       Storage__SecretKey: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
       Storage__Bucket: ${MINIO_BUCKET:-cocoon-feedback}
+      # Email one-time codes. Defaults send to the local Mailpit inbox (http://localhost:8025); set SMTP_* in .env to send
+      # through a real Gmail account instead (db/EMAIL.md).
+      Smtp__Host: ${SMTP_HOST:-mailpit}
+      Smtp__Port: ${SMTP_PORT:-1025}
+      Smtp__EnableSsl: ${SMTP_ENABLE_SSL:-false}
+      Smtp__Username: ${SMTP_USERNAME:-}
+      Smtp__Password: ${SMTP_PASSWORD:-}
+      Smtp__FromAddress: ${SMTP_FROM:-no-reply@cocoon.local}
     ports:
       - "127.0.0.1:${API_HTTP_PORT:-5080}:8080"
     volumes:
@@ -52,7 +60,19 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+      mailpit:
+        condition: service_started
     command: ["sh", "scripts/start-api.sh"]
+
+  # Local inbox for email codes: catches everything the API sends while SMTP_HOST is unset. Web UI on 8025 only.
+  mailpit:
+    image: axllent/mailpit:v1.32.0
+    restart: unless-stopped
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
 
   # Feedback photos. Official minio/minio images are no longer pullable; this is Chainguard's MinIO build,
   # pinned by digest. It has no shell or curl, so there is no healthcheck; the API creates the bucket on first upload.
