@@ -140,7 +140,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         survey.Property(x => x.Purpose).HasConversion<string>().HasMaxLength(32);
         survey.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
         survey.Property(x => x.Description).HasMaxLength(4000);
-        survey.ToTable(table => table.HasCheckConstraint("CK_Survey_Dates", "\"CloseAt\" >= \"OpenAt\""));
+        survey.Property(x => x.ImageObjectKey).HasMaxLength(300);
+        survey.Property(x => x.ImageContentType).HasMaxLength(32);
+        survey.Property(x => x.YoutubeVideoId).HasMaxLength(11);
+        survey.ToTable(table =>
+        {
+            table.HasCheckConstraint("CK_Survey_Dates", "\"CloseAt\" >= \"OpenAt\"");
+            table.HasCheckConstraint("CK_Survey_Image",
+                "(\"ImageObjectKey\" IS NULL AND \"ImageContentType\" IS NULL) OR (\"ImageObjectKey\" IS NOT NULL AND \"ImageContentType\" IS NOT NULL)");
+        });
         survey.HasQueryFilter(x => !x.IsDeleted);
 
         var question = model.Entity<SurveyQuestion>();

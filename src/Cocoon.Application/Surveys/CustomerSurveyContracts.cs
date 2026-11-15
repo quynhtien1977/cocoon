@@ -6,8 +6,10 @@ public sealed record CustomerSurveyQuery(int Page = 1, int PageSize = 20, string
 public sealed record CustomerSurveyPage(IReadOnlyList<CustomerSurveyListItem> Items, int TotalCount, int Page, int PageSize);
 public sealed record CustomerSurveyListItem(int Id, string Title, string Description, string Category, SurveyStatus Status,
     DateTime? OpenAt, DateTime? CloseAt, DateTime? CompletedAt, int QuestionCount, int EstimatedMinutes, string? GoogleFormUrl = null);
+/// <summary>ImageUrl is the cover photo (GET survey-images/{id}); YoutubeVideoId is embedded from youtube-nocookie.com.</summary>
 public sealed record CustomerSurveyDetails(int Id, string Title, string Description, SurveyStatus Status, DateTime? OpenAt,
-    DateTime? CloseAt, DateTime? CompletedAt, IReadOnlyList<CustomerSurveyQuestion> Questions, IReadOnlyList<CustomerSurveyAnswerValue> Answers);
+    DateTime? CloseAt, DateTime? CompletedAt, IReadOnlyList<CustomerSurveyQuestion> Questions, IReadOnlyList<CustomerSurveyAnswerValue> Answers,
+    string? ImageUrl = null, string? YoutubeVideoId = null);
 public sealed record CustomerSurveyQuestion(int Id, string Text, QuestionType Type, bool IsRequired, IReadOnlyList<CustomerSurveyOption> Options);
 public sealed record CustomerSurveyOption(int Id, string Text);
 public sealed record CustomerSurveyAnswerValue(int QuestionId, int[]? OptionIds, decimal? NumericValue, string? TextValue);

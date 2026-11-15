@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
 using Cocoon.Application.Recommendations;
+using Cocoon.Application.Surveys;
+using Cocoon.Domain;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
 using Cocoon.Infrastructure.Persistence;
@@ -222,6 +224,8 @@ public sealed class SurveysController(AppDbContext db, CustomerFactsService fact
             : request.Description?.Length > 1000 ? "Mô tả tối đa 1000 ký tự."
             : !Enum.IsDefined(request.Purpose) ? "Mục đích khảo sát không hợp lệ."
             : request is { OpenAt: { } open, CloseAt: { } close } && close <= open ? "Ngày kết thúc phải sau ngày bắt đầu."
+            : !string.IsNullOrWhiteSpace(request.VideoUrl) && YoutubeLink.VideoId(request.VideoUrl) is null
+                ? "Video cần là link YouTube (youtube.com/watch?v=…, youtu.be/…, /shorts/…)."
             : questions.Length is < 1 or > 50 ? "Khảo sát cần từ 1 đến 50 câu hỏi."
             : questions.Select(QuestionProblem).FirstOrDefault(p => p is not null)
             ?? (request.Purpose == SurveyPurpose.NewProduct && (request.ProductId is not { } productId
@@ -250,6 +254,7 @@ public sealed class SurveysController(AppDbContext db, CustomerFactsService fact
             (request.Title.Trim(), string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(), request.Purpose);
         survey.ProductId = request.Purpose == SurveyPurpose.NewProduct ? request.ProductId : null;
         (survey.OpenAt, survey.CloseAt) = (request.OpenAt?.ToUniversalTime(), request.CloseAt?.ToUniversalTime());
+        survey.YoutubeVideoId = YoutubeLink.VideoId(request.VideoUrl);
     }
 
     private async Task AddQuestions(int surveyId, QuestionInput[] questions, CancellationToken cancellationToken)
@@ -278,7 +283,9 @@ public sealed class SurveysController(AppDbContext db, CustomerFactsService fact
             await db.Set<SurveyRecipient>().CountAsync(r => r.SurveyId == survey.Id, cancellationToken),
             await db.Set<SurveyResponse>().CountAsync(r => r.SurveyId == survey.Id, cancellationToken),
             questions.Select(q => new QuestionView(q.Id, q.Text, q.Type, q.IsRequired,
-                options[q.Id].Select(o => new OptionView(o.Id, o.Text, o.PreferenceId)).ToList())).ToList());
+                options[q.Id].Select(o => new OptionView(o.Id, o.Text, o.PreferenceId)).ToList())).ToList(),
+            SurveyMedia.ImageUrl(survey.Id, survey.ImageObjectKey), survey.YoutubeVideoId,
+            survey.YoutubeVideoId is { } video ? YoutubeLink.WatchUrl(video) : null);
     }
 
     private ObjectResult NotDraft() =>
@@ -288,8 +295,9 @@ public sealed class SurveysController(AppDbContext db, CustomerFactsService fact
         Fail(StatusCodes.Status409Conflict, "SURVEY_NOT_OPEN", "Khảo sát không ở trạng thái đang mở.");
 }
 
+/// <summary>VideoUrl is an optional YouTube link; empty removes the video. The cover photo has its own endpoint.</summary>
 public sealed record SurveyUpsertRequest(string Title, string? Description, SurveyPurpose Purpose, int? ProductId,
-    DateTime? OpenAt, DateTime? CloseAt, QuestionInput[] Questions);
+    DateTime? OpenAt, DateTime? CloseAt, QuestionInput[] Questions, string? VideoUrl = null);
 public sealed record QuestionInput(string Text, QuestionType Type, bool IsRequired, OptionInput[] Options);
 public sealed record OptionInput(string Text, int? PreferenceId);
 public sealed record RecipientsRequest(SegmentFilter? Segment, int[]? CustomerIds);
@@ -297,8 +305,10 @@ public sealed record RecipientsRequest(SegmentFilter? Segment, int[]? CustomerId
 /// <summary>Row of M7. Matches apps/web/features/surveys/types.ts SurveyListItem.</summary>
 public sealed record SurveyListItem(int Id, string Title, SurveyPurpose Purpose, SurveyStatus Status, DateTime? OpenAt, DateTime? CloseAt,
     int QuestionCount, int RecipientCount, int ResponseCount);
+/// <summary>ImageUrl reads the cover photo (null without one); VideoUrl is the canonical watch link of YoutubeVideoId.</summary>
 public sealed record SurveyDetail(int Id, string Title, string? Description, SurveyPurpose Purpose, int? ProductId, SurveyStatus Status,
-    DateTime? OpenAt, DateTime? CloseAt, DateTime CreatedAt, int RecipientCount, int ResponseCount, IReadOnlyList<QuestionView> Questions);
+    DateTime? OpenAt, DateTime? CloseAt, DateTime CreatedAt, int RecipientCount, int ResponseCount, IReadOnlyList<QuestionView> Questions,
+    string? ImageUrl, string? YoutubeVideoId, string? VideoUrl);
 public sealed record QuestionView(int Id, string Text, QuestionType Type, bool IsRequired, IReadOnlyList<OptionView> Options);
 public sealed record OptionView(int Id, string Text, int? PreferenceId);
 public sealed record RecipientsAdded(int Added, int Total);

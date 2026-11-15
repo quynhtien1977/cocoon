@@ -11,6 +11,10 @@ export type CustomerSurveyDetail = {
   id: number; title: string; description: string; status: SurveyStatus;
   openAt: string | null; closeAt: string | null; completedAt: string | null;
   questions: SurveyQuestion[];
+  /** Cover photo served by the API (survey-images), or null. parseCustomerSurvey always sets both. */
+  imageUrl?: string | null;
+  /** YouTube id to embed with youtubeEmbedUrl, or null. */
+  youtubeVideoId?: string | null;
 };
 export type SurveyAnswer = { optionIds: number[]; numericValue: number | null; textValue: string | null };
 export type SurveyAnswers = Record<number, SurveyAnswer>;
@@ -42,7 +46,10 @@ export function parseCustomerSurvey(payload: unknown): CustomerSurveyDetail {
     if ((type === "SingleChoice" || type === "MultiChoice") && (options.length < 2 || options.length > 30)) throw new Error("Câu chọn lựa chưa có đủ lựa chọn.");
     return { id: q.id, text: q.text, description: optionalText(q.description), section: optionalText(q.section), type: type as QuestionType, isRequired: q.isRequired, options };
   });
-  return { id: data.id, title: data.title, description: optionalText(data.description), status: status as SurveyStatus, openAt: data.openAt, closeAt: data.closeAt, completedAt: data.completedAt, questions };
+  // Media is optional decoration: anything unexpected is dropped instead of failing the survey.
+  const imageUrl = typeof data.imageUrl === "string" && /^\/api\/v1\/survey-images\/\d+(\?v=[A-Za-z0-9]+)?$/.test(data.imageUrl) ? data.imageUrl : null;
+  const youtubeVideoId = typeof data.youtubeVideoId === "string" && /^[A-Za-z0-9_-]{11}$/.test(data.youtubeVideoId) ? data.youtubeVideoId : null;
+  return { id: data.id, title: data.title, description: optionalText(data.description), status: status as SurveyStatus, openAt: data.openAt, closeAt: data.closeAt, completedAt: data.completedAt, questions, imageUrl, youtubeVideoId };
 }
 
 export async function loadCustomerSurvey(value: string, signal?: AbortSignal): Promise<CustomerSurveyDetail> {

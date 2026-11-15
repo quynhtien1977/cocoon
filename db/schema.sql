@@ -641,3 +641,17 @@ VALUES ('20261114145721_AddProductVariantPhotos', '10.0.12');
 
 COMMIT;
 
+START TRANSACTION;
+ALTER TABLE "Survey" ADD "ImageContentType" character varying(32);
+
+ALTER TABLE "Survey" ADD "ImageObjectKey" character varying(300);
+
+ALTER TABLE "Survey" ADD "YoutubeVideoId" character varying(11);
+
+ALTER TABLE "Survey" ADD CONSTRAINT "CK_Survey_Image" CHECK (("ImageObjectKey" IS NULL AND "ImageContentType" IS NULL) OR ("ImageObjectKey" IS NOT NULL AND "ImageContentType" IS NOT NULL));
+
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20261115072509_AddSurveyMedia', '10.0.12');
+
+COMMIT;
+

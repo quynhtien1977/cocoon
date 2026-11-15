@@ -2779,6 +2779,7 @@ export interface components {
             /** Format: date-time */
             closeAt: null | string;
             questions: components["schemas"]["QuestionInput"][];
+            videoUrl?: null | string;
         };
         UpdateProfileRequest: {
             fullName: string;
