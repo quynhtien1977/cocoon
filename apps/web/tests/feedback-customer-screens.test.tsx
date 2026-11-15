@@ -251,7 +251,7 @@ test("reply validation and request trim the content", () => {
 
 test("M3 reports invalid fields and posts the customer without preferences", async () => {
   const user = userEvent.setup();
-  stubFetch(() => json({ id: 120, email: "ha@example.com", role: "Customer", temporaryPassword: "Tam!1234", mustChangePassword: true }, 201));
+  stubFetch(() => json({ id: 120, email: "ha@example.com", role: "Customer", mustChangePassword: true, invitationSent: true }, 201));
   render(<CustomerCreateForm />);
   await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }));
   assert.ok(screen.getByText("Nhập họ và tên."));
