@@ -10,6 +10,20 @@ import styles from "./login.module.css";
 
 const rememberedEmailKey = (portal: LoginPortal) => `cocoon:login-email:${portal}`;
 
+/** Credential Management API (Chromium); not in TypeScript's DOM lib. */
+type PasswordCredentialConstructor = new (data: { id: string; password: string; name?: string }) => Credential;
+
+/**
+ * Hands the credentials to the browser's password manager, which encrypts them and autofills both
+ * fields next time. The app itself never stores the password. Chromium shows its "Save password?"
+ * prompt from this call; Firefox and Safari detect the submitted password form on their own.
+ */
+async function offerToSavePassword(email: string, password: string) {
+  const PasswordCredential = (window as unknown as { PasswordCredential?: PasswordCredentialConstructor }).PasswordCredential;
+  if (!PasswordCredential || !navigator.credentials?.store) return;
+  await navigator.credentials.store(new PasswordCredential({ id: email, password, name: email }));
+}
+
 export function LoginPage({ portal = "shared", modal = false, onClose }: { portal?: LoginPortal; modal?: boolean; onClose?: () => void }) {
   const isAdmin = portal === "admin";
   const Content = modal ? "div" : "main";
@@ -58,6 +72,8 @@ export function LoginPage({ portal = "shared", modal = false, onClose }: { porta
         if (data.get("remember")) localStorage.setItem(rememberedEmailKey(portal), email);
         else localStorage.removeItem(rememberedEmailKey(portal));
       } catch { /* Remembering email is optional and must not block sign-in. */ }
+      // Not awaited: the browser prompt must never hold up the redirect.
+      if (data.get("remember")) void offerToSavePassword(email, password).catch(() => { /* Saving is optional. */ });
       router.replace(destination);
       router.refresh();
     } catch (error) {
@@ -93,21 +109,19 @@ export function LoginPage({ portal = "shared", modal = false, onClose }: { porta
               <div className={styles.inputLine}><LockKeyhole size={19} strokeWidth={1.5} aria-hidden="true" /><input id="login-password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="Nhập mật khẩu" required readOnly={pending} aria-invalid={!!errors.password} aria-describedby={errors.password ? "password-error" : undefined} onInput={() => { setErrors((value) => ({ ...value, password: "" })); setMessage(""); }} /><button type="button" className={styles.visibility} aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={22} strokeWidth={1.5} /> : <Eye size={22} strokeWidth={1.5} />}</button></div>
               {errors.password && <p id="password-error" className={styles.fieldError}>{errors.password}</p>}
             </div>
-            {!isAdmin && <div className={styles.forgot}><button type="button" disabled aria-describedby="unavailable-help">Quên mật khẩu?</button></div>}
+            {!isAdmin && <div className={styles.forgot}><button type="button" disabled>Quên mật khẩu?</button></div>}
             <label className={styles.remember}><input type="checkbox" name="remember" disabled={pending} onChange={(event) => {
               if (!event.target.checked) { try { localStorage.removeItem(rememberedEmailKey(portal)); } catch {} }
-            }} /><span>Ghi nhớ email cho lần sau</span></label>
+            }} /><span>Ghi nhớ đăng nhập</span></label>
             {message && <p role="alert" className={styles.formError}>{message}</p>}
             <button className={styles.submit} type="submit" disabled={pending}>{pending ? "ĐANG ĐĂNG NHẬP…" : isAdmin ? "ĐĂNG NHẬP QUẢN TRỊ" : "ĐĂNG NHẬP"}{isAdmin && <ArrowRight size={19} />}</button>
           </form>
           {!isAdmin && <>
             <div className={styles.social}><span>Hoặc đăng nhập bằng</span><div className={styles.socialButtons}>
-              <button type="button" disabled aria-label="Đăng nhập bằng Apple — chưa khả dụng" aria-describedby="unavailable-help"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.1 12.3c0-2 1.6-3 1.7-3.1-1-1.5-2.5-1.7-3-1.7-1.3-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.8-.8-1.5 0-2.9.9-3.7 2.2-1.6 2.7-.4 6.7 1.1 8.9.7 1.1 1.6 2.2 2.8 2.1 1.1 0 1.5-.7 2.9-.7s1.8.7 3 .7 2-1 2.7-2.1c.9-1.3 1.3-2.5 1.3-2.6-.1 0-2.7-1-2.7-3.7ZM14.8 6c.6-.8 1.1-1.9 1-3-.9.1-2 .6-2.7 1.4-.6.7-1.2 1.8-1.1 2.9 1 .1 2.1-.5 2.8-1.3Z" /></svg></button>
-              <button type="button" disabled aria-label="Đăng nhập bằng Google — chưa khả dụng" aria-describedby="unavailable-help"><span className={styles.google}>G</span></button>
-              <button type="button" disabled aria-label="Đăng nhập bằng Facebook — chưa khả dụng" aria-describedby="unavailable-help"><span className={styles.facebook}>f</span></button>
+              <button type="button" disabled aria-label="Đăng nhập bằng Apple — chưa khả dụng"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.1 12.3c0-2 1.6-3 1.7-3.1-1-1.5-2.5-1.7-3-1.7-1.3-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.8-.8-1.5 0-2.9.9-3.7 2.2-1.6 2.7-.4 6.7 1.1 8.9.7 1.1 1.6 2.2 2.8 2.1 1.1 0 1.5-.7 2.9-.7s1.8.7 3 .7 2-1 2.7-2.1c.9-1.3 1.3-2.5 1.3-2.6-.1 0-2.7-1-2.7-3.7ZM14.8 6c.6-.8 1.1-1.9 1-3-.9.1-2 .6-2.7 1.4-.6.7-1.2 1.8-1.1 2.9 1 .1 2.1-.5 2.8-1.3Z" /></svg></button>
+              <button type="button" disabled aria-label="Đăng nhập bằng Google — chưa khả dụng"><span className={styles.google}>G</span></button>
+              <button type="button" disabled aria-label="Đăng nhập bằng Facebook — chưa khả dụng"><span className={styles.facebook}>f</span></button>
             </div></div>
-            <p id="unavailable-help" className={styles.unavailable}>Đăng nhập mạng xã hội và khôi phục mật khẩu sẽ sớm có mặt.</p>
-            <Link href="/admin/login" className={styles.adminLink}>Đăng nhập dành cho quản trị viên <ArrowRight size={15} /></Link>
           </>}
           {isAdmin && <p className={styles.adminNote}><LockKeyhole size={14} /> Chỉ dành cho tài khoản quản trị viên.</p>}
         </div>

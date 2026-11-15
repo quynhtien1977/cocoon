@@ -273,7 +273,7 @@ test("M3 reports invalid fields and posts the customer without preferences", asy
   await user.clear(screen.getByLabelText(/Địa chỉ/));
   await user.type(screen.getByLabelText(/Địa chỉ/), "12 Lê Lợi, Quận 1");
 
-  assert.equal(screen.queryByText(/Sở thích và nhu cầu ban đầu/), null);
+  assert.equal(screen.queryByText(/Nhu cầu ban đầu/), null);
 
   await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }));
   assert.ok(await screen.findByText(/Đã cập nhật thông tin khách hàng Nguyễn Thu Hà/));
@@ -317,13 +317,13 @@ test("M4 loads the profile and tabs from the API, locks and soft-deletes", async
   const user = userEvent.setup();
   stubFetch((url, init) => init?.method && init.method !== "GET" ? new Response(null, { status: 204 })
     : url.includes("/orders") ? page(orders) : url.includes("/feedback") || url.includes("/surveys") ? page([])
-    : url.endsWith("/recommendations") ? json([{ id: 3, productName: "Gel bí đao", score: 0.67, status: "Clicked", reasons: [{ code: "PREFERENCE", label: "Hợp với sở thích Da dầu" }, { code: "CATEGORY", label: "Bạn hay chọn Làm sạch" }] }])
+    : url.endsWith("/recommendations") ? json([{ id: 3, productName: "Gel bí đao", score: 0.67, status: "Clicked", reasons: [{ code: "PREFERENCE", label: "Hợp với nhu cầu Da dầu" }, { code: "CATEGORY", label: "Bạn hay chọn Làm sạch" }] }])
     : json(profile));
   render(<CustomerDetailPage id={9} />);
   await user.click(await screen.findByRole("tab", { name: "Đơn hàng (2)" }));
   assert.equal(within(screen.getByRole("table")).getAllByRole("row").length - 1, 2);
   await user.click(screen.getByRole("tab", { name: "Gợi ý" }));
-  assert.ok(screen.getByText("Hợp với sở thích Da dầu · Bạn hay chọn Làm sạch"));
+  assert.ok(screen.getByText("Hợp với nhu cầu Da dầu · Bạn hay chọn Làm sạch"));
   assert.ok(screen.getByText("Đã bấm xem"));
   await user.click(screen.getByRole("button", { name: "Khóa tài khoản" }));
   await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Khóa tài khoản" }));

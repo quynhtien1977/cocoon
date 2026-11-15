@@ -151,7 +151,8 @@ try {
   assert.ok(Math.abs(await evaluate(() => scrollY) - initialScroll) < 5, 'Closing restores background position');
   await evaluate(() => history.forward());
   await until(() => evaluate(() => location.pathname === '/login' && !!document.querySelector('[role="dialog"]')));
-  await evaluate(() => document.querySelector('[role="dialog"] a[href="/admin/login"]').click());
+  assert.equal(await evaluate(() => document.querySelector('[role="dialog"] a[href="/admin/login"]')), null, 'Login dialog has no admin link');
+  await navigate('/admin/login');
   await until(() => evaluate(() => location.pathname === '/admin/login' && !!document.querySelector('form')));
   assert.equal(await evaluate(() => document.querySelector('[role="dialog"]')), null, 'Admin entry has its own page');
   assert.equal(await evaluate(() => document.querySelector('h1').textContent), 'Đăng nhập quản trị');
@@ -231,7 +232,7 @@ try {
   await until(() => evaluate(() => !!document.querySelector('#register-password')));
   assert.equal(await evaluate(() => document.querySelector('#register-password').value), 'Password1');
   assert.equal(await evaluate(() => document.querySelector('#register-fullName').value), 'Nguyễn An');
-  await evaluate(() => document.querySelector('[aria-label="Sang bước 2: Sở thích"]').click());
+  await evaluate(() => document.querySelector('[aria-label="Sang bước 2: Nhu cầu"]').click());
   await until(() => evaluate(() => !!document.querySelector('[aria-labelledby="preference-skin"]')));
   assert.equal(await evaluate(() => document.querySelector('[aria-labelledby="preference-skin"]').textContent.includes('1')), true, 'Preferences survive back/next');
   await evaluate(() => document.querySelector('[role="dialog"] form').requestSubmit());
@@ -501,11 +502,11 @@ try {
   await until(() => evaluate(() => [...document.querySelectorAll('[role="listbox"]')].every(e => e.getBoundingClientRect().height === 0)));
   const beforeCreate = registrations.length;
   await evaluate(() => document.querySelector('[role="dialog"] form').requestSubmit());
-  await until(() => evaluate(() => document.querySelector('[role="alert"]')?.textContent.includes('chưa lưu được sở thích')));
+  await until(() => evaluate(() => document.querySelector('[role="alert"]')?.textContent.includes('chưa lưu được nhu cầu')));
   assert.equal(registrations.length, beforeCreate + 1);
   assert.equal(await evaluate(() => !!document.querySelector('[role="dialog"] form')), false, 'Partial success cannot recreate the account');
   catalogStatus = 200;
-  await evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent === 'Lưu lại sở thích').click());
+  await evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent === 'Lưu lại nhu cầu').click());
   await until(() => evaluate(() => location.pathname === '/account/profile'));
   assert.equal(registrations.length, beforeCreate + 1, 'Preference retry never repeats registration');
   assert.deepEqual(preferenceWrites.at(-1), { preferenceIds: [42] });

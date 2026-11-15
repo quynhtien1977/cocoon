@@ -231,7 +231,7 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
             var preferMatch = (index / 80 + index % 80) % 10 < 7;
             var candidates = active.Where(p => tags.Any(t => t.ProductId == p.Id && preferenceIds.Contains(t.PreferenceId)) == preferMatch).ToList();
             if (candidates.Count < 2)
-                throw new InvalidOperationException("Danh mục hoặc sở thích demo đã thay đổi; không đủ sản phẩm cho quy luật mua. Seed đã dừng và không ghi đè dữ liệu.");
+                throw new InvalidOperationException("Danh mục hoặc nhu cầu demo đã thay đổi; không đủ sản phẩm cho quy luật mua. Seed đã dừng và không ghi đè dữ liệu.");
             var chosen = candidates.Take(2).Select(p => variants.Where(v => v.ProductId == p.Id)
                 .OrderBy(v => v.Sku, StringComparer.Ordinal).First()).ToArray();
             var quantity = 1 + index % 3;

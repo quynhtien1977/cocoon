@@ -4,9 +4,11 @@ import { afterEach, beforeEach, test } from "node:test";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DateRangePicker } from "../features/reports/components/date-range-picker";
+import { AnalyticsReport } from "../features/reports/components/analytics-report";
+import { CustomerReport } from "../features/reports/components/customer-report";
 import { ManagerDashboard } from "../features/reports/components/manager-dashboard";
 import { filterLabel, presetFilter, presetRange, toReportRange, type ReportFilter } from "../features/reports/date-range";
-import { reportFileName, reportSheets } from "../features/reports/export-excel";
+import { customerSheets, reportFileName, reportSheets } from "../features/reports/export-excel";
 import { pageCuts } from "../features/reports/export-pdf";
 import type { ActivityReports, CustomerReports } from "../features/reports/types";
 import { xlsxBytes, xlsxFiles } from "../lib/xlsx";
@@ -43,14 +45,14 @@ const serve = (url: string) => {
 };
 const rowOf = (table: HTMLElement, header: string) => within(table).getByRole("rowheader", { name: header }).closest("tr")!;
 
-test("M1 customer report shows the API age ratio and preference shares", async () => {
+test("M18 customer report shows the API age ratio and preference shares, with no period filter", async () => {
   stubFetch(serve);
-  render(<ManagerDashboard />);
-  await userEvent.setup().click(screen.getByRole("tab", { name: "Báo cáo khách hàng" }));
+  render(<CustomerReport />);
+  assert.equal(screen.queryByRole("button", { name: /Kỳ báo cáo/ }), null, "customer snapshots take no period");
   const age = await screen.findByRole("table", { name: "Tỷ lệ khách hàng theo nhóm tuổi" });
   assert.match(rowOf(age, "25–34").textContent!, /19,5\s?%/);
   assert.match(rowOf(age, "Chưa cung cấp").textContent!, /9,8\s?%/);
-  const preferences = screen.getByRole("table", { name: "Sở thích phổ biến" });
+  const preferences = screen.getByRole("table", { name: "Nhu cầu phổ biến" });
   assert.match(rowOf(preferences, "Thuần chay").textContent!, /50,7\s?%/);
   assert.ok(screen.getByText(/Tỷ lệ trên 73 khách đồng ý chia sẻ dữ liệu/));
   assert.match(rowOf(screen.getByRole("table", { name: "Cơ cấu giới tính" }), "Nữ").textContent!, /28/);
@@ -81,17 +83,16 @@ test("M1 overview renders API tiles and previews and sends the chosen period", a
   assert.ok(params.get("from") && params.get("to") && params.get("from")! < params.get("to")!);
   assert.ok(!requests.some((url) => url.startsWith("/api/v1/reports/customers/") && url.includes("?")), "customer snapshots take no period");
 
-  await user.click(screen.getByRole("button", { name: "Xem phân tích" }));
-  assert.equal(screen.getByRole("tab", { name: "Phân tích" }).getAttribute("aria-selected"), "true");
-  assert.ok(screen.getByRole("table", { name: /Doanh số theo danh mục và nhóm tuổi/ }));
+  assert.equal(screen.queryByRole("tab"), null, "M1 has no report tabs; they moved to the Báo cáo pages");
+  assert.equal(screen.getByRole("link", { name: "Xem phân tích" }).getAttribute("href"), "/manager/reports/analytics");
+  assert.equal(screen.getByRole("link", { name: "Xem báo cáo" }).getAttribute("href"), "/manager/reports/customers");
 });
 
 test("M1 shows an error with retry when the reports API fails", async () => {
   let fail = true;
   stubFetch((url) => fail && url.includes("/customers/") ? json({ title: "Server error" }, 500) : serve(url));
   const user = userEvent.setup();
-  render(<ManagerDashboard />);
-  await user.click(screen.getByRole("tab", { name: "Báo cáo khách hàng" }));
+  render(<CustomerReport />);
   const alerts = await screen.findAllByRole("alert");
   assert.ok(alerts.some((alert) => /Chưa tải được báo cáo khách hàng/.test(alert.textContent!)));
   fail = false;
@@ -195,4 +196,24 @@ test("PDF pages end at block edges and fall back to a hard cut", () => {
   assert.deepEqual(pageCuts(500, 1000, [100, 400]), [500]);
   assert.deepEqual(pageCuts(2500, 1000, [300, 900, 1200, 1800, 2400]), [900, 1800, 2500]);
   assert.deepEqual(pageCuts(2500, 1000, [100, 2400]), [1000, 2000, 2500], "no block edge in the lower half of a page");
+});
+
+test("M17 analytics renders category ratings and the revenue table for the chosen period", async () => {
+  stubFetch(serve);
+  const user = userEvent.setup();
+  render(<AnalyticsReport />);
+  const revenue = await screen.findByRole("table", { name: /Doanh số theo danh mục và nhóm tuổi/ });
+  assert.match(rowOf(revenue, "Làm sạch").textContent!, /21,1/);
+  assert.match(rowOf(screen.getByRole("table", { name: "Điểm trung bình theo danh mục" }), "Làm sạch").textContent!, /2,7/);
+  await user.click(screen.getByRole("button", { name: /Kỳ báo cáo/ }));
+  await user.click(within(screen.getByRole("dialog", { name: "Chọn kỳ báo cáo" })).getByRole("button", { name: "Năm nay" }));
+  await user.click(screen.getByRole("button", { name: "Áp dụng" }));
+  await screen.findByRole("table", { name: /Doanh số theo danh mục và nhóm tuổi/ });
+  assert.ok(requests.some((url) => url.startsWith("/api/v1/reports/purchases/categories?from=")));
+});
+
+test("M18 Excel adds a title sheet and is named by date", () => {
+  const sheets = customerSheets({ age: reports["/api/v1/reports/customers/age"], gender: reports["/api/v1/reports/customers/gender"], preferences: reports["/api/v1/reports/customers/preferences"] } as CustomerReports, { now: new Date(2026, 10, 15) });
+  assert.deepEqual(sheets.map((sheet) => sheet.name), ["Thông tin", "Khách theo tuổi", "Khách theo giới tính", "Nhu cầu"]);
+  assert.equal(reportFileName(null, "xlsx", "khach-hang", new Date(2026, 10, 15)), "bao-cao-cocoon-khach-hang_2026-11-15.xlsx");
 });

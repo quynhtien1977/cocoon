@@ -228,7 +228,7 @@ public sealed class SurveysController(AppDbContext db, CustomerFactsService fact
                 || !await db.Set<Product>().AnyAsync(p => p.Id == productId, cancellationToken))
                 ? "Chọn sản phẩm sắp ra mắt cho khảo sát sản phẩm mới." : null)
             ?? (!await AuthController.PreferencesExist(db, preferenceIds, cancellationToken)
-                ? "Có sở thích không còn tồn tại. Hãy tải lại trang." : null);
+                ? "Có nhu cầu không còn tồn tại. Hãy tải lại trang." : null);
         return problem is null ? null : Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR", problem);
     }
 

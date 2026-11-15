@@ -87,10 +87,10 @@ export function QuestionEditor({ index, total, question, preferences, errors = {
                     <label htmlFor={`${id}-option-${position}`} className="sr-only">Lựa chọn {position + 1}</label>
                     <input id={`${id}-option-${position}`} value={option.text} onChange={(event) => updateOption(position, { text: event.target.value })} maxLength={200} placeholder={`Lựa chọn ${position + 1}`}
                       aria-invalid={!!optionError} aria-describedby={optionError ? `${id}-option-${position}-error` : undefined} className={fieldClass} />
-                    <label htmlFor={`${id}-preference-${position}`} className="sr-only">Gắn sở thích cho lựa chọn {position + 1}</label>
+                    <label htmlFor={`${id}-preference-${position}`} className="sr-only">Gắn nhu cầu cho lựa chọn {position + 1}</label>
                     <select id={`${id}-preference-${position}`} value={option.preferenceId ?? ""} onChange={(event) => updateOption(position, { preferenceId: event.target.value ? Number(event.target.value) : null })}
                       className={cn(fieldClass, "col-start-2 sm:col-start-3 sm:row-start-1", option.preferenceId !== null && "border-gold bg-status-beige-bg text-status-beige-fg")}>
-                      <option value="">Không gắn sở thích</option>
+                      <option value="">Không gắn nhu cầu</option>
                       {preferences.map((preference) => <option key={preference.id} value={preference.id}># {preference.name}</option>)}
                     </select>
                     <Button type="button" variant="ghost" size="icon-lg" className="col-start-3 row-start-1 size-12 sm:col-start-4" onClick={() => update({ options: question.options.filter((_, i) => i !== position) })} aria-label={`Xóa lựa chọn ${position + 1}`}><X aria-hidden="true" /></Button>

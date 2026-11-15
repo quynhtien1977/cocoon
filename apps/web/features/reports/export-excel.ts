@@ -5,12 +5,17 @@ import type { ActivityReports, CustomerReports } from "./types";
 const round = (value: number, digits = 2) => Math.round(value * 10 ** digits) / 10 ** digits;
 const stamp = (date: Date) => date.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
 
-/** Same figures as the M1 screen; period-bound sheets follow the filter, customer snapshots are current. */
+/** M1 overview: period figures plus the customer snapshot, same numbers as the screen. */
 export function reportSheets(filter: ReportFilter, activity: ActivityReports, customers: CustomerReports, now = new Date()): XlsxSheet[] {
+  return [...activitySheets(filter, activity, now), ...customerSheets(customers)];
+}
+
+/** Period-bound sheets (M1, M17 analytics); they follow the date filter. */
+export function activitySheets(filter: ReportFilter, activity: ActivityReports, now = new Date(), title = "Báo cáo tổng quan CRM & Khách hàng — Cocoon"): XlsxSheet[] {
   const { overview, ratings, purchases } = activity;
   return [
     { name: "Tổng quan", boldRows: [0, 4], rows: [
-      ["Báo cáo tổng quan CRM & Khách hàng — Cocoon"],
+      [title],
       ["Kỳ báo cáo", filterLabel(filter)],
       ["Xuất lúc", stamp(now)],
       [],
@@ -44,6 +49,13 @@ export function reportSheets(filter: ReportFilter, activity: ActivityReports, cu
       ["Danh mục", "Nhóm tuổi", "Doanh thu (VND)", "Số lượng", "Số đơn"],
       ...purchases.items.map((row) => [row.category, row.ageGroup, row.revenue, row.quantity, row.orderCount]),
     ] },
+  ];
+}
+
+/** Current customer snapshot (M18); the API takes no period. cover adds a title sheet for a standalone export. */
+export function customerSheets(customers: CustomerReports, cover?: { now: Date }): XlsxSheet[] {
+  return [
+    ...(cover ? [{ name: "Thông tin", boldRows: [0], rows: [["Bảng báo cáo khách hàng — Cocoon"], ["Số liệu", "Hiện tại (không theo kỳ)"], ["Xuất lúc", stamp(cover.now)]] }] : []),
     { name: "Khách theo tuổi", boldRows: [0], rows: [
       ["Nhóm tuổi", "Số khách", "Tỷ lệ (%)"],
       ...customers.age.items.map((row) => [row.group, row.customers, round(row.percentage, 1)]),
@@ -52,14 +64,15 @@ export function reportSheets(filter: ReportFilter, activity: ActivityReports, cu
       ["Giới tính", "Số khách", "Tỷ lệ (%)"],
       ...customers.gender.items.map((row) => [row.gender, row.customers, round(row.percentage, 1)]),
     ] },
-    { name: "Sở thích", boldRows: [0], rows: [
-      ["Sở thích", "Số khách", `Tỷ lệ trên ${customers.preferences.consentingCustomers} khách đồng ý (%)`],
+    { name: "Nhu cầu", boldRows: [0], rows: [
+      ["Nhu cầu", "Số khách", `Tỷ lệ trên ${customers.preferences.consentingCustomers} khách đồng ý (%)`],
       ...customers.preferences.items.map((row) => [row.preference, row.customers, round(row.percentage, 1)]),
     ] },
   ];
 }
 
-export function reportFileName(filter: ReportFilter, extension: "xlsx" | "pdf" = "xlsx"): string {
-  const range = filter.range ? (filter.range.start === filter.range.end ? filter.range.start : `${filter.range.start}_${filter.range.end}`) : "toan-bo";
-  return `bao-cao-cocoon_${range}.${extension}`;
+/** filter null: a snapshot report, named by today's date. section tells the pages apart (e.g. "phan-tich"). */
+export function reportFileName(filter: ReportFilter | null, extension: "xlsx" | "pdf" = "xlsx", section = "", now = new Date()): string {
+  const range = !filter ? now.toLocaleDateString("sv-SE") : filter.range ? (filter.range.start === filter.range.end ? filter.range.start : `${filter.range.start}_${filter.range.end}`) : "toan-bo";
+  return `bao-cao-cocoon${section ? `-${section}` : ""}_${range}.${extension}`;
 }

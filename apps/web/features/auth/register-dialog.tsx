@@ -11,7 +11,7 @@ export function RegisterDialog({ direct = false }: { direct?: boolean }) {
   return <Dialog.Root open onOpenChange={(open) => { if (!open) close(); }}>
     <Dialog.Portal><Dialog.Backdrop className={styles.backdrop} /><Dialog.Popup className={styles.popup}>
       <Dialog.Title className={styles.visuallyHidden}>Đăng ký tài khoản khách hàng Cocoon</Dialog.Title>
-      <Dialog.Description className={styles.visuallyHidden}>Hai bước: thông tin tài khoản bắt buộc và sở thích tùy chọn.</Dialog.Description>
+      <Dialog.Description className={styles.visuallyHidden}>Hai bước: thông tin tài khoản bắt buộc và nhu cầu tùy chọn.</Dialog.Description>
       <RegisterForm onClose={close} />
     </Dialog.Popup></Dialog.Portal>
   </Dialog.Root>;

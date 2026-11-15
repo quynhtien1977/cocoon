@@ -67,8 +67,8 @@ try {
   await until(() => evaluate(() => document.activeElement?.textContent === 'Chăm sóc tóc'));
   await key('Enter', 'Enter', 13); await key('Escape', 'Escape', 27);
   await until(() => evaluate(() => !!document.querySelector('[aria-label="Bỏ Chăm sóc tóc"]')));
-  await evaluate(() => document.querySelector('[aria-label="Chỉnh sửa sở thích"]').requestSubmit());
-  await until(() => evaluate(() => document.body.textContent.includes('Đã lưu sở thích.')));
+  await evaluate(() => document.querySelector('[aria-label="Chỉnh sửa nhu cầu"]').requestSubmit());
+  await until(() => evaluate(() => document.body.textContent.includes('Đã lưu nhu cầu.')));
   assert.deepEqual([...selected].sort(), [42, 50, 51]);
   await evaluate(() => { const input = document.querySelector('#profile-fullName'); input.focus(); input.select(); });
   await send('Input.insertText', { text: 'Nguyễn An mới' });

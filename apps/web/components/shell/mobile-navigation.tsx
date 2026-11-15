@@ -41,7 +41,10 @@ export function MobileNavigation({ items, title, home, tone = "cream", desktopAt
         <nav aria-label={title} className="min-h-0 flex-1 overflow-y-auto p-4">
           <NavLinks items={items} showIcons onNavigate={() => setOpen(false)} className="flex flex-col gap-2"
             linkClassName={cn("flex min-h-12 items-center gap-3 border-l-2 border-transparent px-3 py-3 text-sm", ink ? "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground" : "hover:bg-muted")}
-            activeClassName={ink ? "border-sidebar-primary bg-sidebar-accent text-sidebar-foreground" : "border-primary bg-secondary font-bold"} />
+            activeClassName={ink ? "border-sidebar-primary bg-sidebar-accent text-sidebar-foreground" : "border-primary bg-secondary font-bold"}
+            groupActiveClassName={ink ? "font-bold text-sidebar-foreground" : "font-bold"}
+            childListClassName="mt-1 flex flex-col gap-1" childIconClassName="hidden" toggleClassName="grid top-1.5"
+            childLinkClassName={cn("flex min-h-11 items-center border-l-2 border-transparent py-2 pr-3 pl-11 text-sm", ink ? "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground" : "hover:bg-muted")} />
         </nav>
         <Link href="/" onClick={() => setOpen(false)} className="m-4 border-t border-current/10 p-4 text-sm underline underline-offset-4">Trang giới thiệu Cocoon</Link>
       </SheetContent>

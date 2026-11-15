@@ -44,10 +44,10 @@ export function resolvePreferenceIds(keys: string[], response: unknown): number[
   const options = preferenceGroups.flatMap((group) => [...group.options]);
   return [...new Set(keys.map((key) => {
     const option = options.find((item) => item.key === key);
-    if (!option) throw new Error("Lựa chọn sở thích không hợp lệ. Vui lòng chọn lại.");
+    if (!option) throw new Error("Lựa chọn nhu cầu không hợp lệ. Vui lòng chọn lại.");
     const aliases = [option.label, option.english, `${option.label} (${option.english})`].map(normalize);
     const matches = rows.filter((row) => row && typeof row === "object" && Number.isInteger(row.id) && row.id > 0 && row.isActive !== false && typeof row.name === "string" && aliases.includes(normalize(row.name)));
-    if (matches.length !== 1) throw new Error("Sở thích đã chọn hiện chưa thể lưu. Bạn có thể thử lại sau hoặc bỏ các lựa chọn để tiếp tục.");
+    if (matches.length !== 1) throw new Error("Nhu cầu đã chọn hiện chưa thể lưu. Bạn có thể thử lại sau hoặc bỏ các lựa chọn để tiếp tục.");
     return matches[0].id as number;
   }))];
 }
@@ -69,7 +69,7 @@ export async function registerCustomer(values: Registration, preferences: string
   });
   if (preferences.length) {
     try { await saveRegistrationPreferences(preferences); }
-    catch { return { preferencesError: "Tài khoản đã tạo, nhưng chưa lưu được sở thích. Bạn có thể thử lưu lại hoặc chọn sở thích hiện có trong trang hồ sơ." }; }
+    catch { return { preferencesError: "Tài khoản đã tạo, nhưng chưa lưu được nhu cầu. Bạn có thể thử lưu lại hoặc chọn nhu cầu hiện có trong trang hồ sơ." }; }
   }
   return { preferencesError: null };
 }

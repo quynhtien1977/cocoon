@@ -128,7 +128,7 @@ try {
   await until(() => evaluate(() => document.querySelector('input[type="search"]').value === '' && document.querySelectorAll('tbody tr').length === 10));
   await evaluate(() => [...document.querySelectorAll('button')].find(b => b.textContent === 'Trang sau').click());
   await until(() => evaluate(() => new URLSearchParams(location.search).get('products.page') === '2' && document.querySelectorAll('tbody tr').length === 2));
-  await choose('button[id$="-tags"]', 'Chưa gắn sở thích');
+  await choose('button[id$="-tags"]', 'Chưa gắn nhu cầu');
   await until(() => evaluate(() => document.querySelectorAll('tbody tr').length === 6));
   assert.equal(await evaluate(() => new URLSearchParams(location.search).get('products.page')), '1');
   await evaluate(() => document.querySelector('th button').click());
@@ -158,12 +158,12 @@ try {
   await until(() => evaluate(() => !!document.querySelector('#add-product-preference') && !document.querySelector('#add-product-preference').disabled));
   await evaluate(() => { const select = document.querySelector('#add-product-preference'); select.value = '43'; select.dispatchEvent(new Event('change', { bubbles: true })); });
   await evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent === 'Thêm').click());
-  await evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent === 'Lưu sở thích').click());
+  await evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent === 'Lưu nhu cầu').click());
   await until(() => evaluate(() => !!document.querySelector('[role="alert"]')));
-  assert.ok(await evaluate(() => !!document.querySelector('button[aria-label="Bỏ sở thích Cấp ẩm"]')));
+  assert.ok(await evaluate(() => !!document.querySelector('button[aria-label="Bỏ nhu cầu Cấp ẩm"]')));
   preferenceStatus = 204;
-  await evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent === 'Lưu sở thích').click());
-  await until(() => evaluate(() => document.body.textContent.includes('Đã lưu sở thích sản phẩm.')));
+  await evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent === 'Lưu nhu cầu').click());
+  await until(() => evaluate(() => document.body.textContent.includes('Đã lưu nhu cầu sản phẩm.')));
   assert.deepEqual(preferenceWrites.at(-1), { preferenceIds: [42, 43] });
   await evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent === 'Phản hồi & đánh giá').click());
   await until(() => evaluate(() => !!document.querySelector('[role="alert"]')));

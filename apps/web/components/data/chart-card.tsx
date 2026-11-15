@@ -85,7 +85,8 @@ function ChartBody<T>({ type, data, categoryKey, series, formatValue, height, ma
       <CartesianGrid stroke="var(--border)" vertical={horizontal} horizontal={!horizontal} />
       {horizontal ? <>
         <XAxis type="number" domain={domain} tick={tick} tickLine={false} axisLine={false} tickFormatter={formatValue} />
-        <YAxis type="category" dataKey={category} tick={tick} tickLine={false} axisLine={{ stroke: "var(--border)" }} width={112} />
+        {/* interval 0: label every bar; Recharts otherwise hides every other category label. */}
+        <YAxis type="category" dataKey={category} tick={tick} tickLine={false} axisLine={{ stroke: "var(--border)" }} width={112} interval={0} />
       </> : <>
         <XAxis dataKey={category} tick={tick} tickLine={false} axisLine={{ stroke: "var(--border)" }} />
         <YAxis domain={domain} tick={tick} tickLine={false} axisLine={false} tickFormatter={formatValue} width={48} />
@@ -101,7 +102,7 @@ export function ChartCard<T>({ title, description, type, data, categoryKey, cate
   const id = useId();
   const tableSeries = type === "pie" ? series.slice(0, 1) : series;
   return (
-    <section aria-labelledby={`${id}-title`} className={cn("min-w-0 rounded-lg border border-border bg-card p-6 text-card-foreground", className)}>
+    <section aria-labelledby={`${id}-title`} className={cn("relative min-w-0 rounded-lg border border-border bg-card p-6 text-card-foreground", className)}>
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 id={`${id}-title`} className="font-heading text-xl">{title}</h2>
@@ -114,11 +115,14 @@ export function ChartCard<T>({ title, description, type, data, categoryKey, cate
         : data.length === 0 ? <EmptyState title={emptyTitle} description={emptyDescription} className="border-0 py-8" />
         : <>
           <div aria-hidden="true"><ChartBody type={type} data={data} categoryKey={categoryKey} series={series} formatValue={formatValue} maxValue={maxValue} height={height} /></div>
-          <table className="sr-only">
-            <caption>{title}</caption>
-            <thead><tr><th scope="col">{categoryLabel}</th>{tableSeries.map((item) => <th key={item.key} scope="col">{item.label}</th>)}</tr></thead>
-            <tbody>{data.map((row, index) => <tr key={index}><th scope="row">{String(row[categoryKey] ?? "")}</th>{tableSeries.map((item) => <td key={item.key}>{typeof row[item.key] === "number" ? formatValue(row[item.key] as number) : String(row[item.key] ?? "")}</td>)}</tr>)}</tbody>
-          </table>
+          {/* A table ignores sr-only's 1px height and would stretch the page; the wrapper div clips it. */}
+          <div className="sr-only">
+            <table>
+              <caption>{title}</caption>
+              <thead><tr><th scope="col">{categoryLabel}</th>{tableSeries.map((item) => <th key={item.key} scope="col">{item.label}</th>)}</tr></thead>
+              <tbody>{data.map((row, index) => <tr key={index}><th scope="row">{String(row[categoryKey] ?? "")}</th>{tableSeries.map((item) => <td key={item.key}>{typeof row[item.key] === "number" ? formatValue(row[item.key] as number) : String(row[item.key] ?? "")}</td>)}</tr>)}</tbody>
+            </table>
+          </div>
         </>}
     </section>
   );

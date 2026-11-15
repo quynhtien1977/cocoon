@@ -37,3 +37,12 @@ test("portal navigation selects only the relevant section", () => {
     assert.deepEqual(items.filter((item) => isNavActive(path, item)).map((item) => item.code), [expected]);
   }
 });
+
+test("manager Báo cáo groups Phân tích and Bảng báo cáo; a report page selects the group and that page only", () => {
+  const items = navFor("manager");
+  const reports = items.find((item) => item.code === "M16");
+  assert.deepEqual(reports.children.map((child) => [child.title, child.href]), [["Phân tích", "/manager/reports/analytics"], ["Bảng báo cáo", "/manager/reports/customers"]]);
+  assert.ok(!items.some((item) => item.code === "M17" || item.code === "M18"), "sub-pages are not top-level items");
+  assert.deepEqual(items.filter((item) => isNavActive("/manager/reports/customers", item)).map((item) => item.code), ["M16"]);
+  assert.deepEqual(reports.children.filter((child) => isNavActive("/manager/reports/customers", child)).map((child) => child.code), ["M18"]);
+});
