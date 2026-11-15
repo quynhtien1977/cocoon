@@ -4,7 +4,6 @@ import { useId, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { CircleCheck, Save } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
-import { TemporaryPassword } from "@/components/brand/temporary-password";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
@@ -71,7 +70,7 @@ export function CustomerCreateForm() {
             </div>
             <div className="space-y-2">
               <label htmlFor={`${id}-phone`} className={labelClass}>Số điện thoại{required}</label>
-              <input id={`${id}-phone`} type="tel" inputMode="tel" value={draft.phone} onChange={(event) => update({ phone: event.target.value })} required autoComplete="off" placeholder="0912 345 678" {...invalid("phone")} className={fieldClass} />
+              <input id={`${id}-phone`} type="tel" inputMode="tel" value={draft.phone} onChange={(event) => update({ phone: event.target.value })} maxLength={13} required autoComplete="off" placeholder="0912 345 678" {...invalid("phone")} className={fieldClass} />
               {fieldError("phone")}
             </div>
             <div className="space-y-2">
@@ -88,8 +87,8 @@ export function CustomerCreateForm() {
               </div>
             </fieldset>
             <div className="space-y-2 md:col-span-2">
-              <label htmlFor={`${id}-address`} className={labelClass}>Địa chỉ nhận hàng và liên hệ</label>
-              <input id={`${id}-address`} value={draft.address} onChange={(event) => update({ address: event.target.value })} maxLength={500} autoComplete="off" placeholder="123 Hai Bà Trưng, Phường Bến Nghé, TP. HCM" {...invalid("address")} className={fieldClass} />
+              <label htmlFor={`${id}-address`} className={labelClass}>Địa chỉ nhận hàng và liên hệ{required}</label>
+              <input id={`${id}-address`} value={draft.address} onChange={(event) => update({ address: event.target.value })} maxLength={500} required autoComplete="off" placeholder="123 Hai Bà Trưng, Phường Bến Nghé, TP. HCM" {...invalid("address")} className={fieldClass} />
               {fieldError("address")}
             </div>
           </div>
@@ -99,7 +98,7 @@ export function CustomerCreateForm() {
           <div aria-live="polite" className="min-w-0 text-sm">
             {Object.keys(errors).length > 0 ? <p className="text-destructive">Chưa lưu được: còn {Object.keys(errors).length} lỗi. Sửa các ô được đánh dấu rồi lưu lại.</p>
               : submitError ? <p role="alert" className="text-destructive">Chưa lưu được: {submitError}</p>
-              : created ? <p className="flex items-start gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>Đã lưu hồ sơ {created.fullName}. Mật khẩu tạm: <TemporaryPassword value={created.temporaryPassword} /> Chỉ hiện một lần. Gửi riêng cho khách; khách phải đổi mật khẩu khi đăng nhập lần đầu. <Link href={`/manager/customers/${created.id}`} className="font-semibold underline">Xem hồ sơ</Link></span></p> : null}
+              : created ? <p className="flex items-start gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>Đã cập nhật thông tin khách hàng {created.fullName}. <Link href={`/manager/customers/${created.id}`} className="font-semibold underline">Xem hồ sơ</Link></span></p> : null}
           </div>
           <div className="flex w-full gap-3 sm:ml-auto sm:w-auto">
             <Link href="/manager/customers" className={cn(buttonVariants({ variant: "outline" }), "h-12 flex-1 px-6 sm:flex-none")}>Hủy</Link>

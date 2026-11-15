@@ -45,7 +45,14 @@ public sealed class CustomersApiTests : AccountApiTestBase
         Assert.Equal(0, (await Json(await Send(HttpMethod.Get, "/api/v1/customers?page=2147483647&pageSize=100", "Manager", manager)))
             .GetProperty("items").GetArrayLength());
         await Problem(await Send(HttpMethod.Post, "/api/v1/customers", "Manager", manager,
-            new { email, fullName = "Khách trùng" }), HttpStatusCode.Conflict, "EMAIL_TAKEN");
+            new { email, fullName = "Khách trùng", phone = "0901234568", address = "Hồ Chí Minh" }), HttpStatusCode.Conflict, "EMAIL_TAKEN");
+        foreach (var invalid in new object[] {
+            new { email = "thieu-mien@example", fullName = "Khách mới", phone = "0901234569", address = "Hồ Chí Minh" },
+            new { email = "sdt-sai@example.test", fullName = "Khách mới", phone = "901234569", address = "Hồ Chí Minh" },
+            new { email = "thieu-sdt@example.test", fullName = "Khách mới", address = "Hồ Chí Minh" },
+            new { email = "dia-chi-ngan@example.test", fullName = "Khách mới", phone = "0901234569", address = "HCM" },
+            new { email = "thieu-dia-chi@example.test", fullName = "Khách mới", phone = "0901234569" } })
+            await Problem(await Send(HttpMethod.Post, "/api/v1/customers", "Manager", manager, invalid), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
         await using var verify = Database.CreateContext();
         Assert.Equal(AccountRole.Customer, (await verify.Set<Account>().SingleAsync(a => a.Id == id)).Role);
     }
@@ -165,7 +172,7 @@ public sealed class CustomersApiTests : AccountApiTestBase
             await setup.SaveChangesAsync();
         }
         await Problem(await Send(HttpMethod.Post, "/api/v1/customers", "Manager", manager,
-            new { email = "invalid@example.test", fullName = "Khách mới", consentPersonalData = true, preferenceIds = new[] { int.MaxValue } }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+            new { email = "invalid@example.test", fullName = "Khách mới", phone = "0901234570", address = "Hồ Chí Minh", consentPersonalData = true, preferenceIds = new[] { int.MaxValue } }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
         await Problem(await Send(HttpMethod.Put, $"/api/v1/customers/{customer}", "Manager", manager,
             new { fullName = "Khách", dateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1) }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
         await Problem(await Send(HttpMethod.Put, $"/api/v1/customers/{customer}", "Manager", manager,
