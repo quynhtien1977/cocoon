@@ -655,3 +655,21 @@ VALUES ('20261115072509_AddSurveyMedia', '10.0.12');
 
 COMMIT;
 
+START TRANSACTION;
+DROP INDEX "IX_PasswordResetToken_AccountId";
+
+ALTER TABLE "PasswordResetToken" ADD "Attempts" integer NOT NULL DEFAULT 0;
+
+ALTER TABLE "PasswordResetToken" ADD "CreatedAt" timestamp with time zone NOT NULL DEFAULT TIMESTAMPTZ '-infinity';
+
+ALTER TABLE "PasswordResetToken" ADD "Purpose" character varying(16) NOT NULL DEFAULT '';
+
+CREATE INDEX "IX_PasswordResetToken_AccountId_CreatedAt" ON "PasswordResetToken" ("AccountId", "CreatedAt");
+
+ALTER TABLE "PasswordResetToken" ADD CONSTRAINT "CK_PasswordResetToken_Attempts" CHECK ("Attempts" >= 0);
+
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20261115093520_AddPasswordCodes', '10.0.12');
+
+COMMIT;
+

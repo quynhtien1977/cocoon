@@ -565,8 +565,19 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.Property<int>("AccountId")
                         .HasColumnType("integer");
 
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
@@ -578,12 +589,15 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AccountId");
-
                     b.HasIndex("TokenHash")
                         .IsUnique();
 
-                    b.ToTable("PasswordResetToken");
+                    b.HasIndex("AccountId", "CreatedAt");
+
+                    b.ToTable("PasswordResetToken", t =>
+                        {
+                            t.HasCheckConstraint("CK_PasswordResetToken_Attempts", "\"Attempts\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Cocoon.Domain.Entities.Preference", b =>

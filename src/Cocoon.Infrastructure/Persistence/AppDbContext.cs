@@ -247,7 +247,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         reset.HasKey(x => x.Id);
         reset.HasOne<Account>().WithMany().HasForeignKey(x => x.AccountId);
         reset.HasIndex(x => x.TokenHash).IsUnique();
+        reset.HasIndex(x => new { x.AccountId, x.CreatedAt });
         reset.Property(x => x.TokenHash).HasMaxLength(128);
+        reset.Property(x => x.Purpose).HasConversion<string>().HasMaxLength(16);
+        reset.ToTable(table => table.HasCheckConstraint("CK_PasswordResetToken_Attempts", "\"Attempts\" >= 0"));
 
         foreach (var entity in model.Model.GetEntityTypes())
         {

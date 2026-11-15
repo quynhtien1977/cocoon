@@ -19,4 +19,5 @@ public enum OrderChannel { Website, Store, Marketplace }
 public enum OrderStatus { Completed, Cancelled, Returned, Placed, Delivering }
 public enum RecommendationStatus { Active, Clicked, Dismissed, Expired }
 public enum RecommendationPlanStatus { Draft, Active, Ended }
-
+/// <summary>Why a one-time email code was issued; stored as text, new values go last.</summary>
+public enum PasswordTokenPurpose { Invitation, Reset }
