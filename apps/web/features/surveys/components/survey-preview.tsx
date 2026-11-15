@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { purposeLabels } from "../schemas";
 import type { SurveyDraft, UpcomingProduct } from "../types";
+import { youtubeVideoId } from "../youtube";
+import { QuestionMediaGallery, type RenderableQuestionMedia } from "./question-media-gallery";
 
 const day = (value: string) => value.split("-").reverse().join("/");
 
@@ -35,6 +37,15 @@ export function SurveyPreview({ draft, products }: { draft: SurveyDraft; product
                   {question.text.trim() || <span className="text-muted-foreground">Chưa nhập nội dung</span>}
                   {question.isRequired && <span className="text-destructive"> *</span>}
                 </legend>
+                <QuestionMediaGallery
+                  className="space-y-3"
+                  questionText={question.text || `Câu ${index + 1}`}
+                  items={(question.media ?? []).flatMap((item): RenderableQuestionMedia[] => {
+                    if (item.type === "Image") return [{ type: "Image", url: item.url }];
+                    const vid = youtubeVideoId(item.videoUrl);
+                    return vid ? [{ type: "Video", youtubeVideoId: vid }] : [];
+                  })}
+                />
                 {(question.type === "SingleChoice" || question.type === "MultiChoice") && (
                   <ul className="space-y-2">
                     {question.options.map((option, position) => (

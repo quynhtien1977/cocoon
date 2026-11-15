@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, CloudOff, Leaf, LoaderCircle, Pencil, Save, Send, ShieldCheck } from "lucide-react";
 import { RatingInput } from "../../components/brand/rating-input";
+import { QuestionMediaGallery } from "./components/question-media-gallery";
 import { answerError, readSurveyDraft, surveyUnavailable, writeSurveyDraft, type CustomerSurveyDetail, type SurveyAnswer, type SurveyAnswers, type SurveyQuestion } from "../customer/survey-response-service";
 
 const button = "inline-flex min-h-12 items-center justify-center gap-2 rounded-md px-5 py-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8a6a2b] disabled:cursor-not-allowed disabled:opacity-45";
@@ -26,6 +27,7 @@ function QuestionField({ question, value, error, onChange, titleRef }: { questio
     <div className="mb-4 flex flex-wrap items-center gap-3 text-xs"><span className="rounded bg-[#f2ecdf] px-2 py-1 font-label tracking-wider text-[#826735] uppercase">{question.section || "Lắng nghe bạn"}</span><span className={question.isRequired ? "text-[#a05d4f]" : "text-[#827b6c]"}>{question.isRequired ? "* Bắt buộc" : "Không bắt buộc"}</span></div>
     <h2 ref={titleRef} tabIndex={-1} id={`question-${question.id}-title`} className="font-heading text-[26px] leading-snug text-[#302d25] outline-none sm:text-[30px]">{question.text}</h2>
     <p id={descriptionId} className="mt-3 text-sm leading-6 text-[#7c7566]">{question.description || (question.type === "MultiChoice" ? "Bạn có thể chọn nhiều câu trả lời." : choice ? "Chọn một câu trả lời phù hợp với bạn." : "Chia sẻ cảm nhận của riêng bạn.")}</p>
+    <QuestionMediaGallery items={question.media} questionText={question.text} />
     <fieldset className="mt-6 min-w-0" aria-labelledby={`question-${question.id}-title`} aria-describedby={`${descriptionId}${error ? ` ${errorId}` : ""}`} aria-invalid={!!error}>
       <legend className="sr-only">{question.text}</legend>
       {choice ? <div className="grid gap-3">{question.options.map(option => {
