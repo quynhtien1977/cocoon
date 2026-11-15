@@ -1,37 +1,46 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { requestPasswordCode, resetPassword, validateResetDraft } from "../features/auth/password-reset-service.ts";
+import { requestPasswordCode, resetPassword, validateCode, validateEmail, validateNewPassword, verifyPasswordCode } from "../features/auth/password-reset-service.ts";
 import { resendInvitation } from "../features/customers/api.ts";
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
 
-test("the reset form checks email, the 6-digit code and the password rule before calling the API", () => {
-  assert.deepEqual(validateResetDraft({ email: "lan@example.com", code: "012345", newPassword: "MatKhau2026", confirmPassword: "MatKhau2026" }), {});
-  const errors = validateResetDraft({ email: "lan@", code: "12a45", newPassword: "ngan", confirmPassword: "khac" });
-  assert.deepEqual(Object.keys(errors).sort(), ["code", "confirmPassword", "email", "newPassword"]);
+test("each step checks its own field before calling the API", () => {
+  assert.equal(validateEmail(" lan@example.com "), undefined);
+  assert.equal(validateEmail("lan@"), "Email không hợp lệ.");
+  assert.equal(validateCode(" 012345 "), undefined);
+  assert.equal(validateCode("12a45"), "Mã xác nhận gồm 6 chữ số.");
+  assert.deepEqual(validateNewPassword({ newPassword: "MatKhau2026", confirmPassword: "MatKhau2026" }), {});
+  const errors = validateNewPassword({ newPassword: "ngan", confirmPassword: "khac" });
+  assert.deepEqual(Object.keys(errors).sort(), ["confirmPassword", "newPassword"]);
   assert.match(errors.newPassword, /8–128 ký tự/);
-  assert.equal(validateResetDraft({ email: "lan@example.com", code: "123456", newPassword: "chỉcóchữthôi", confirmPassword: "chỉcóchữthôi" }).newPassword !== undefined, true);
+  assert.notEqual(validateNewPassword({ newPassword: "chỉcóchữthôi", confirmPassword: "chỉcóchữthôi" }).newPassword, undefined);
 });
 
-test("forgot and reset call the anonymous endpoints without refreshing or redirecting", async () => {
+test("forgot, verify and reset call the anonymous endpoints without refreshing or redirecting", async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {
     calls.push({ url, options });
-    return url.endsWith("/forgot") ? Response.json({ message: "Nếu email này có tài khoản Cocoon, mã xác nhận đã được gửi tới hộp thư." }, { status: 202 }) : new Response(null, { status: 204 });
+    if (url.endsWith("/forgot")) return Response.json({ message: "Nếu email này có tài khoản Cocoon, mã xác nhận đã được gửi tới hộp thư." }, { status: 202 });
+    if (url.endsWith("/verify")) return Response.json({ ticket: "7.1.ABC", expiresAt: "2026-11-15T10:10:00Z" });
+    return new Response(null, { status: 204 });
   };
   assert.match(await requestPasswordCode("  lan@example.com "), /mã xác nhận/);
-  await resetPassword({ email: " lan@example.com", code: " 012345 ", newPassword: "MatKhau2026", confirmPassword: "MatKhau2026" });
-  assert.deepEqual(calls.map(c => [c.url, c.options.method]), [["/api/v1/auth/password/forgot", "POST"], ["/api/v1/auth/password/reset", "POST"]]);
-  assert.deepEqual(JSON.parse(calls[0].options.body), { email: "lan@example.com" });
-  assert.deepEqual(JSON.parse(calls[1].options.body), { email: "lan@example.com", code: "012345", newPassword: "MatKhau2026" });
-  assert.equal(calls.length, 2);  // no refresh attempt for anonymous calls
+  assert.deepEqual(await verifyPasswordCode(" lan@example.com", " 012345 "), { ticket: "7.1.ABC", expiresAt: "2026-11-15T10:10:00Z" });
+  await resetPassword("7.1.ABC", "MatKhau2026");
+  assert.deepEqual(calls.map(c => [c.url, c.options.method, JSON.parse(c.options.body)]), [
+    ["/api/v1/auth/password/forgot", "POST", { email: "lan@example.com" }],
+    ["/api/v1/auth/password/verify", "POST", { email: "lan@example.com", code: "012345" }],
+    ["/api/v1/auth/password/reset", "POST", { ticket: "7.1.ABC", newPassword: "MatKhau2026" }],
+  ]);  // three calls: no refresh attempt for anonymous calls
 });
 
-test("a wrong code surfaces INVALID_CODE on the code field", async () => {
+test("a wrong code surfaces INVALID_CODE, an old ticket RESET_EXPIRED", async () => {
   globalThis.fetch = async () => Response.json({ status: 400, code: "INVALID_CODE", errors: { code: ["Mã xác nhận không đúng hoặc đã hết hạn. Hãy yêu cầu mã mới."] } }, { status: 400 });
-  await assert.rejects(resetPassword({ email: "lan@example.com", code: "000000", newPassword: "MatKhau2026", confirmPassword: "MatKhau2026" }),
-    error => error.status === 400 && error.code === "INVALID_CODE");
+  await assert.rejects(verifyPasswordCode("lan@example.com", "000000"), error => error.status === 400 && error.code === "INVALID_CODE");
+  globalThis.fetch = async () => Response.json({ status: 400, code: "RESET_EXPIRED", detail: "Phiên đặt mật khẩu đã hết hạn." }, { status: 400 });
+  await assert.rejects(resetPassword("7.1.ABC", "MatKhau2026"), error => error.code === "RESET_EXPIRED");
 });
 
 test("managers can resend the invitation email", async () => {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { ResetPasswordPage } from "@/features/auth/reset-password-page";
+import { LandingPage } from "@/features/landing/landing-page";
+import { ResetPasswordDialog } from "@/features/auth/reset-password-dialog";
 
 export const metadata: Metadata = {
   title: "Đặt lại mật khẩu",
@@ -9,5 +10,5 @@ export const metadata: Metadata = {
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ email?: string }> }) {
   const { email } = await searchParams;
-  return <ResetPasswordPage initialEmail={typeof email === "string" ? email : ""} />;
+  return <><LandingPage /><ResetPasswordDialog initialEmail={typeof email === "string" ? email : ""} /></>;
 }
