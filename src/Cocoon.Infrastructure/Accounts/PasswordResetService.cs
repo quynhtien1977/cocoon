@@ -23,7 +23,12 @@ public sealed class PasswordResetOptions
     public int MaxAttempts { get; set; } = 5;
     public TimeSpan Cooldown { get; set; } = TimeSpan.FromSeconds(60);
     public int MaxCodesPerHour { get; set; } = 5;
+    /// <summary>How long the ticket from a verified code may set the password.</summary>
+    public TimeSpan TicketLifetime { get; set; } = TimeSpan.FromMinutes(10);
 }
+
+/// <summary>Proof that the code was right; POST /auth/password/reset spends it once with the new password.</summary>
+public sealed record PasswordTicket(string Ticket, DateTime ExpiresAt);
 
 /// <summary>
 /// Email one-time codes (decision 15/11/2026). A manager-created customer gets an invitation code instead of a password
@@ -63,17 +68,16 @@ public sealed class PasswordResetService(AppDbContext db, IAccountPasswords pass
     }
 
     /// <summary>
-    /// Sets the password with the newest live code of the account. Every wrong case gives the same 400 INVALID_CODE.
-    /// Success clears the generated-password flag and login lockout and ends every session.
+    /// Step 2 of "Quên mật khẩu": checks the code against the newest live code of the account without using it up, so the
+    /// form can ask for the new password only after a right code. Every wrong case gives the same 400 INVALID_CODE, and
+    /// each check counts toward <see cref="PasswordResetOptions.MaxAttempts"/>.
     /// </summary>
-    public async Task ResetAsync(string address, string code, string newPassword, CancellationToken ct)
+    public async Task<PasswordTicket> VerifyAsync(string address, string code, CancellationToken ct)
     {
-        if (AccountManagementService.PasswordProblem(newPassword) is { } problem)
-            throw new AccountOperationException(400, "VALIDATION_ERROR", problem, "newPassword");
         code = code.Trim();
         var normalized = address.Trim().ToLowerInvariant();
         var now = DateTime.UtcNow;
-        var account = await db.Set<Account>().SingleOrDefaultAsync(a => a.Email.ToLower() == normalized && a.IsActive, ct);
+        var account = await db.Set<Account>().AsNoTracking().SingleOrDefaultAsync(a => a.Email.ToLower() == normalized && a.IsActive, ct);
         var token = account is null ? null : await db.Set<PasswordResetToken>().AsNoTracking()
             .Where(t => t.AccountId == account.Id && t.UsedAt == null && t.ExpiresAt > now)
             .OrderByDescending(t => t.Id).FirstOrDefaultAsync(ct);
@@ -86,10 +90,36 @@ public sealed class PasswordResetService(AppDbContext db, IAccountPasswords pass
         var expected = Encoding.ASCII.GetBytes(Hash(token.Id, code));
         if (claimed == 0 || !CryptographicOperations.FixedTimeEquals(expected, Encoding.ASCII.GetBytes(token.TokenHash))) throw InvalidCode();
 
+        var issued = (long)(now - DateTime.UnixEpoch).TotalSeconds;
+        var expiresAt = now + Options.TicketLifetime < token.ExpiresAt ? now + Options.TicketLifetime : token.ExpiresAt;
+        return new PasswordTicket($"{token.Id}.{issued}.{TicketMac(token.Id, issued, token.TokenHash)}", expiresAt);
+    }
+
+    /// <summary>
+    /// Step 3: sets the password with a ticket from <see cref="VerifyAsync"/>. The ticket is signed over the stored code
+    /// hash, so it cannot be forged, and dies with its code: once used, when a newer code is sent, or after
+    /// <see cref="PasswordResetOptions.TicketLifetime"/>. A dead ticket gives 400 RESET_EXPIRED; the form asks for the code again.
+    /// Success clears the generated-password flag and login lockout and ends every session.
+    /// </summary>
+    public async Task ResetAsync(string ticket, string newPassword, CancellationToken ct)
+    {
+        if (AccountManagementService.PasswordProblem(newPassword) is { } problem)
+            throw new AccountOperationException(400, "VALIDATION_ERROR", problem, "newPassword");
+        var now = DateTime.UtcNow;
+        var parts = ticket.Trim().Split('.');
+        if (parts.Length != 3 || !int.TryParse(parts[0], out var tokenId) || !long.TryParse(parts[1], out var issued)) throw ExpiredTicket();
+        var issuedAt = DateTime.UnixEpoch.AddSeconds(Math.Clamp(issued, 0, 4_102_444_800));
+        if (issuedAt + Options.TicketLifetime <= now || issuedAt > now.AddMinutes(1)) throw ExpiredTicket();
+        var token = await db.Set<PasswordResetToken>().AsNoTracking()
+            .SingleOrDefaultAsync(t => t.Id == tokenId && t.UsedAt == null && t.ExpiresAt > now, ct);
+        if (token is null || !CryptographicOperations.FixedTimeEquals(
+                Encoding.ASCII.GetBytes(TicketMac(token.Id, issued, token.TokenHash)), Encoding.ASCII.GetBytes(parts[2]))) throw ExpiredTicket();
+        var account = await db.Set<Account>().SingleOrDefaultAsync(a => a.Id == token.AccountId && a.IsActive, ct) ?? throw ExpiredTicket();
+
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        var used = await db.Set<PasswordResetToken>().Where(t => t.Id == token.Id && t.UsedAt == null)
+        var used = await db.Set<PasswordResetToken>().Where(t => t.Id == token.Id && t.UsedAt == null && t.ExpiresAt > now)
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.UsedAt, now), ct);
-        if (used == 0) throw InvalidCode();
+        if (used == 0) throw ExpiredTicket();
         await db.Set<PasswordResetToken>().Where(t => t.AccountId == account.Id && t.UsedAt == null && t.ExpiresAt > now)
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.ExpiresAt, now), ct);
         account.PasswordHash = passwords.Hash(account, newPassword);
@@ -184,5 +214,14 @@ public sealed class PasswordResetService(AppDbContext db, IAccountPasswords pass
         return Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes($"{tokenId}:{code}")));
     }
 
+    private string TicketMac(int tokenId, long issued, string tokenHash)
+    {
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes("password-ticket:" + Options.Secret));
+        return Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes($"{tokenId}:{issued}:{tokenHash}")));
+    }
+
     private static AccountOperationException InvalidCode() => new(400, "INVALID_CODE", InvalidCodeMessage, "code");
+
+    private static AccountOperationException ExpiredTicket() =>
+        new(400, "RESET_EXPIRED", "Phiên đặt mật khẩu đã hết hạn. Hãy nhập lại mã xác nhận hoặc yêu cầu mã mới.");
 }
