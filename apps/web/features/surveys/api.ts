@@ -13,13 +13,15 @@ export const deleteSurvey = (id: number) => apiRequest<void>(`/surveys/${id}`, {
 export const publishSurvey = (id: number) => apiRequest<void>(`/surveys/${id}/publish`, { method: "POST" });
 export const closeSurvey = (id: number) => apiRequest<void>(`/surveys/${id}/close`, { method: "POST" });
 
-/** Draft only (409 SURVEY_NOT_DRAFT otherwise); jpg/png/webp ≤ 2 MB, checked by content. Replaces the current photo. */
-export function uploadSurveyImage(id: number, file: File) {
+/**
+ * Photo for a question of a saved draft (409 SURVEY_NOT_DRAFT otherwise); jpg/png/webp ≤ 2 MB, checked by content.
+ * Put the returned id in the question's media and save the draft; photos no question uses are cleaned up later.
+ */
+export function uploadQuestionImage(surveyId: number, file: File) {
   const form = new FormData();
   form.append("image", file);
-  return apiRequest<{ imageUrl: string }>(`/surveys/${id}/image`, { method: "POST", body: form });
+  return apiRequest<{ id: number; url: string }>(`/surveys/${surveyId}/images`, { method: "POST", body: form });
 }
-export const deleteSurveyImage = (id: number) => apiRequest<void>(`/surveys/${id}/image`, { method: "DELETE" });
 
 export const addRecipients = (id: number, target: { segment: SegmentFilterValue } | { customerIds: number[] }) =>
   apiRequest<RecipientsAdded>(`/surveys/${id}/recipients`, { method: "POST", json: toRecipientsRequest(target) });

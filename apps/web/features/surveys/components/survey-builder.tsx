@@ -163,7 +163,7 @@ export function SurveyBuilder({ initial, surveyId, preferences, products }: Surv
           </div>
           {errors.questions && <p role="alert" className="text-sm text-destructive">{errors.questions}</p>}
           {draft.questions.map((question, index) => (
-            <QuestionEditor key={question.key} index={index} total={draft.questions.length} question={question} preferences={preferences} errors={questionErrors(index)} collapsed={collapsed}
+            <QuestionEditor key={question.key} index={index} total={draft.questions.length} question={question} preferences={preferences} surveyId={savedId} errors={questionErrors(index)} collapsed={collapsed}
               onChange={(next) => setDraft((current) => ({ ...current, questions: current.questions.map((item, i) => i === index ? next : item) }))}
               onRemove={() => setDraft((current) => ({ ...current, questions: current.questions.filter((_, i) => i !== index) }))}
               onMove={(offset) => moveQuestion(index, offset)} />

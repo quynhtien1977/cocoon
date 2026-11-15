@@ -140,15 +140,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         survey.Property(x => x.Purpose).HasConversion<string>().HasMaxLength(32);
         survey.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
         survey.Property(x => x.Description).HasMaxLength(4000);
-        survey.Property(x => x.ImageObjectKey).HasMaxLength(300);
-        survey.Property(x => x.ImageContentType).HasMaxLength(32);
-        survey.Property(x => x.YoutubeVideoId).HasMaxLength(11);
-        survey.ToTable(table =>
-        {
-            table.HasCheckConstraint("CK_Survey_Dates", "\"CloseAt\" >= \"OpenAt\"");
-            table.HasCheckConstraint("CK_Survey_Image",
-                "(\"ImageObjectKey\" IS NULL AND \"ImageContentType\" IS NULL) OR (\"ImageObjectKey\" IS NOT NULL AND \"ImageContentType\" IS NOT NULL)");
-        });
+        survey.ToTable(table => table.HasCheckConstraint("CK_Survey_Dates", "\"CloseAt\" >= \"OpenAt\""));
         survey.HasQueryFilter(x => !x.IsDeleted);
 
         var question = model.Entity<SurveyQuestion>();
@@ -156,6 +148,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         question.HasOne<Survey>().WithMany().HasForeignKey(x => x.SurveyId);
         question.Property(x => x.Type).HasConversion<string>().HasMaxLength(32);
         question.Property(x => x.Text).HasMaxLength(1000);
+        var surveyImage = model.Entity<SurveyImage>();
+        surveyImage.HasKey(x => x.Id);
+        surveyImage.HasOne<Survey>().WithMany().HasForeignKey(x => x.SurveyId);
+        surveyImage.HasIndex(x => x.ObjectKey).IsUnique();
+        surveyImage.Property(x => x.ObjectKey).HasMaxLength(300);
+        surveyImage.Property(x => x.ContentType).HasMaxLength(32);
+        var questionMedia = model.Entity<SurveyQuestionMedia>();
+        questionMedia.HasKey(x => x.Id);
+        questionMedia.HasOne<SurveyQuestion>().WithMany().HasForeignKey(x => x.QuestionId);
+        questionMedia.HasOne<SurveyImage>().WithMany().HasForeignKey(x => x.ImageId);
+        questionMedia.HasIndex(x => new { x.QuestionId, x.SortOrder }).IsUnique();
+        questionMedia.Property(x => x.Kind).HasConversion<string>().HasMaxLength(16);
+        questionMedia.Property(x => x.YoutubeVideoId).HasMaxLength(11);
+        questionMedia.ToTable(table => table.HasCheckConstraint("CK_SurveyQuestionMedia_Kind",
+            "(\"Kind\" = 'Image' AND \"ImageId\" IS NOT NULL AND \"YoutubeVideoId\" IS NULL) OR "
+            + "(\"Kind\" = 'Video' AND \"YoutubeVideoId\" IS NOT NULL AND \"ImageId\" IS NULL)"));
         var option = model.Entity<QuestionOption>();
         option.HasKey(x => x.Id);
         option.HasOne<SurveyQuestion>().WithMany().HasForeignKey(x => x.QuestionId);

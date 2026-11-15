@@ -8,6 +8,8 @@ public enum FeedbackClosedBy { Manager, SecondReply, AutoClose, Customer }
 public enum SurveyPurpose { Satisfaction, NewProduct, Other }
 public enum SurveyStatus { Draft, Open, Closed }
 public enum QuestionType { SingleChoice, MultiChoice, Rating, ShortText }
+/// <summary>What a survey question shows above its answers; stored as text.</summary>
+public enum SurveyMediaKind { Image, Video }
 public enum RecipientStatus { NotDone, Done }
 public enum PreferenceSource { Declared, Survey }
 public enum OrderChannel { Website, Store, Marketplace }

@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Cocoon.Application.Recommendations;
+using Cocoon.Application.Storage;
 using Cocoon.Application.Surveys;
 using Cocoon.Domain;
 using Cocoon.Domain.Entities;
@@ -18,7 +19,8 @@ namespace Cocoon.Api.Controllers;
 /// </summary>
 [Route("api/v1")]
 [Authorize(Policy = "RequireManager")]
-public sealed class SurveysController(AppDbContext db, CustomerFactsService facts, RecommendationService recommendations) : ApiStubController
+public sealed class SurveysController(AppDbContext db, CustomerFactsService facts, RecommendationService recommendations,
+    IObjectStorage storage, ILogger<SurveysController> logger) : ApiStubController
 {
     private const string DeletedCustomer = "Khách đã xóa";
 
@@ -47,7 +49,7 @@ public sealed class SurveysController(AppDbContext db, CustomerFactsService fact
     [HttpPost("surveys")]
     public async Task<IActionResult> Create(SurveyUpsertRequest request, CancellationToken cancellationToken)
     {
-        if (await Invalid(request, cancellationToken) is { } problem) return problem;
+        if (await Invalid(request, null, cancellationToken) is { } problem) return problem;
         await FeedbackController.EnsureStaffProfile(db, AccountId, cancellationToken);
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var survey = new Survey { CreatedBy = AccountId, Status = SurveyStatus.Draft };
@@ -66,22 +68,27 @@ public sealed class SurveysController(AppDbContext db, CustomerFactsService fact
         return survey is null ? NotFound() : Ok(await Detail(survey, cancellationToken));
     }
 
-    /// <summary>Replaces title, schedule and every question. Drafts have no answers, so nothing references the old rows.</summary>
+    /// <summary>
+    /// Replaces title, schedule and every question with its media. Drafts have no answers, so nothing references the old
+    /// rows. Uploaded photos no question uses any more are removed afterwards.
+    /// </summary>
     [HttpPut("surveys/{id:int}")]
     public async Task<IActionResult> Update(int id, SurveyUpsertRequest request, CancellationToken cancellationToken)
     {
         var survey = await db.Set<Survey>().SingleOrDefaultAsync(s => s.Id == id, cancellationToken);
         if (survey is null) return NotFound();
         if (survey.Status != SurveyStatus.Draft) return NotDraft();
-        if (await Invalid(request, cancellationToken) is { } problem) return problem;
+        if (await Invalid(request, id, cancellationToken) is { } problem) return problem;
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         Apply(survey, request);
         var questionIds = db.Set<SurveyQuestion>().Where(q => q.SurveyId == id).Select(q => q.Id);
+        await db.Set<SurveyQuestionMedia>().Where(m => questionIds.Contains(m.QuestionId)).ExecuteDeleteAsync(cancellationToken);
         await db.Set<QuestionOption>().Where(o => questionIds.Contains(o.QuestionId)).ExecuteDeleteAsync(cancellationToken);
         await db.Set<SurveyQuestion>().Where(q => q.SurveyId == id).ExecuteDeleteAsync(cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         await AddQuestions(id, request.Questions, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        await RemoveUnusedImages(id, cancellationToken);
         return Ok(await Detail(survey, cancellationToken));
     }
 
@@ -215,24 +222,29 @@ public sealed class SurveysController(AppDbContext db, CustomerFactsService fact
             .Select(c => new SegmentSample(c.Id, $"KH-{c.Id:D4}", c.FullName, c.Email, c.Age, c.Gender)).ToList()));
     }
 
-    private async Task<ObjectResult?> Invalid(SurveyUpsertRequest request, CancellationToken cancellationToken)
+    /// <summary>surveyId is null while creating: photos can only be uploaded to a saved draft.</summary>
+    private async Task<ObjectResult?> Invalid(SurveyUpsertRequest request, int? surveyId, CancellationToken cancellationToken)
     {
         var questions = request.Questions ?? [];
+        var imageIds = questions.SelectMany(q => q.Media ?? []).Where(m => m is { Type: SurveyMediaKind.Image, ImageId: not null })
+            .Select(m => m!.ImageId!.Value).Distinct().ToArray();
         var preferenceIds = questions.SelectMany(q => q.Options ?? []).Select(o => o.PreferenceId).OfType<int>().Distinct().ToArray();
         var problem =
             string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > 200 ? "Tên khảo sát cần từ 1 đến 200 ký tự."
             : request.Description?.Length > 1000 ? "Mô tả tối đa 1000 ký tự."
             : !Enum.IsDefined(request.Purpose) ? "Mục đích khảo sát không hợp lệ."
             : request is { OpenAt: { } open, CloseAt: { } close } && close <= open ? "Ngày kết thúc phải sau ngày bắt đầu."
-            : !string.IsNullOrWhiteSpace(request.VideoUrl) && YoutubeLink.VideoId(request.VideoUrl) is null
-                ? "Video cần là link YouTube (youtube.com/watch?v=…, youtu.be/…, /shorts/…)."
             : questions.Length is < 1 or > 50 ? "Khảo sát cần từ 1 đến 50 câu hỏi."
             : questions.Select(QuestionProblem).FirstOrDefault(p => p is not null)
             ?? (request.Purpose == SurveyPurpose.NewProduct && (request.ProductId is not { } productId
                 || !await db.Set<Product>().AnyAsync(p => p.Id == productId, cancellationToken))
                 ? "Chọn sản phẩm sắp ra mắt cho khảo sát sản phẩm mới." : null)
             ?? (!await AuthController.PreferencesExist(db, preferenceIds, cancellationToken)
-                ? "Có nhu cầu không còn tồn tại. Hãy tải lại trang." : null);
+                ? "Có nhu cầu không còn tồn tại. Hãy tải lại trang." : null)
+            ?? (imageIds.Length == 0 ? null
+                : surveyId is null ? "Lưu bản nháp trước rồi mới thêm ảnh cho câu hỏi."
+                : await db.Set<SurveyImage>().CountAsync(i => i.SurveyId == surveyId && imageIds.Contains(i.Id), cancellationToken) != imageIds.Length
+                    ? "Có ảnh không thuộc khảo sát này. Hãy tải lại trang." : null);
         return problem is null ? null : Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR", problem);
     }
 
@@ -245,7 +257,30 @@ public sealed class SurveysController(AppDbContext db, CustomerFactsService fact
             : choice && options.Length is < 2 or > 20 ? "Câu chọn lựa cần từ 2 đến 20 lựa chọn."
             : !choice && options.Length > 0 ? "Chỉ câu chọn lựa mới có lựa chọn."
             : options.Any(o => string.IsNullOrWhiteSpace(o.Text) || o.Text.Trim().Length > 200) ? "Mỗi lựa chọn cần từ 1 đến 200 ký tự."
-            : null;
+            : MediaProblem(q.Media ?? []);
+    }
+
+    /// <summary>Media is optional; when present each item is a photo uploaded to this survey or a YouTube link.</summary>
+    private static string? MediaProblem(QuestionMediaInput?[] media) =>
+        media.Length > SurveyMedia.MaxPerQuestion ? $"Mỗi câu hỏi có tối đa {SurveyMedia.MaxPerQuestion} ảnh hoặc video."
+        : media.Any(m => m is null || !Enum.IsDefined(m.Type)) ? "Loại ảnh/video không hợp lệ."
+        : media.Any(m => m!.Type == SurveyMediaKind.Image && m.ImageId is null) ? "Ảnh của câu hỏi chưa được tải lên."
+        : media.Any(m => m!.Type == SurveyMediaKind.Video && YoutubeLink.VideoId(m.VideoUrl) is null)
+            ? "Video cần là link YouTube (youtube.com/watch?v=…, youtu.be/…, /shorts/…)."
+        : null;
+
+    /// <summary>Photos uploaded more than 10 minutes ago that no question uses; younger ones may belong to a form still being edited.</summary>
+    private async Task RemoveUnusedImages(int surveyId, CancellationToken cancellationToken)
+    {
+        var cutoff = DateTime.UtcNow.AddMinutes(-10);
+        var unused = await db.Set<SurveyImage>().Where(i => i.SurveyId == surveyId && i.CreatedAt < cutoff
+            && !db.Set<SurveyQuestionMedia>().Any(m => m.ImageId == i.Id)).ToListAsync(cancellationToken);
+        if (unused.Count == 0) return;
+        db.RemoveRange(unused);
+        await db.SaveChangesAsync(cancellationToken);
+        foreach (var image in unused)
+            try { await storage.DeleteAsync(image.ObjectKey, CancellationToken.None); }
+            catch (Exception e) { logger.LogWarning(e, "Unused survey image {Key} is still in storage", image.ObjectKey); }
     }
 
     private static void Apply(Survey survey, SurveyUpsertRequest request)
@@ -254,7 +289,6 @@ public sealed class SurveysController(AppDbContext db, CustomerFactsService fact
             (request.Title.Trim(), string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(), request.Purpose);
         survey.ProductId = request.Purpose == SurveyPurpose.NewProduct ? request.ProductId : null;
         (survey.OpenAt, survey.CloseAt) = (request.OpenAt?.ToUniversalTime(), request.CloseAt?.ToUniversalTime());
-        survey.YoutubeVideoId = YoutubeLink.VideoId(request.VideoUrl);
     }
 
     private async Task AddQuestions(int surveyId, QuestionInput[] questions, CancellationToken cancellationToken)
@@ -269,6 +303,12 @@ public sealed class SurveysController(AppDbContext db, CustomerFactsService fact
         {
             QuestionId = x.Entity.Id, Text = o.Text.Trim(), SortOrder = index, PreferenceId = o.PreferenceId
         })));
+        db.AddRange(rows.SelectMany(x => (x.Input.Media ?? []).Select((m, index) => new SurveyQuestionMedia
+        {
+            QuestionId = x.Entity.Id, SortOrder = index, Kind = m!.Type,
+            ImageId = m.Type == SurveyMediaKind.Image ? m.ImageId : null,
+            YoutubeVideoId = m.Type == SurveyMediaKind.Video ? YoutubeLink.VideoId(m.VideoUrl) : null,
+        })));
         await db.SaveChangesAsync(cancellationToken);
     }
 
@@ -278,14 +318,16 @@ public sealed class SurveysController(AppDbContext db, CustomerFactsService fact
         var ids = questions.Select(q => q.Id).ToArray();
         var options = (await db.Set<QuestionOption>().Where(o => ids.Contains(o.QuestionId)).OrderBy(o => o.SortOrder)
             .ToListAsync(cancellationToken)).ToLookup(o => o.QuestionId);
+        var media = (await db.Set<SurveyQuestionMedia>().Where(m => ids.Contains(m.QuestionId)).OrderBy(m => m.SortOrder)
+            .ToListAsync(cancellationToken)).ToLookup(m => m.QuestionId);
         return new SurveyDetail(survey.Id, survey.Title, survey.Description, survey.Purpose, survey.ProductId, survey.Status,
             survey.OpenAt, survey.CloseAt, survey.CreatedAt,
             await db.Set<SurveyRecipient>().CountAsync(r => r.SurveyId == survey.Id, cancellationToken),
             await db.Set<SurveyResponse>().CountAsync(r => r.SurveyId == survey.Id, cancellationToken),
             questions.Select(q => new QuestionView(q.Id, q.Text, q.Type, q.IsRequired,
-                options[q.Id].Select(o => new OptionView(o.Id, o.Text, o.PreferenceId)).ToList())).ToList(),
-            SurveyMedia.ImageUrl(survey.Id, survey.ImageObjectKey), survey.YoutubeVideoId,
-            survey.YoutubeVideoId is { } video ? YoutubeLink.WatchUrl(video) : null);
+                options[q.Id].Select(o => new OptionView(o.Id, o.Text, o.PreferenceId)).ToList(),
+                media[q.Id].Select(m => new QuestionMediaView(m.Kind, m.ImageId, m.ImageId is { } image ? SurveyMedia.ImageUrl(image) : null,
+                    m.YoutubeVideoId, m.YoutubeVideoId is { } video ? YoutubeLink.WatchUrl(video) : null)).ToList())).ToList());
     }
 
     private ObjectResult NotDraft() =>
@@ -295,21 +337,24 @@ public sealed class SurveysController(AppDbContext db, CustomerFactsService fact
         Fail(StatusCodes.Status409Conflict, "SURVEY_NOT_OPEN", "Khảo sát không ở trạng thái đang mở.");
 }
 
-/// <summary>VideoUrl is an optional YouTube link; empty removes the video. The cover photo has its own endpoint.</summary>
 public sealed record SurveyUpsertRequest(string Title, string? Description, SurveyPurpose Purpose, int? ProductId,
-    DateTime? OpenAt, DateTime? CloseAt, QuestionInput[] Questions, string? VideoUrl = null);
-public sealed record QuestionInput(string Text, QuestionType Type, bool IsRequired, OptionInput[] Options);
+    DateTime? OpenAt, DateTime? CloseAt, QuestionInput[] Questions);
+/// <summary>Media is optional (null or empty for a text-only question), at most SurveyMedia.MaxPerQuestion items, in display order.</summary>
+public sealed record QuestionInput(string Text, QuestionType Type, bool IsRequired, OptionInput[] Options, QuestionMediaInput?[]? Media = null);
+/// <summary>Image: ImageId from POST surveys/{id}/images. Video: a YouTube link (watch, youtu.be, /shorts, /embed, /live or a bare id).</summary>
+public sealed record QuestionMediaInput(SurveyMediaKind Type, int? ImageId = null, string? VideoUrl = null);
 public sealed record OptionInput(string Text, int? PreferenceId);
 public sealed record RecipientsRequest(SegmentFilter? Segment, int[]? CustomerIds);
 
 /// <summary>Row of M7. Matches apps/web/features/surveys/types.ts SurveyListItem.</summary>
 public sealed record SurveyListItem(int Id, string Title, SurveyPurpose Purpose, SurveyStatus Status, DateTime? OpenAt, DateTime? CloseAt,
     int QuestionCount, int RecipientCount, int ResponseCount);
-/// <summary>ImageUrl reads the cover photo (null without one); VideoUrl is the canonical watch link of YoutubeVideoId.</summary>
 public sealed record SurveyDetail(int Id, string Title, string? Description, SurveyPurpose Purpose, int? ProductId, SurveyStatus Status,
-    DateTime? OpenAt, DateTime? CloseAt, DateTime CreatedAt, int RecipientCount, int ResponseCount, IReadOnlyList<QuestionView> Questions,
-    string? ImageUrl, string? YoutubeVideoId, string? VideoUrl);
-public sealed record QuestionView(int Id, string Text, QuestionType Type, bool IsRequired, IReadOnlyList<OptionView> Options);
+    DateTime? OpenAt, DateTime? CloseAt, DateTime CreatedAt, int RecipientCount, int ResponseCount, IReadOnlyList<QuestionView> Questions);
+public sealed record QuestionView(int Id, string Text, QuestionType Type, bool IsRequired, IReadOnlyList<OptionView> Options,
+    IReadOnlyList<QuestionMediaView> Media);
+/// <summary>ImageId and Url for an Image; YoutubeVideoId and its watch VideoUrl for a Video. Send ImageId/VideoUrl back to keep it.</summary>
+public sealed record QuestionMediaView(SurveyMediaKind Type, int? ImageId, string? Url, string? YoutubeVideoId, string? VideoUrl);
 public sealed record OptionView(int Id, string Text, int? PreferenceId);
 public sealed record RecipientsAdded(int Added, int Total);
 public sealed record SegmentPreview(int Count, IReadOnlyList<SegmentSample> Sample);
