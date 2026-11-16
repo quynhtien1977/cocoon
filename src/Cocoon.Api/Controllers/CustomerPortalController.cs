@@ -362,7 +362,7 @@ public sealed class CustomerPortalController(AppDbContext db, RecommendationServ
             {
                 i.OrderId,
                 Item = new CustomerOrderItem(i.Id, p.Id, p.Id.ToString(), p.Name, v.Name, v.ImageUrl, i.Quantity, i.UnitPrice,
-                    f == null ? null : new FeedbackRef(f.Id, f.Rating))
+                    f == null ? null : new FeedbackRef(f.Id, f.Rating, f.CreatedAt))
             }).ToListAsync(cancellationToken)).ToLookup(x => x.OrderId, x => x.Item);
 
     private static CustomerOrder ToView(Order o, ILookup<int, CustomerOrderItem> lines) =>
@@ -415,7 +415,8 @@ public sealed record CustomerOrder(int Id, string Code, DateTime OrderedAt, Orde
 /// <param name="ProductSlug">The C2 page links products by this value; C9 reads it back as the product id.</param>
 public sealed record CustomerOrderItem(int Id, int ProductId, string ProductSlug, string Name, string Variant, string? ImageUrl,
     int Quantity, decimal UnitPrice, FeedbackRef? Review);
-public sealed record FeedbackRef(int Id, int Rating);
+/// <param name="CreatedAt">When the customer reviewed the line; "Đã đánh giá" lists the newest review first.</param>
+public sealed record FeedbackRef(int Id, int Rating, DateTime CreatedAt);
 public sealed record FeedbackProduct(int Id, string Name, string Variant, string? ImageUrl);
 public sealed record MyFeedbackItem(int Id, int Rating, string Content, FeedbackStatus Status, DateTime CreatedAt, string? OrderCode,
     FeedbackProduct Product, bool HasReply);
