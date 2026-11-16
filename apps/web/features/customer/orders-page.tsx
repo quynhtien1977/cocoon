@@ -83,7 +83,10 @@ export function OrdersPage({ initialFilter = "all", initialPreview = false }: { 
     <div className={styles.summary}>
       <div><PackageCheck size={24} /><span><strong>{ready ? delivered.length : "—"}</strong> đơn đã giao</span></div>
       <div><Star size={24} /><span><strong>{ready ? awaiting : "—"}</strong> sản phẩm chờ đánh giá</span></div>
-      <div><Check size={24} /><span><strong>{ready ? reviewed : "—"}</strong> sản phẩm đã đánh giá</span></div>
+      <Link href="/account/feedback" className={styles.summaryLink}>
+        <Check size={24} aria-hidden="true" />
+        <span><strong>{ready ? reviewed : "—"}</strong> sản phẩm đã đánh giá<ArrowRight size={13} aria-hidden="true" className={styles.summaryArrow} /></span>
+      </Link>
     </div>
     <div className={styles.filters} aria-label="Lọc đơn hàng">{tabs.map((tab) => <button key={tab.key} type="button" aria-pressed={filter === tab.key} onClick={() => select(tab.key)}>{tab.label}</button>)}</div>
     <div className={styles.toolbar}><p aria-live="polite">{ready ? `${visible.length} đơn hàng${query ? " phù hợp" : ""}` : "Lịch sử mua hàng"}</p><label className={styles.search}><Search size={18} /><span className="sr-only">Tìm theo mã đơn hoặc tên sản phẩm</span><input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Tìm mã đơn hoặc tên sản phẩm…" /></label></div>

@@ -12,3 +12,23 @@
 @media(max-width:800px){.header{gap:8px}}
 @media(max-width:360px){.header{padding:0 12px}.logo img{width:124px}}
 @media(max-width:400px){.customerHeader{grid-template-columns:40px minmax(0,1fr) auto;gap:4px;padding-inline:12px}.customerHeader .logo img{width:96px}.customerHeader .headerRight{gap:0}}
+
+.iconButton:focus-visible{outline:2px solid #8a6a2b;outline-offset:2px;border-radius:4px}
+.accountTrigger{border-radius:4px;transition:background-color .16s,color .16s}
+.accountTrigger:hover,.accountTrigger[aria-expanded=true]{background:#f3ecdf;color:#6e542a}
+.mobileNav{display:flex;flex-direction:column;gap:4px;padding:16px 0}
+.mobileNav a,.mobileNav button{display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 4px;color:#302b23;text-align:left}
+.mobileNav a[aria-current=page]{color:#84642f;font-weight:600;text-decoration:underline;text-underline-offset:6px}
+.accountMenu{width:min(264px,calc(100vw - 24px));border:1px solid #dfd3bf;border-radius:6px;background:#fffdf8;padding:6px;color:#302b23;box-shadow:0 18px 48px #3028171f}
+.accountMenuLabel{padding:8px 12px 6px;font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#8c7b60}
+.accountMenuSep{height:1px;margin:4px 6px 6px;background:#e9e0cf}
+.accountMenuItem{display:flex;align-items:center;gap:12px;min-height:44px;padding:10px 12px;border-radius:4px;color:#302b23;font-size:14px;line-height:1.4;text-decoration:none;cursor:pointer;transition:background-color .16s,color .16s}
+.accountMenuItem svg{color:#8e7651;flex-shrink:0}
+.accountMenuItem:hover,.accountMenuItem[data-highlighted]{background:#f3ecdf;color:#6e542a}
+.accountMenuItem:hover svg,.accountMenuItem[data-highlighted] svg{color:#6e542a}
+.accountMenuItem:focus-visible{outline:2px solid #8a6a2b;outline-offset:-2px}
+.accountMenuItem[aria-current=page]{background:#f5efe2;color:#6e542a;font-weight:600}
+.accountMenuItem[aria-current=page] svg{color:#6e542a}
+.accountMenuText{flex:1;min-width:0}
+.accountMenu .navBadge{margin-left:auto}
+@media(prefers-reduced-motion:reduce){.accountTrigger,.accountMenuItem{transition:none}}
