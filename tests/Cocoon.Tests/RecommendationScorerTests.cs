@@ -31,7 +31,7 @@ public sealed class RecommendationScorerTests
         {
             ["preference"] = 0.30m, ["survey"] = 0m, ["category"] = 0.12m, ["coPurchase"] = 0.06m, ["rating"] = 0.09m, ["plan"] = 0.10m
         }, result.Breakdown);
-        Assert.Equal(["Hợp với sở thích Da dầu", "Bạn hay chọn Làm sạch"], result.Reasons.Select(r => r.Label));
+        Assert.Equal(["Hợp với nhu cầu Da dầu", "Bạn hay chọn Làm sạch"], result.Reasons.Select(r => r.Label));
         Assert.Equal(["PREFERENCE", "CATEGORY"], result.Reasons.Select(r => r.Code));
         Assert.Equal(5, result.PlanId);
     }

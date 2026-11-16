@@ -175,7 +175,7 @@ export function SurveySend({ survey: loaded, preferences, categories, customers 
       <PageHeader eyebrow={code} title="Gửi khảo sát" description="Chọn khách nhận khảo sát theo phân khúc hoặc chọn tay. Khảo sát được gửi trong ứng dụng." actions={<StatusBadge kind="survey" status={survey.status} />} />
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
         <Tabs value={mode} onValueChange={(next) => { setMode(next as "segment" | "manual"); setProblem(null); }} className="min-w-0 gap-6">
-          <TabsList variant="line" className="w-full justify-start overflow-x-auto border-b border-border">
+          <TabsList variant="line" className="w-full flex-wrap justify-start border-b border-border group-data-horizontal/tabs:h-auto">
             <TabsTrigger value="segment" className={tabTrigger}><SlidersHorizontal aria-hidden="true" />Theo phân khúc</TabsTrigger>
             <TabsTrigger value="manual" className={tabTrigger}><ListChecks aria-hidden="true" />Chọn thủ công</TabsTrigger>
           </TabsList>

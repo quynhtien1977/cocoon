@@ -89,7 +89,7 @@ export function RegisterForm({ onClose }: { onClose: () => void }) {
     try {
       await saveRegistrationPreferences(Object.values(selections).flat());
       if (active.current) { setPreferencesError(""); router.replace("/account/profile"); router.refresh(); }
-    } catch { if (active.current) setPreferencesError("Sở thích đã chọn vẫn chưa thể lưu. Bạn có thể chọn các mục hiện có trong trang hồ sơ."); }
+    } catch { if (active.current) setPreferencesError("Nhu cầu đã chọn vẫn chưa thể lưu. Bạn có thể chọn các mục hiện có trong trang hồ sơ."); }
     finally { busy.current = false; if (active.current) setPending(false); }
   };
 
@@ -97,9 +97,9 @@ export function RegisterForm({ onClose }: { onClose: () => void }) {
     <div className={styles.modalPage} data-portal="public">
       <div className={`${styles.panel} ${registration.panel}`}>
         <div className={styles.topline}><span>Xin chào thành viên mới</span><button type="button" className={styles.close} onClick={onClose} aria-label="Đóng đăng ký"><X size={24} strokeWidth={1.5} /></button></div>
-        {success ? <div className={registration.success} role="status"><Check size={40} /><h1>Chào mừng bạn đến với Cocoon!</h1><p>Tài khoản khách hàng đã được tạo.</p>{message && <p role="alert">{message}</p>}{preferencesError && <><p role="alert">{preferencesError}</p>{sessionReady && <button type="button" className={registration.clear} disabled={pending} onClick={retryPreferences}>{pending ? "Đang lưu…" : "Lưu lại sở thích"}</button>}</>}<Link href={sessionReady ? "/account/profile" : "/login"} replace scroll={false} className={styles.submit}>{sessionReady ? "ĐẾN HỒ SƠ" : "ĐĂNG NHẬP"} <ArrowRight size={18} /></Link></div> : <>
+        {success ? <div className={registration.success} role="status"><Check size={40} /><h1>Chào mừng bạn đến với Cocoon!</h1><p>Tài khoản khách hàng đã được tạo.</p>{message && <p role="alert">{message}</p>}{preferencesError && <><p role="alert">{preferencesError}</p>{sessionReady && <button type="button" className={registration.clear} disabled={pending} onClick={retryPreferences}>{pending ? "Đang lưu…" : "Lưu lại nhu cầu"}</button>}</>}<Link href={sessionReady ? "/account/profile" : "/login"} replace scroll={false} className={styles.submit}>{sessionReady ? "ĐẾN HỒ SƠ" : "ĐĂNG NHẬP"} <ArrowRight size={18} /></Link></div> : <>
           <h1 ref={heading} tabIndex={-1} className={registration.heading}>{step === 1 ? "Tạo tài khoản cùng Cocoon." : "Cocoon hiểu bạn hơn."}</h1>
-          <p className={registration.step} aria-live="polite"><span>Bước {step}/2</span> · {step === 1 ? "Thông tin tài khoản — bắt buộc" : "Sở thích của bạn — không bắt buộc"}</p>
+          <p className={registration.step} aria-live="polite"><span>Bước {step}/2</span> · {step === 1 ? "Thông tin tài khoản — bắt buộc" : "Nhu cầu của bạn — không bắt buộc"}</p>
           <form ref={form} onSubmit={submit} onKeyDown={(event) => {
             if (step === 1 && event.key === "Enter" && !event.nativeEvent.isComposing && event.target instanceof HTMLInputElement) {
               event.preventDefault();
@@ -124,7 +124,7 @@ export function RegisterForm({ onClose }: { onClose: () => void }) {
               {preferenceGroups.map((group) => <div key={group.key} className={registration.preference}>
                 <span id={`preference-${group.key}`} className={registration.label}>{group.label}</span>
                 <Select.Root multiple value={selections[group.key]} onValueChange={(value) => { setSelections((previous) => ({ ...previous, [group.key]: value })); setMessage(""); }} disabled={pending}>
-                  <Select.Trigger className={registration.trigger} aria-labelledby={`preference-${group.key}`}><span>{selections[group.key].length ? `Đã chọn ${selections[group.key].length} mục` : "Chọn sở thích của bạn"}</span><Select.Icon><ChevronDown size={18} /></Select.Icon></Select.Trigger>
+                  <Select.Trigger className={registration.trigger} aria-labelledby={`preference-${group.key}`}><span>{selections[group.key].length ? `Đã chọn ${selections[group.key].length} mục` : "Chọn nhu cầu của bạn"}</span><Select.Icon><ChevronDown size={18} /></Select.Icon></Select.Trigger>
                   <Select.Portal><Select.Positioner className={registration.positioner} sideOffset={6} align="start" alignItemWithTrigger={false} collisionPadding={12}>
                     <Select.Popup className={registration.dropdown}><Select.List>
                       {group.options.map((option) => <Select.Item key={option.key} value={option.key} label={option.label} className={registration.option}><span className={registration.check}><Select.ItemIndicator><Check size={14} /></Select.ItemIndicator></span><Select.ItemText><span>{option.label}</span><small>{option.english}</small></Select.ItemText></Select.Item>)}
@@ -136,7 +136,7 @@ export function RegisterForm({ onClose }: { onClose: () => void }) {
             </div>}
             {message && <p className={styles.formError} role="alert">{message}</p>}
             <div className={registration.actions}>
-              {step === 1 ? <><span className={registration.help}>Tiếp theo: sở thích của bạn</span><button type="submit" className={registration.arrow} aria-label="Sang bước 2: Sở thích"><ArrowRight size={22} /></button></> : <><button type="button" className={registration.arrow} disabled={pending} onClick={() => move(1)} aria-label="Quay lại bước 1: Thông tin tài khoản"><ArrowLeft size={22} /></button><button type="submit" className={styles.submit} disabled={pending}>{pending ? "ĐANG ĐĂNG KÝ…" : "ĐĂNG KÝ TÀI KHOẢN"}</button></>}
+              {step === 1 ? <><span className={registration.help}>Tiếp theo: nhu cầu của bạn</span><button type="submit" className={registration.arrow} aria-label="Sang bước 2: Nhu cầu"><ArrowRight size={22} /></button></> : <><button type="button" className={registration.arrow} disabled={pending} onClick={() => move(1)} aria-label="Quay lại bước 1: Thông tin tài khoản"><ArrowLeft size={22} /></button><button type="submit" className={styles.submit} disabled={pending}>{pending ? "ĐANG ĐĂNG KÝ…" : "ĐĂNG KÝ TÀI KHOẢN"}</button></>}
             </div>
           </form>
           <p className={registration.login}>Bạn đã có tài khoản? <Link href="/login" replace scroll={false}>Đăng nhập</Link></p>

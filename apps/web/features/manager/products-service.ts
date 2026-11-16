@@ -54,7 +54,7 @@ export function productsCsv(items: readonly ManagerProduct[]): string {
     return `"${text.replaceAll('"', '""')}"`;
   };
   return "\uFEFF" + [
-    ["Mã", "Sản phẩm", "SKU", "Danh mục", "Trạng thái", "Sở thích", "Đánh giá", "Phản hồi"],
+    ["Mã", "Sản phẩm", "SKU", "Danh mục", "Trạng thái", "Nhu cầu", "Đánh giá", "Phản hồi"],
     ...items.map(item => [item.id, item.name, item.sku, item.categoryName, productStatusLabels[item.status], item.preferences.join("; "), item.averageRating, item.feedbackCount]),
   ].map(row => row.map(escape).join(",")).join("\r\n");
 }

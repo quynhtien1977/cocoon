@@ -22,7 +22,7 @@ const date = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit"
 const money = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" });
 const score = new Intl.NumberFormat("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const rating = new Intl.NumberFormat("vi-VN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const tabTrigger = "min-h-12 flex-none rounded-none px-4 font-label text-sm uppercase tracking-wider";
+const tabTrigger = "min-h-12 flex-none rounded-none px-3 font-label text-sm uppercase tracking-wider sm:px-4";
 const panel = "min-w-0 rounded-lg border border-border bg-card p-4 sm:p-6";
 const stateLabels: Record<RecommendationState, [string, string]> = {
   Clicked: ["Đã bấm xem", "bg-status-sage-bg text-status-sage-fg"],
@@ -95,8 +95,8 @@ export function CustomerDetail({ initial, scoreBreakdown }: { initial: Customer;
       </div>
 
       <Tabs defaultValue="profile" className="gap-6">
-        <TabsList variant="line" className="h-auto w-full justify-start overflow-x-auto border-b border-border">
-          <TabsTrigger value="profile" className={tabTrigger}>Hồ sơ & sở thích</TabsTrigger>
+        <TabsList variant="line" className="w-full flex-wrap justify-start border-b border-border group-data-horizontal/tabs:h-auto">
+          <TabsTrigger value="profile" className={tabTrigger}>Hồ sơ & nhu cầu</TabsTrigger>
           <TabsTrigger value="orders" className={tabTrigger}>Đơn hàng ({customer.orders.length})</TabsTrigger>
           <TabsTrigger value="feedback" className={tabTrigger}>Phản hồi ({customer.feedback.length})</TabsTrigger>
           <TabsTrigger value="surveys" className={tabTrigger}>Khảo sát ({customer.surveys.length})</TabsTrigger>
@@ -115,8 +115,8 @@ export function CustomerDetail({ initial, scoreBreakdown }: { initial: Customer;
             </dl>
           </section>
           <section aria-labelledby="preferences-title" className={panel}>
-            <h2 id="preferences-title" className="font-heading text-xl">Sở thích</h2>
-            {customer.preferences.length ? <ul className="mt-3 flex flex-wrap gap-2">{customer.preferences.map((item) => <li key={item} className="rounded-sm bg-status-beige-bg px-2 py-1 font-label text-sm text-status-beige-fg">{item}</li>)}</ul> : <p className="mt-3 text-sm text-muted-foreground">Chưa có sở thích.</p>}
+            <h2 id="preferences-title" className="font-heading text-xl">Nhu cầu</h2>
+            {customer.preferences.length ? <ul className="mt-3 flex flex-wrap gap-2">{customer.preferences.map((item) => <li key={item} className="rounded-sm bg-status-beige-bg px-2 py-1 font-label text-sm text-status-beige-fg">{item}</li>)}</ul> : <p className="mt-3 text-sm text-muted-foreground">Chưa có nhu cầu.</p>}
           </section>
         </TabsContent>
 

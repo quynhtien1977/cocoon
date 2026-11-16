@@ -8,6 +8,8 @@ public enum FeedbackClosedBy { Manager, SecondReply, AutoClose, Customer }
 public enum SurveyPurpose { Satisfaction, NewProduct, Other }
 public enum SurveyStatus { Draft, Open, Closed }
 public enum QuestionType { SingleChoice, MultiChoice, Rating, ShortText }
+/// <summary>What a survey question shows above its answers; stored as text.</summary>
+public enum SurveyMediaKind { Image, Video }
 public enum RecipientStatus { NotDone, Done }
 public enum PreferenceSource { Declared, Survey }
 public enum OrderChannel { Website, Store, Marketplace }
@@ -19,4 +21,5 @@ public enum OrderChannel { Website, Store, Marketplace }
 public enum OrderStatus { Completed, Cancelled, Returned, Placed, Delivering }
 public enum RecommendationStatus { Active, Clicked, Dismissed, Expired }
 public enum RecommendationPlanStatus { Draft, Active, Ended }
-
+/// <summary>Why a one-time email code was issued; stored as text, new values go last.</summary>
+public enum PasswordTokenPurpose { Invitation, Reset }

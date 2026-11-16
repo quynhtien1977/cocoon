@@ -148,6 +148,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         question.HasOne<Survey>().WithMany().HasForeignKey(x => x.SurveyId);
         question.Property(x => x.Type).HasConversion<string>().HasMaxLength(32);
         question.Property(x => x.Text).HasMaxLength(1000);
+        var surveyImage = model.Entity<SurveyImage>();
+        surveyImage.HasKey(x => x.Id);
+        surveyImage.HasOne<Survey>().WithMany().HasForeignKey(x => x.SurveyId);
+        surveyImage.HasIndex(x => x.ObjectKey).IsUnique();
+        surveyImage.Property(x => x.ObjectKey).HasMaxLength(300);
+        surveyImage.Property(x => x.ContentType).HasMaxLength(32);
+        var questionMedia = model.Entity<SurveyQuestionMedia>();
+        questionMedia.HasKey(x => x.Id);
+        questionMedia.HasOne<SurveyQuestion>().WithMany().HasForeignKey(x => x.QuestionId);
+        questionMedia.HasOne<SurveyImage>().WithMany().HasForeignKey(x => x.ImageId);
+        questionMedia.HasIndex(x => new { x.QuestionId, x.SortOrder }).IsUnique();
+        questionMedia.Property(x => x.Kind).HasConversion<string>().HasMaxLength(16);
+        questionMedia.Property(x => x.YoutubeVideoId).HasMaxLength(11);
+        questionMedia.ToTable(table => table.HasCheckConstraint("CK_SurveyQuestionMedia_Kind",
+            "(\"Kind\" = 'Image' AND \"ImageId\" IS NOT NULL AND \"YoutubeVideoId\" IS NULL) OR "
+            + "(\"Kind\" = 'Video' AND \"YoutubeVideoId\" IS NOT NULL AND \"ImageId\" IS NULL)"));
         var option = model.Entity<QuestionOption>();
         option.HasKey(x => x.Id);
         option.HasOne<SurveyQuestion>().WithMany().HasForeignKey(x => x.QuestionId);
@@ -239,7 +255,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         reset.HasKey(x => x.Id);
         reset.HasOne<Account>().WithMany().HasForeignKey(x => x.AccountId);
         reset.HasIndex(x => x.TokenHash).IsUnique();
+        reset.HasIndex(x => new { x.AccountId, x.CreatedAt });
         reset.Property(x => x.TokenHash).HasMaxLength(128);
+        reset.Property(x => x.Purpose).HasConversion<string>().HasMaxLength(16);
+        reset.ToTable(table => table.HasCheckConstraint("CK_PasswordResetToken_Attempts", "\"Attempts\" >= 0"));
 
         foreach (var entity in model.Model.GetEntityTypes())
         {

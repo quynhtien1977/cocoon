@@ -20,10 +20,10 @@ export default function Page() {
         <div>
           <p className={styles.eyebrow}>Chăm chút riêng cho bạn</p>
           <h1>Sản phẩm gợi ý</h1>
-          <p>Những lựa chọn được tuyển chọn từ sở thích chăm sóc da, tóc và lịch sử trải nghiệm của bạn.</p>
+          <p>Những lựa chọn được tuyển chọn từ nhu cầu chăm sóc da, tóc và lịch sử trải nghiệm của bạn.</p>
         </div>
         <Link href="/account/profile" className={styles.shop}>
-          Cập nhật sở thích <ArrowRight size={17} />
+          Cập nhật nhu cầu <ArrowRight size={17} />
         </Link>
       </div>
       <RecommendationSection grid limit={12} />

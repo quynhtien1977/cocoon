@@ -18,22 +18,29 @@ export function BackofficeShell({ variant, nav, children }: { variant: keyof typ
     <div data-portal={variant} className="min-h-dvh bg-muted md:flex">
       <a href="#main-content" className="skip-link">Đến nội dung chính</a>
       <aside aria-label={`Không gian ${labels[variant].toLowerCase()}`} className="sticky top-0 hidden h-dvh w-16 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex lg:w-[248px] print:hidden">
-        <div className="flex h-24 shrink-0 items-center justify-center border-b border-sidebar-border px-2 lg:justify-start lg:px-6">
+        <div className="flex h-20 shrink-0 items-center justify-center border-b border-sidebar-border px-2 lg:justify-start lg:px-6">
           <Logo href={home} tone="ink" className="hidden lg:inline-flex" />
           <Link href={home} aria-label="Cocoon CRM — Trang chủ" title="Cocoon CRM" className="flex size-12 items-center justify-center text-gold lg:hidden"><Leaf className="size-6" aria-hidden="true" /></Link>
         </div>
-        <p className="hidden px-6 pt-6 font-label text-xs uppercase tracking-wider text-sidebar-muted lg:block">Không gian {labels[variant].toLowerCase()}</p>
-        <nav aria-label={labels[variant]} className="min-h-0 flex-1 overflow-y-auto px-2 py-6 lg:px-4">
+        <p className="hidden px-6 pt-5 font-label text-xs uppercase tracking-wider text-sidebar-muted lg:block">Không gian {labels[variant].toLowerCase()}</p>
+        {/* Compact rows so the whole menu fits; on a very short window it still scrolls, without showing a scrollbar. */}
+        <nav aria-label={labels[variant]} className="min-h-0 flex-1 overflow-y-auto px-2 py-3 [scrollbar-width:none] lg:px-4 [&::-webkit-scrollbar]:hidden">
           <NavLinks
             items={nav} showIcons
-            className="flex flex-col gap-2"
+            className="flex flex-col gap-1"
             labelClassName="sr-only lg:not-sr-only"
-            linkClassName="flex min-h-12 items-center justify-center gap-3 rounded-md border-l-2 border-transparent px-2 py-3 text-sm text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground lg:justify-start lg:px-3"
+            toggleClassName="hidden lg:grid"
+            linkClassName="flex min-h-11 items-center justify-center gap-3 rounded-md border-l-2 border-transparent px-2 py-2 text-sm text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground lg:justify-start lg:px-3"
             activeClassName="border-sidebar-primary bg-sidebar-accent font-bold text-sidebar-foreground"
+            groupActiveClassName="font-bold text-sidebar-foreground"
+            childListClassName="mt-1 flex flex-col gap-1"
+            // Icon-only sidebar (md): sub-pages keep their icons; full sidebar (lg): indented text like the reference.
+            childIconClassName="lg:hidden"
+            childLinkClassName="flex min-h-10 items-center justify-center gap-3 rounded-md border-l-2 border-transparent px-2 py-1.5 text-sm text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground lg:justify-start lg:pl-11"
           />
         </nav>
-        <div className="border-t border-sidebar-border p-2 lg:p-4">
-          <Link href="/" title="Trang giới thiệu" className="flex min-h-12 items-center justify-center gap-3 px-2 text-sm text-sidebar-muted hover:text-sidebar-foreground lg:justify-start lg:px-3">
+        <div className="border-t border-sidebar-border p-2 lg:px-4 lg:py-3">
+          <Link href="/" title="Trang giới thiệu" className="flex min-h-11 items-center justify-center gap-3 px-2 text-sm text-sidebar-muted hover:text-sidebar-foreground lg:justify-start lg:px-3">
             <ArrowUpRight className="size-5 shrink-0" aria-hidden="true" /><span className="sr-only lg:not-sr-only">Trang giới thiệu</span>
           </Link>
         </div>

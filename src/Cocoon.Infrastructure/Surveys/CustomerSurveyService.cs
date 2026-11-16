@@ -68,9 +68,13 @@ public sealed class CustomerSurveyService(AppDbContext db)
         var options = (await db.Set<QuestionOption>().AsNoTracking().Where(o => ids.Contains(o.QuestionId)).OrderBy(o => o.SortOrder).ThenBy(o => o.Id).ToListAsync(ct))
             .ToLookup(o => o.QuestionId);
         var answers = response is null ? [] : await db.Set<SurveyAnswer>().AsNoTracking().Where(a => a.ResponseId == response.Id).OrderBy(a => a.Id).ToListAsync(ct);
+        var media = (await db.Set<SurveyQuestionMedia>().AsNoTracking().Where(m => ids.Contains(m.QuestionId)).OrderBy(m => m.SortOrder)
+            .ToListAsync(ct)).ToLookup(m => m.QuestionId);
         return new(survey.Id, survey.Title, survey.Description ?? "", survey.Status, survey.OpenAt, survey.CloseAt, completedAt,
             questions.Select(q => new CustomerSurveyQuestion(q.Id, q.Text, q.Type, q.IsRequired,
-                options[q.Id].Select(o => new CustomerSurveyOption(o.Id, o.Text)).ToList())).ToList(),
+                options[q.Id].Select(o => new CustomerSurveyOption(o.Id, o.Text)).ToList(),
+                media[q.Id].Select(m => new CustomerQuestionMedia(m.Kind, m.ImageId is { } image ? SurveyMedia.ImageUrl(image) : null,
+                    m.YoutubeVideoId)).ToList())).ToList(),
             answers.GroupBy(a => a.QuestionId).Select(g => new CustomerSurveyAnswerValue(g.Key,
                 g.Where(a => a.OptionId != null).Select(a => a.OptionId!.Value).ToArray(), g.First().NumericValue, g.First().TextValue)).ToList());
     }

@@ -251,22 +251,35 @@ test("reply validation and request trim the content", () => {
 
 test("M3 reports invalid fields and posts the customer without preferences", async () => {
   const user = userEvent.setup();
-  stubFetch(() => json({ id: 120, email: "ha@example.com", role: "Customer", temporaryPassword: "Tam!1234", mustChangePassword: true }, 201));
+  stubFetch(() => json({ id: 120, email: "ha@example.com", role: "Customer", mustChangePassword: true, invitationSent: true }, 201));
   render(<CustomerCreateForm />);
   await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }));
   assert.ok(screen.getByText("Nhập họ và tên."));
-  assert.ok(screen.getByText("Số điện thoại gồm 10 chữ số, bắt đầu bằng 0."));
+  assert.ok(screen.getByText("Nhập email."));
+  assert.ok(screen.getByText("Nhập số điện thoại."));
+  assert.ok(screen.getByText("Nhập địa chỉ."));
   await user.type(screen.getByLabelText(/Họ và tên/), "Nguyễn Thu Hà");
+  await user.type(screen.getByLabelText(/^Email/), "ha@example");
+  await user.type(screen.getByLabelText(/Số điện thoại/), "912 345 678");
+  await user.type(screen.getByLabelText(/Địa chỉ/), "HCM");
+  await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }));
+  assert.ok(screen.getByText("Email không hợp lệ (ví dụ: ten@example.com)."));
+  assert.ok(screen.getByText("Số điện thoại gồm 10 chữ số, bắt đầu bằng 0."));
+  assert.ok(screen.getByText("Địa chỉ tối thiểu 5 ký tự."));
+  await user.clear(screen.getByLabelText(/^Email/));
   await user.type(screen.getByLabelText(/^Email/), "ha@example.com");
+  await user.clear(screen.getByLabelText(/Số điện thoại/));
   await user.type(screen.getByLabelText(/Số điện thoại/), "0912 345 678");
+  await user.clear(screen.getByLabelText(/Địa chỉ/));
+  await user.type(screen.getByLabelText(/Địa chỉ/), "12 Lê Lợi, Quận 1");
 
-  assert.equal(screen.queryByText(/Sở thích và nhu cầu ban đầu/), null);
+  assert.equal(screen.queryByText(/Nhu cầu ban đầu/), null);
 
   await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }));
-  assert.ok(await screen.findByText(/Đã lưu hồ sơ Nguyễn Thu Hà/));
-  assert.equal(screen.queryByText("Tam!1234"), null, "temporary password is masked until revealed");
-  await user.click(screen.getByRole("button", { name: "Hiện" }));
-  assert.ok(screen.getByText("Tam!1234"));
+  assert.ok(await screen.findByText(/Đã tạo hồ sơ khách hàng Nguyễn Thu Hà\. Đã gửi email kích hoạt tới/));
+  assert.equal(screen.queryByText(/Tam!1234/), null, "temporary password is never shown");
+  assert.equal(screen.queryByText(/Mật khẩu tạm/), null);
+  assert.equal(screen.queryByRole("button", { name: "Hiện" }), null);
   const post = requests.find((request) => request.method === "POST")!;
   assert.equal(post.url, "/api/v1/customers");
   assert.deepEqual((post.body as { preferenceIds: number[] }).preferenceIds, []);
@@ -281,15 +294,19 @@ test("M3 shows the API conflict on the email field", async () => {
   await user.type(screen.getByLabelText(/Họ và tên/), "Nguyễn Thu Hà");
   await user.type(screen.getByLabelText(/^Email/), "ha@example.com");
   await user.type(screen.getByLabelText(/Số điện thoại/), "0912 345 678");
+  await user.type(screen.getByLabelText(/Địa chỉ/), "12 Lê Lợi, Quận 1");
   await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }));
   assert.ok(await screen.findByText("Email này đã được dùng."));
   assert.equal(screen.getByLabelText(/^Email/).getAttribute("aria-invalid"), "true");
 });
 
 test("customer draft maps to CreateCustomerRequest and rejects a future birth date", () => {
-  const draft = { fullName: " Hà ", email: " ha@example.com ", phone: "0912 345 678", dateOfBirth: "", gender: "", address: "  ", preferences: [3] };
-  assert.deepEqual(toCreateCustomerRequest(draft), { email: "ha@example.com", fullName: "Hà", phone: "0912345678", dateOfBirth: null, gender: null, address: null, preferenceIds: [3] });
+  const draft = { fullName: " Hà ", email: " ha@example.com ", phone: "0912 345 678", dateOfBirth: "", gender: "", address: " 12 Lê Lợi ", preferences: [3] };
+  assert.deepEqual(toCreateCustomerRequest(draft), { email: "ha@example.com", fullName: "Hà", phone: "0912345678", dateOfBirth: null, gender: null, address: "12 Lê Lợi", preferenceIds: [3] });
   assert.deepEqual(validateCustomerDraft(draft, "2026-10-30"), {});
+  assert.equal(validateCustomerDraft({ ...draft, address: "  " }, "2026-10-30").address, "Nhập địa chỉ.");
+  assert.equal(validateCustomerDraft({ ...draft, email: "ha@example" }, "2026-10-30").email, "Email không hợp lệ (ví dụ: ten@example.com).");
+  assert.equal(validateCustomerDraft({ ...draft, phone: "0912 345 67" }, "2026-10-30").phone, "Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.");
   assert.equal(validateCustomerDraft({ ...draft, dateOfBirth: "2026-10-31" }, "2026-10-30").dateOfBirth, "Ngày sinh không thể ở tương lai.");
 });
 
@@ -300,13 +317,13 @@ test("M4 loads the profile and tabs from the API, locks and soft-deletes", async
   const user = userEvent.setup();
   stubFetch((url, init) => init?.method && init.method !== "GET" ? new Response(null, { status: 204 })
     : url.includes("/orders") ? page(orders) : url.includes("/feedback") || url.includes("/surveys") ? page([])
-    : url.endsWith("/recommendations") ? json([{ id: 3, productName: "Gel bí đao", score: 0.67, status: "Clicked", reasons: [{ code: "PREFERENCE", label: "Hợp với sở thích Da dầu" }, { code: "CATEGORY", label: "Bạn hay chọn Làm sạch" }] }])
+    : url.endsWith("/recommendations") ? json([{ id: 3, productName: "Gel bí đao", score: 0.67, status: "Clicked", reasons: [{ code: "PREFERENCE", label: "Hợp với nhu cầu Da dầu" }, { code: "CATEGORY", label: "Bạn hay chọn Làm sạch" }] }])
     : json(profile));
   render(<CustomerDetailPage id={9} />);
   await user.click(await screen.findByRole("tab", { name: "Đơn hàng (2)" }));
   assert.equal(within(screen.getByRole("table")).getAllByRole("row").length - 1, 2);
   await user.click(screen.getByRole("tab", { name: "Gợi ý" }));
-  assert.ok(screen.getByText("Hợp với sở thích Da dầu · Bạn hay chọn Làm sạch"));
+  assert.ok(screen.getByText("Hợp với nhu cầu Da dầu · Bạn hay chọn Làm sạch"));
   assert.ok(screen.getByText("Đã bấm xem"));
   await user.click(screen.getByRole("button", { name: "Khóa tài khoản" }));
   await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Khóa tài khoản" }));

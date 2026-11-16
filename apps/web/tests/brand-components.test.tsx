@@ -81,11 +81,11 @@ test("read-only ratings expose fractional averages and an explicit unrated state
 test("product card formats minimum VND price, limits reasons and preserves action click", async () => {
   let clicks = 0;
   render(<ProductCard name="Nước sen Hậu Giang" href="/account/products/14" minPrice={185000} avgRating={4.6}
-    reason={[<ReasonChip key="1">Hợp sở thích</ReasonChip>, <ReasonChip key="2">Được yêu thích</ReasonChip>, <ReasonChip key="3">Lý do thứ ba</ReasonChip>]}
+    reason={[<ReasonChip key="1">Hợp nhu cầu</ReasonChip>, <ReasonChip key="2">Được yêu thích</ReasonChip>, <ReasonChip key="3">Lý do thứ ba</ReasonChip>]}
     action={<button onClick={() => clicks++}>Đánh giá</button>} />);
   assert.ok(screen.getByRole("link", { name: "Nước sen Hậu Giang" }));
   assert.match(screen.getByText(/185\.000/).textContent!, /Từ/);
-  assert.ok(screen.getByText("Hợp sở thích"));
+  assert.ok(screen.getByText("Hợp nhu cầu"));
   assert.ok(screen.getByText("Được yêu thích"));
   assert.equal(screen.queryByText("Lý do thứ ba"), null);
   const action = screen.getByRole("button", { name: "Đánh giá" });

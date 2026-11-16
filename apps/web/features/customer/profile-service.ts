@@ -66,7 +66,7 @@ function rows(value: unknown): unknown[] {
   if (Array.isArray(value)) return value;
   const data = record(value);
   if (Array.isArray(data.items)) return data.items;
-  throw new Error("Không thể đọc danh sách sở thích. Vui lòng thử lại.");
+  throw new Error("Không thể đọc danh sách nhu cầu. Vui lòng thử lại.");
 }
 
 function validId(value: unknown): value is number { return Number.isInteger(value) && (value as number) > 0 && (value as number) <= 2147483647; }
@@ -77,22 +77,22 @@ export async function loadPreferences(signal?: AbortSignal): Promise<CustomerPre
   ]);
   const catalogRows = rows(catalog).map(value => {
     const item = record(value);
-    if (!validId(item.id) || typeof item.name !== "string" || !item.name.trim() || (item.isActive !== undefined && typeof item.isActive !== "boolean")) throw new Error("Danh sách sở thích không hợp lệ.");
+    if (!validId(item.id) || typeof item.name !== "string" || !item.name.trim() || (item.isActive !== undefined && typeof item.isActive !== "boolean")) throw new Error("Danh sách nhu cầu không hợp lệ.");
     return { id: item.id, name: item.name, isActive: item.isActive !== false };
   });
-  if (new Set(catalogRows.map(item => item.id)).size !== catalogRows.length) throw new Error("Danh sách sở thích bị trùng. Vui lòng thử lại.");
+  if (new Set(catalogRows.map(item => item.id)).size !== catalogRows.length) throw new Error("Danh sách nhu cầu bị trùng. Vui lòng thử lại.");
   const rawSelected = mine && typeof mine === "object" && "preferenceIds" in mine ? record(mine).preferenceIds : rows(mine);
-  if (!Array.isArray(rawSelected)) throw new Error("Không thể đọc sở thích đã lưu.");
+  if (!Array.isArray(rawSelected)) throw new Error("Không thể đọc nhu cầu đã lưu.");
   const derived: CustomerPreferences["derived"] = [];
   const selected = [...new Set(rawSelected.flatMap(value => {
     const id = typeof value === "number" ? value : record(value).id;
-    if (!validId(id)) throw new Error("Sở thích đã lưu không hợp lệ.");
+    if (!validId(id)) throw new Error("Nhu cầu đã lưu không hợp lệ.");
     const item = typeof value === "number" ? {} : record(value);
     if (item.source === "Survey" || item.source === 1) {
-      derived.push({ id, label: typeof item.name === "string" ? item.name : catalogRows.find(row => row.id === id)?.name ?? `Sở thích #${id}` });
+      derived.push({ id, label: typeof item.name === "string" ? item.name : catalogRows.find(row => row.id === id)?.name ?? `Nhu cầu #${id}` });
       return [];
     }
-    if (item.source !== undefined && item.source !== "Declared" && item.source !== 0) throw new Error("Nguồn sở thích chưa được hỗ trợ.");
+    if (item.source !== undefined && item.source !== "Declared" && item.source !== 0) throw new Error("Nguồn nhu cầu chưa được hỗ trợ.");
     return [id];
   }))];
   const options: PreferenceOption[] = catalogRows.map(item => ({ id: item.id, label: item.name, group: "other", inactive: !item.isActive }));
@@ -105,12 +105,12 @@ export async function loadPreferences(signal?: AbortSignal): Promise<CustomerPre
       target.label = option.label;
     } catch { /* Unknown/inactive choices stay visible in the additional group. */ }
   }
-  for (const id of selected) if (!options.some(item => item.id === id)) options.push({ id, label: `Sở thích đã lưu #${id}`, group: "other", inactive: true });
+  for (const id of selected) if (!options.some(item => item.id === id)) options.push({ id, label: `Nhu cầu đã lưu #${id}`, group: "other", inactive: true });
   return { selected, options: options.filter(item => (!item.inactive || selected.includes(item.id)) && !derived.some(source => source.id === item.id)), derived };
 }
 
 export async function savePreferences(ids: number[], signal?: AbortSignal): Promise<void> {
-  if (!ids.every(validId)) throw new Error("Lựa chọn sở thích không hợp lệ.");
+  if (!ids.every(validId)) throw new Error("Lựa chọn nhu cầu không hợp lệ.");
   await apiRequest<unknown>("/me/preferences", { method: "PUT", signal, json: { preferenceIds: [...new Set(ids)] } });
 }
 

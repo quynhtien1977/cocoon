@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { ImageOff } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function ProductPhoto({ src, name, className = "" }: { src: string | null; name: string; className?: string }) {
   const [failed, setFailed] = useState<string | null>(null);

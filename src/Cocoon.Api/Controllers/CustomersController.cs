@@ -15,19 +15,39 @@ namespace Cocoon.Api.Controllers;
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-public sealed class CustomersController(AccountManagementService accounts, RecommendationService recommendations) : ApiStubController
+public sealed class CustomersController(AccountManagementService accounts, RecommendationService recommendations,
+    PasswordResetService resets) : ApiStubController
 {
     [HttpGet, ProducesResponseType<CustomerPage<CustomerRow>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<CustomerPage<CustomerRow>>> List([FromQuery] CustomerQuery query, CancellationToken ct) =>
         Ok(await accounts.CustomersAsync(query, ct));
 
-    [HttpPost, ProducesResponseType<AccountCreated>(StatusCodes.Status201Created)]
-    public async Task<ActionResult<AccountCreated>> Create(CreateCustomerRequest request, CancellationToken ct)
+    /// <summary>
+    /// The generated password never leaves the server: the customer gets an email code to set their own (decision
+    /// 15/11/2026). invitationSent=false means the account exists but the email failed; resend with POST {id}/invitation.
+    /// </summary>
+    [HttpPost, ProducesResponseType<CustomerCreated>(StatusCodes.Status201Created)]
+    public async Task<ActionResult<CustomerCreated>> Create(CreateCustomerRequest request, CancellationToken ct)
     {
         var result = await accounts.CreateCustomerAsync(AccountId, request.Email, new CustomerInput(request.FullName, request.Phone,
             request.DateOfBirth, request.Gender, request.Address, request.ConsentPersonalData, request.PreferenceIds), ct);
+        var sent = await resets.InviteAsync(result.Id, ct, quiet: true);
         Response.Headers.CacheControl = "no-store";
-        return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
+        return CreatedAtAction(nameof(Get), new { id = result.Id }, new CustomerCreated(result.Id, result.Email, result.Role, result.MustChangePassword, sent));
+    }
+
+    /// <summary>
+    /// A new code for a customer who has not set a password yet. 409 ALREADY_ACTIVATED afterwards (the customer uses
+    /// "Quên mật khẩu"), 429 within a minute of the last code, 503 EMAIL_NOT_CONFIGURED / EMAIL_SEND_FAILED.
+    /// </summary>
+    [HttpPost("{id:int}/invitation"), ProducesResponseType<InvitationSent>(StatusCodes.Status202Accepted)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> Invite(int id, CancellationToken ct)
+    {
+        await accounts.CustomerAsync(id, ct);  // 404 / 403 unless id is a customer
+        await resets.InviteAsync(id, ct);
+        return Accepted(new InvitationSent(true));
     }
 
     [HttpGet("{id:int}"), ProducesResponseType<CustomerDetails>(StatusCodes.Status200OK)]
@@ -75,6 +95,14 @@ public sealed class CustomersController(AccountManagementService accounts, Recom
     }
 }
 
-public sealed record CreateCustomerRequest([Required, EmailAddress, StringLength(256)] string Email,
-    [Required, StringLength(200, MinimumLength = 2)] string FullName, [StringLength(32)] string? Phone = null, DateOnly? DateOfBirth = null,
-    string? Gender = null, [StringLength(1000)] string? Address = null, bool ConsentPersonalData = false, int[]? PreferenceIds = null);
+// Simple contact rules, mirrored by customerDraftSchema in apps/web/features/customers/schemas.ts.
+public sealed record CreateCustomerRequest(
+    [Required, StringLength(256), RegularExpression(@"^[^\s@]+@[^\s@]+\.[^\s@]{2,}$", ErrorMessage = "Email không hợp lệ.")] string Email,
+    [Required, StringLength(200, MinimumLength = 2)] string FullName,
+    [Required, RegularExpression(@"^0\d{9}$", ErrorMessage = "Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.")] string? Phone = null,
+    DateOnly? DateOfBirth = null, string? Gender = null,
+    [Required, StringLength(500, MinimumLength = 5, ErrorMessage = "Địa chỉ cần 5–500 ký tự.")] string? Address = null, bool ConsentPersonalData = false, int[]? PreferenceIds = null);
+
+/// <summary>No temporary password: the customer sets one from the emailed code.</summary>
+public sealed record CustomerCreated(int Id, string Email, Cocoon.Domain.Enums.AccountRole Role, bool MustChangePassword, bool InvitationSent);
+public sealed record InvitationSent(bool Sent);
