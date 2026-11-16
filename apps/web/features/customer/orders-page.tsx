@@ -118,7 +118,7 @@ export function OrdersPage({ initialFilter = "all", initialPreview = false }: { 
             <span>Số lượng: {item.quantity}</span>
             <div className={styles.reviewState}>
               {item.review ? (
-                <><RatingStars value={item.review.rating} /><span>Đã đánh giá</span></>
+                <><RatingStars value={item.review.rating} /><span>{item.review.createdAt ? `Đã đánh giá ngày ${date(item.review.createdAt)}` : "Đã đánh giá"}</span></>
               ) : order.status === "Completed" ? (
                 <span>Chờ bạn chia sẻ trải nghiệm</span>
               ) : order.status === "Placed" ? (

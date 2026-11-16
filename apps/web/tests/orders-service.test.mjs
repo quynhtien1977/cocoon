@@ -21,7 +21,27 @@ test("review filters keep only matching items in partially reviewed completed or
   assert.equal(filterOrders(orders, "all", "unknown").length, 0);
 });
 
+test("Đã đánh giá lists the latest review first; Chờ đánh giá keeps the newest order first", () => {
+  const reviewed = (id, createdAt) => ({ ...item, id, review: { id: id + 100, rating: 5, createdAt } });
+  // The API sends the newest order first: ORDER-NEW was placed after ORDER-OLD.
+  const newer = { ...order, id: 10, code: "ORDER-NEW", orderedAt: "2026-11-10T00:00:00Z", items: [reviewed(11, "2026-11-11T08:00:00Z"), { ...item, id: 12 }] };
+  const older = { ...order, id: 20, code: "ORDER-OLD", orderedAt: "2026-10-01T00:00:00Z",
+    items: [reviewed(21, "2026-10-05T08:00:00Z"), reviewed(22, "2026-11-15T08:00:00Z"), { ...item, id: 23 }] };
+  const list = [newer, older];
+
+  // ORDER-OLD was reviewed most recently (15/11), so it leads, with that line first.
+  const tab = filterOrders(list, "reviewed");
+  assert.deepEqual(tab.map(o => o.code), ["ORDER-OLD", "ORDER-NEW"]);
+  assert.deepEqual(tab[0].items.map(i => i.id), [22, 21]);
+  assert.equal(tab[0].originalItemCount, 3);
+  assert.deepEqual(filterOrders(list, "unreviewed").map(o => o.code), ["ORDER-NEW", "ORDER-OLD"]);
+  assert.deepEqual(filterOrders(list, "all").map(o => o.code), ["ORDER-NEW", "ORDER-OLD"]);
+  assert.deepEqual(list[1].items.map(i => i.id), [21, 22, 23]);  // the loaded orders are not reordered in place
+});
+
 test("response adapter rejects missing review state and incomplete pagination", () => {
+  assert.equal(parseOrders([{ ...order, items: [{ ...item, review: { id: 5, rating: 4, createdAt: "2026-11-15T08:00:00Z" } }] }]).items[0].items[0].review.createdAt, "2026-11-15T08:00:00Z");
+  assert.throws(() => parseOrders([{ ...order, items: [{ ...item, review: { id: 5, rating: 4, createdAt: "không phải ngày" } }] }]));
   assert.deepEqual(parseOrders([order]).items, [order]);
   assert.equal(parseOrders([{ ...order, status: 0 }]).items[0].status, "Completed");
   assert.equal(parseOrders([{ ...order, status: 3 }]).items[0].status, "Placed");
