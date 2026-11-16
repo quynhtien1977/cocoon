@@ -38,7 +38,7 @@ test("ManagerProductsPage renders unified stats, status tabs, table rows and mob
   // Filter bar uses standard <select> controls like FeedbackInbox / OrdersList
   assert.equal((screen.getByLabelText("Danh mục") as HTMLSelectElement).tagName, "SELECT");
   assert.equal((screen.getByLabelText("Trạng thái") as HTMLSelectElement).tagName, "SELECT");
-  assert.equal((screen.getByLabelText("Sở thích") as HTMLSelectElement).tagName, "SELECT");
+  assert.equal((screen.getByLabelText("Nhu cầu") as HTMLSelectElement).tagName, "SELECT");
 
   const table = await screen.findByRole("table", { name: "Danh sách sản phẩm" });
   assert.equal(within(table).getAllByRole("row").length - 1, 2);

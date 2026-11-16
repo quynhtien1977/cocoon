@@ -29,7 +29,7 @@ test("registered information pre-fills the two forms; undo and independent saves
   assert.match(email.className, /\bread-only:cursor-not-allowed\b/);
   assert.match(email.className, /\bread-only:bg-muted\b/);
   assert.match(email.className, /\bread-only:text-muted-foreground\b/);
-  await screen.findByRole("button", { name: "Lưu sở thích" });
+  await screen.findByRole("button", { name: "Lưu nhu cầu" });
   fireEvent.change(name, { target: { value: "Tên mới" } });
   fireEvent.click(screen.getByRole("button", { name: "Hoàn tác thông tin" }));
   assert.equal((name as HTMLInputElement).value, "Nguyễn An");

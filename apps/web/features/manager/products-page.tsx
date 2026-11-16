@@ -33,7 +33,7 @@ function Preferences({ values }: { values: string[] }) {
     </span>
   ) : (
     <span className="inline-block rounded-sm border border-dashed border-border px-2 py-0.5 text-xs whitespace-nowrap text-muted-foreground">
-      Chưa gắn sở thích
+      Chưa gắn nhu cầu
     </span>
   );
 }
@@ -167,7 +167,7 @@ export function ManagerProductsPage() {
     },
     {
       id: "preferences",
-      header: "Sở thích phù hợp",
+      header: "Nhu cầu phù hợp",
       value: (item) => item.preferences.join(" "),
       cell: (item) => <Preferences values={item.preferences} />,
     },
@@ -229,10 +229,10 @@ export function ManagerProductsPage() {
     },
     {
       id: "tags",
-      label: "Sở thích",
+      label: "Nhu cầu",
       options: [
-        { value: "missing", label: "Chưa gắn sở thích" },
-        { value: "tagged", label: "Đã gắn sở thích" },
+        { value: "missing", label: "Chưa gắn nhu cầu" },
+        { value: "tagged", label: "Đã gắn nhu cầu" },
       ],
       matches: (item, value) => (value === "missing" ? !item.preferences.length : !!item.preferences.length),
     },
@@ -265,7 +265,7 @@ export function ManagerProductsPage() {
     <>
       <PageHeader
         title="Quản lý danh mục sản phẩm"
-        description="Theo dõi sản phẩm, sở thích phù hợp, trạng thái kinh doanh và những chia sẻ từ khách hàng."
+        description="Theo dõi sản phẩm, nhu cầu phù hợp, trạng thái kinh doanh và những chia sẻ từ khách hàng."
         actions={
           <>
             <Button type="button" variant="outline" className="h-12 px-4" disabled={loading && !preview} onClick={() => { retry(); setPreview(false); }}>
@@ -316,10 +316,10 @@ export function ManagerProductsPage() {
           hint={ready && data.length ? `${percent.format(activeCount / total)} tổng danh mục` : undefined}
         />
         <StatTile
-          label="Chưa gắn sở thích"
+          label="Chưa gắn nhu cầu"
           value={ready ? untaggedCount : "—"}
           icon={<Tags />}
-          hint={ready ? (untaggedCount > 0 ? "Cần gắn sở thích để gợi ý" : "Tất cả đã gắn sở thích") : undefined}
+          hint={ready ? (untaggedCount > 0 ? "Cần gắn nhu cầu để gợi ý" : "Tất cả đã gắn nhu cầu") : undefined}
         />
         <StatTile
           label="Điểm trung bình"

@@ -57,14 +57,14 @@ function PreferenceEditor({ product, preview, onSaved }: { product: ManagerProdu
     const controller = new AbortController();
     loadPreferenceCatalog(AbortSignal.any([controller.signal, AbortSignal.timeout(12000)]))
       .then((data) => { if (!controller.signal.aborted) setOptions(data); })
-      .catch(() => { if (!controller.signal.aborted) setLoadError("Chưa tải được danh mục sở thích. Kiểm tra kết nối rồi thử lại."); })
+      .catch(() => { if (!controller.signal.aborted) setLoadError("Chưa tải được danh mục nhu cầu. Kiểm tra kết nối rồi thử lại."); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [preview, attempt]);
 
   const editable = !preview && product.preferenceIds !== null && !loading && !loadError;
   const dirty = JSON.stringify([...selected].sort()) !== JSON.stringify([...(product.preferenceIds ?? [])].sort());
-  const name = (id: number) => options.find((option) => option.id === id)?.name ?? product.preferences[product.preferenceIds?.indexOf(id) ?? -1] ?? `Sở thích #${id}`;
+  const name = (id: number) => options.find((option) => option.id === id)?.name ?? product.preferences[product.preferenceIds?.indexOf(id) ?? -1] ?? `Nhu cầu #${id}`;
 
   async function save() {
     if (!editable || pending || !dirty || busy.current) return;
@@ -79,8 +79,8 @@ function PreferenceEditor({ product, preview, onSaved }: { product: ManagerProdu
     } catch (reason) {
       setError(
         reason instanceof ApiError && reason.status === 501
-          ? "API chưa hỗ trợ lưu sở thích sản phẩm. Các lựa chọn của bạn vẫn được giữ để thử lại."
-          : "Chưa thể lưu sở thích. Vui lòng thử lại."
+          ? "API chưa hỗ trợ lưu nhu cầu sản phẩm. Các lựa chọn của bạn vẫn được giữ để thử lại."
+          : "Chưa thể lưu nhu cầu. Vui lòng thử lại."
       );
     } finally {
       busy.current = false;
@@ -89,7 +89,7 @@ function PreferenceEditor({ product, preview, onSaved }: { product: ManagerProdu
   }
 
   return (
-    <Panel icon={<Tags className="size-5" />} title="Sở thích phù hợp" description="Giúp mỗi sản phẩm tìm đến đúng nhu cầu của khách hàng.">
+    <Panel icon={<Tags className="size-5" />} title="Nhu cầu phù hợp" description="Giúp mỗi sản phẩm tìm đến đúng nhu cầu của khách hàng.">
       <div className="mb-4 flex flex-wrap gap-2">
         {editable
           ? selected.map((id) => (
@@ -98,7 +98,7 @@ function PreferenceEditor({ product, preview, onSaved }: { product: ManagerProdu
               <button
                 disabled={pending}
                 type="button"
-                aria-label={`Bỏ sở thích ${name(id)}`}
+                aria-label={`Bỏ nhu cầu ${name(id)}`}
                 onClick={() => { setSelected((current) => current.filter((value) => value !== id)); setSuccess(false); }}
                 className="grid size-6 place-items-center rounded-sm hover:bg-black/10 focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -110,12 +110,12 @@ function PreferenceEditor({ product, preview, onSaved }: { product: ManagerProdu
             <span key={label} className="rounded-sm bg-status-beige-bg px-2.5 py-1 font-label text-xs text-status-beige-fg">{label}</span>
           ))}
         {!product.preferences.length && !selected.length && (
-          <p className="text-sm text-muted-foreground">Chưa gắn sở thích cho sản phẩm.</p>
+          <p className="text-sm text-muted-foreground">Chưa gắn nhu cầu cho sản phẩm.</p>
         )}
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <label className="sr-only" htmlFor="add-product-preference">Thêm sở thích</label>
+        <label className="sr-only" htmlFor="add-product-preference">Thêm nhu cầu</label>
         <select
           id="add-product-preference"
           value={addition}
@@ -123,7 +123,7 @@ function PreferenceEditor({ product, preview, onSaved }: { product: ManagerProdu
           onChange={(event) => setAddition(event.target.value)}
           className={selectClass}
         >
-          <option value="">Chọn sở thích có sẵn</option>
+          <option value="">Chọn nhu cầu có sẵn</option>
           {options
             .filter((option) => !selected.includes(option.id))
             .map((option) => (
@@ -142,11 +142,11 @@ function PreferenceEditor({ product, preview, onSaved }: { product: ManagerProdu
         </Button>
         <Button type="button" className="h-12 px-5" disabled={!editable || pending || !dirty} onClick={() => void save()}>
           <Save aria-hidden="true" />
-          {pending ? "Đang lưu…" : "Lưu sở thích"}
+          {pending ? "Đang lưu…" : "Lưu nhu cầu"}
         </Button>
       </div>
 
-      {loading && <p role="status" className="mt-3 text-xs text-muted-foreground">Đang tải danh mục sở thích…</p>}
+      {loading && <p role="status" className="mt-3 text-xs text-muted-foreground">Đang tải danh mục nhu cầu…</p>}
       {loadError && (
         <p role="alert" className="mt-3 flex flex-wrap items-center gap-2 text-sm text-destructive">
           {loadError}
@@ -156,13 +156,13 @@ function PreferenceEditor({ product, preview, onSaved }: { product: ManagerProdu
         </p>
       )}
       {!preview && product.preferenceIds === null && (
-        <p className="mt-3 text-xs text-muted-foreground">Chưa có mã sở thích trong dữ liệu sản phẩm để chỉnh sửa.</p>
+        <p className="mt-3 text-xs text-muted-foreground">Chưa có mã nhu cầu trong dữ liệu sản phẩm để chỉnh sửa.</p>
       )}
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
       {success && (
         <p role="status" className="mt-3 flex items-center gap-2 rounded-md border border-border bg-status-sage-bg p-3 text-sm text-status-sage-fg">
           <Check className="size-4 shrink-0" aria-hidden="true" />
-          Đã lưu sở thích sản phẩm.
+          Đã lưu nhu cầu sản phẩm.
         </p>
       )}
     </Panel>
