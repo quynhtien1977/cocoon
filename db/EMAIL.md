@@ -1,14 +1,12 @@
-# Gửi email mã xác nhận (OTP)
+# Gửi email mật khẩu tạm & mã đặt lại mật khẩu (OTP)
 
-API gửi email trong hai trường hợp, đều kèm một mã 6 chữ số dùng một lần:
+API gửi email trong hai nhóm trường hợp:
 
-| Khi nào | Tiêu đề | Hiệu lực |
+| Khi nào | Nội dung email | Cơ chế & hiệu lực |
 |---|---|---|
-| Quản lý thêm khách hàng (`POST /customers`, gửi lại bằng `POST /customers/{id}/invitation`) | Kích hoạt tài khoản Cocoon của bạn | 24 giờ |
-| Người dùng bấm "Quên mật khẩu" (`POST /auth/password/forgot`) | Mã đặt lại mật khẩu Cocoon | 15 phút |
-
-Người nhận nhập email, mã và mật khẩu mới ở trang `/reset-password` (`POST /auth/password/reset`). Mã sai quá 5 lần,
-quá hạn hoặc đã có mã mới hơn thì hết dùng được; mỗi tài khoản nhận tối đa 1 mã mỗi phút và 5 mã mỗi giờ.
+| Quản lý thêm khách hàng (`POST /customers`, gửi lại `POST /customers/{id}/invitation`) | **Mật khẩu tạm** + link `/login` | Dùng để đăng nhập lần đầu (`MustChangePassword = true`); đăng nhập xong hệ thống đưa tới trang Hồ sơ để bắt buộc đổi mật khẩu mới. Bấm gửi lại (tối đa 1 lần/phút, 5 lần/giờ) sẽ cấp mật khẩu tạm mới và hủy mật khẩu tạm cũ chưa dùng. |
+| Quản trị viên tạo tài khoản (`POST /admin/accounts`, gửi lại `POST /admin/accounts/{id}/invitation`) | **Mật khẩu tạm** + link `/login` (hoặc `/admin/login` với vai trò Admin) | Ẩn mật khẩu khỏi màn hình Admin A2 và response API (`temporaryPassword` không còn trả về). Khi đăng nhập lần đầu bằng mật khẩu tạm, hệ thống chuyển tới trang Hồ sơ của vai trò để buộc đổi mật khẩu mới. |
+| Người dùng bấm "Quên mật khẩu" (`POST /auth/password/forgot`) | **Mã OTP 6 chữ số** + link `/reset-password?email=…` | Hiệu lực 15 phút, tối đa 5 lần thử (`POST /auth/password/verify` → `POST /auth/password/reset`). Tối đa 1 mã mỗi phút và 5 mã mỗi giờ cho mỗi tài khoản. |
 
 ## Mặc định: hộp thư Mailpit trên máy
 
