@@ -52,8 +52,11 @@ public sealed partial class AccountManagementService(AppDbContext db, IAccountPa
         return new(items, total, page, size);
     }
 
-    public Task<AccountCreated> CreateAsync(int actor, string email, string fullName, AccountRole role, string? phone, CancellationToken ct) =>
+    public Task<ProvisionedAccount> CreateAsync(int actor, string email, string fullName, AccountRole role, string? phone, CancellationToken ct) =>
         Write(() => CreateCoreAsync(actor, email, fullName, role, ct, phone), ct);
+
+    /// <summary>Strong random temporary password emailed to newly created accounts (8–128 chars, letter + digit).</summary>
+    public static string GenerateTemporaryPassword() => "Coc!" + Convert.ToHexString(RandomNumberGenerator.GetBytes(8)) + "9a";
 
     /// <summary>Managers are the escalation contact for staff, so their profile must carry a phone number.</summary>
     public static void RequireManagerPhone(AccountRole role, string? phone)
@@ -61,7 +64,7 @@ public sealed partial class AccountManagementService(AppDbContext db, IAccountPa
         if (role == AccountRole.Manager && string.IsNullOrWhiteSpace(phone)) Invalid("phone", "Quản lý cần có số điện thoại.");
     }
 
-    private async Task<AccountCreated> CreateCoreAsync(int actor, string email, string fullName, AccountRole role, CancellationToken ct, string? phone = null)
+    private async Task<ProvisionedAccount> CreateCoreAsync(int actor, string email, string fullName, AccountRole role, CancellationToken ct, string? phone = null)
     {
         email = email.Trim().ToLowerInvariant();
         fullName = fullName.Trim();
@@ -72,7 +75,7 @@ public sealed partial class AccountManagementService(AppDbContext db, IAccountPa
         if (!Enum.IsDefined(role)) Invalid("role", "Vai trò không hợp lệ.");
         if (await db.Set<Account>().IgnoreQueryFilters().AnyAsync(a => a.Email.ToLower() == email, ct))
             throw new AccountOperationException(409, "EMAIL_TAKEN", "Email này đã được sử dụng.", "email");
-        var temporary = "Coc!" + Convert.ToHexString(RandomNumberGenerator.GetBytes(16)) + "9a";
+        var temporary = GenerateTemporaryPassword();
         var account = new Account { Email = email, Role = role, MustChangePassword = true };
         account.PasswordHash = passwords.Hash(account, temporary);
         if (role == AccountRole.Customer)
@@ -80,7 +83,7 @@ public sealed partial class AccountManagementService(AppDbContext db, IAccountPa
         else db.Add(new StaffProfile { Account = account, FullName = fullName, Phone = phone, Position = role.ToString() });
         await db.SaveChangesAsync(ct);
         Audit(actor, account.Id, "AccountCreated");
-        return new AccountCreated(account.Id, email, role, temporary, true);
+        return new ProvisionedAccount(account.Id, email, role, true, temporary);
     }
 
     public Task<bool> ChangeRoleAsync(int actor, int id, AccountRole role, CancellationToken ct) => Write(async () =>

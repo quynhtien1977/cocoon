@@ -28,7 +28,7 @@ public sealed class CustomersApiTests : AccountApiTestBase
         var body = await Json(created);
         var id = body.GetProperty("id").GetInt32();
         Assert.Equal("Customer", body.GetProperty("role").GetString());
-        // The generated password stays on the server; the customer sets their own from an emailed code (PasswordResetApiTests).
+        // The generated temporary password never leaves the server in HTTP responses (PasswordResetApiTests).
         Assert.False(body.TryGetProperty("temporaryPassword", out _));
         Assert.True(body.GetProperty("mustChangePassword").GetBoolean());
         Assert.Equal(JsonValueKind.False, body.GetProperty("invitationSent").ValueKind);  // no SMTP host in tests

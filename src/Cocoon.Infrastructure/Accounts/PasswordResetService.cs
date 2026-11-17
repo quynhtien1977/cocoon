@@ -1,3 +1,4 @@
+using System.Data;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -31,9 +32,8 @@ public sealed class PasswordResetOptions
 public sealed record PasswordTicket(string Ticket, DateTime ExpiresAt);
 
 /// <summary>
-/// Email one-time codes (decision 15/11/2026). A manager-created customer gets an invitation code instead of a password
-/// shown on screen; anyone can ask for a reset code ("Quên mật khẩu"). The code is 6 digits, stored only as an HMAC,
-/// used once, cancelled by a newer code, and dies after <see cref="PasswordResetOptions.MaxAttempts"/> tries.
+/// Email password delivery: newly created accounts receive a generated temporary password directly by email (must change
+/// on first login), while "Quên mật khẩu" keeps a 6-digit HMAC one-time code with a short-lived ticket.
 /// </summary>
 public sealed class PasswordResetService(AppDbContext db, IAccountPasswords passwords, IEmailSender email,
     IOptions<PasswordResetOptions> options, ILogger<PasswordResetService> logger)
@@ -42,21 +42,91 @@ public sealed class PasswordResetService(AppDbContext db, IAccountPasswords pass
     private PasswordResetOptions Options => options.Value;
 
     /// <summary>
-    /// Invitation for an account that still has its generated password. With <paramref name="quiet"/> a delivery failure
-    /// returns false (the account was already created); otherwise it is a 503 the caller can retry.
+    /// Sends the initial temporary password right after account creation. Never throws on SMTP failures so the created
+    /// account stays usable and the caller can retry via <see cref="ResendTemporaryPasswordAsync"/>.
     /// </summary>
-    public async Task<bool> InviteAsync(int accountId, CancellationToken ct, bool quiet = false)
+    public async Task<bool> SendTemporaryPasswordAsync(int accountId, string temporaryPassword, CancellationToken ct)
     {
-        var account = await db.Set<Account>().SingleOrDefaultAsync(a => a.Id == accountId, ct)
+        var account = await db.Set<Account>().AsNoTracking().SingleOrDefaultAsync(a => a.Id == accountId, ct)
             ?? throw new AccountOperationException(404, "NOT_FOUND", "Không tìm thấy tài khoản.");
-        if (!account.IsActive)
-            throw new AccountOperationException(409, "ACCOUNT_LOCKED", "Tài khoản đang bị khóa; mở khóa trước khi gửi mã.");
-        if (!account.MustChangePassword)
-            throw new AccountOperationException(409, "ALREADY_ACTIVATED", "Khách đã tự đặt mật khẩu. Khách có thể dùng \"Quên mật khẩu\" nếu cần.");
-        if (await TooSoonAsync(account.Id, ct))
-            throw new AccountOperationException(429, "TOO_MANY_REQUESTS", "Vừa gửi mã cho tài khoản này. Hãy chờ một phút rồi thử lại.");
-        return await IssueAsync(account, PasswordTokenPurpose.Invitation, quiet, ct);
+        var message = await TemporaryPasswordMessageAsync(account, temporaryPassword, ct);
+        try
+        {
+            await email.SendAsync(message, ct);
+        }
+        catch (EmailDeliveryException e)
+        {
+            logger.LogWarning(e, "Initial temporary password email for account {AccountId} was not sent", accountId);
+            return false;
+        }
+        var now = DateTime.UtcNow;
+        db.Add(CooldownMarker(accountId, now));
+        await db.SaveChangesAsync(ct);
+        return true;
     }
+
+    /// <summary>
+    /// Issues a fresh temporary password and emails it for an account that still has MustChangePassword=true.
+    /// Because passwords are stored only as hashes, a successful resend replaces any prior temporary password.
+    /// </summary>
+    public async Task ResendTemporaryPasswordAsync(int accountId, CancellationToken ct)
+    {
+        var account = await db.Set<Account>().AsNoTracking().SingleOrDefaultAsync(a => a.Id == accountId, ct)
+            ?? throw new AccountOperationException(404, "NOT_FOUND", "Không tìm thấy tài khoản.");
+        EnsureCanSendInitialPassword(account);
+        if (await TooSoonAsync(account.Id, ct))
+            throw new AccountOperationException(429, "TOO_MANY_REQUESTS", "Vừa gửi email cho tài khoản này. Hãy chờ một phút rồi thử lại.");
+
+        var temporary = AccountManagementService.GenerateTemporaryPassword();
+        var hash = passwords.Hash(account, temporary);
+        var message = await TemporaryPasswordMessageAsync(account, temporary, ct);
+        try
+        {
+            await email.SendAsync(message, ct);
+        }
+        catch (EmailDeliveryException e)
+        {
+            logger.LogWarning(e, "Temporary password resend for account {AccountId} was not sent", accountId);
+            throw new AccountOperationException(503, e.NotConfigured ? "EMAIL_NOT_CONFIGURED" : "EMAIL_SEND_FAILED",
+                e.NotConfigured ? "Máy chủ chưa cấu hình gửi email (SMTP)." : "Chưa gửi được email. Hãy thử lại sau ít phút.");
+        }
+
+        var now = DateTime.UtcNow;
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var updated = await db.Set<Account>()
+            .Where(a => a.Id == accountId && a.IsActive && a.MustChangePassword)
+            .ExecuteUpdateAsync(s => s.SetProperty(a => a.PasswordHash, hash), ct);
+        if (updated == 0)
+        {
+            var latest = await db.Set<Account>().AsNoTracking().SingleOrDefaultAsync(a => a.Id == accountId, ct)
+                ?? throw new AccountOperationException(404, "NOT_FOUND", "Không tìm thấy tài khoản.");
+            EnsureCanSendInitialPassword(latest);
+            throw new AccountOperationException(409, "ACCOUNT_CONFLICT", "Tài khoản vừa thay đổi. Hãy tải lại và thử lại.");
+        }
+        await db.Set<RefreshToken>().Where(t => t.AccountId == accountId && t.ExpiresAt > now)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, t => t.RevokedAt ?? now).SetProperty(t => t.ExpiresAt, now), ct);
+        db.Add(CooldownMarker(accountId, now));
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+    }
+
+    private static void EnsureCanSendInitialPassword(Account account)
+    {
+        if (!account.IsActive)
+            throw new AccountOperationException(409, "ACCOUNT_LOCKED", "Tài khoản đang bị khóa; mở khóa trước khi gửi email.");
+        if (!account.MustChangePassword)
+            throw new AccountOperationException(409, "ALREADY_ACTIVATED", "Tài khoản đã đổi mật khẩu. Người dùng có thể dùng \"Quên mật khẩu\" nếu cần.");
+    }
+
+    private static PasswordResetToken CooldownMarker(int accountId, DateTime now) => new()
+    {
+        AccountId = accountId,
+        Purpose = PasswordTokenPurpose.Invitation,
+        CreatedAt = now,
+        ExpiresAt = now,
+        UsedAt = now,
+        TokenHash = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)),
+    };
 
     /// <summary>"Quên mật khẩu": always silent, so the response never tells whether the email has an account.</summary>
     public async Task RequestResetAsync(string address, CancellationToken ct)
@@ -180,11 +250,52 @@ public sealed class PasswordResetService(AppDbContext db, IAccountPasswords pass
         }
     }
 
+    private async Task<string> DisplayNameAsync(Account account, CancellationToken ct) =>
+        await db.Set<CustomerProfile>().Where(p => p.AccountId == account.Id).Select(p => p.FullName).FirstOrDefaultAsync(ct)
+        ?? await db.Set<StaffProfile>().Where(p => p.AccountId == account.Id).Select(p => p.FullName).FirstOrDefaultAsync(ct)
+        ?? account.Email;
+
+    private async Task<EmailMessage> TemporaryPasswordMessageAsync(Account account, string temporaryPassword, CancellationToken ct)
+    {
+        var name = await DisplayNameAsync(account, ct);
+        var roleLabel = account.Role switch
+        {
+            AccountRole.Admin => "quản trị viên",
+            AccountRole.Manager => "quản lý",
+            AccountRole.Staff => "nhân viên",
+            _ => "khách hàng",
+        };
+        var loginPath = account.Role == AccountRole.Admin ? "/admin/login" : "/login";
+        var link = $"{Options.WebOrigin.TrimEnd('/')}{loginPath}";
+        var intro = account.Role == AccountRole.Customer
+            ? "Cocoon đã tạo tài khoản cho bạn. Dùng thông tin dưới đây để đăng nhập."
+            : $"Quản trị viên đã tạo tài khoản {roleLabel} trên Cocoon CRM cho bạn. Dùng thông tin dưới đây để đăng nhập.";
+        var subject = "Thông tin đăng nhập tài khoản Cocoon của bạn";
+        var text = $"Xin chào {name},\n\n{intro}\n\n"
+            + $"Email đăng nhập: {account.Email}\n"
+            + $"Mật khẩu tạm: {temporaryPassword}\n\n"
+            + $"Đăng nhập tại: {link}\n"
+            + "Hệ thống sẽ yêu cầu bạn đổi sang mật khẩu mới ngay sau lần đăng nhập đầu tiên. Mật khẩu tạm cũ (nếu có trước đó) không còn hiệu lực.\n\n"
+            + "— Cocoon Việt Nam";
+        var html = $"""
+            <div style="font-family:Arial,sans-serif;color:#2b261d;max-width:520px">
+              <p>Xin chào {WebUtility.HtmlEncode(name)},</p>
+              <p>{WebUtility.HtmlEncode(intro)}</p>
+              <div style="background:#f7f3e9;border:1px solid #dfd3bf;border-radius:6px;padding:16px;margin:20px 0">
+                <p style="margin:0 0 8px"><strong>Email:</strong> {WebUtility.HtmlEncode(account.Email)}</p>
+                <p style="margin:0"><strong>Mật khẩu tạm:</strong> <code style="font-size:16px;font-weight:bold">{WebUtility.HtmlEncode(temporaryPassword)}</code></p>
+              </div>
+              <p><a href="{WebUtility.HtmlEncode(link)}" style="color:#806b3f;font-weight:bold">Đăng nhập ngay</a></p>
+              <p style="color:#827a67;font-size:13px">Hệ thống sẽ yêu cầu bạn đổi sang mật khẩu mới ngay sau khi đăng nhập. Nếu có email cấp lại mới hơn, mật khẩu tạm cũ sẽ không còn hiệu lực.</p>
+              <p>— Cocoon Việt Nam</p>
+            </div>
+            """;
+        return new EmailMessage(account.Email, subject, text, html);
+    }
+
     private async Task<EmailMessage> MessageAsync(Account account, PasswordTokenPurpose purpose, string code, TimeSpan lifetime, CancellationToken ct)
     {
-        var name = await db.Set<CustomerProfile>().Where(p => p.AccountId == account.Id).Select(p => p.FullName).FirstOrDefaultAsync(ct)
-            ?? await db.Set<StaffProfile>().Where(p => p.AccountId == account.Id).Select(p => p.FullName).FirstOrDefaultAsync(ct)
-            ?? account.Email;
+        var name = await DisplayNameAsync(account, ct);
         var link = $"{Options.WebOrigin.TrimEnd('/')}/reset-password?email={Uri.EscapeDataString(account.Email)}";
         var validity = lifetime.TotalHours >= 1 ? $"{lifetime.TotalHours:0} giờ" : $"{lifetime.TotalMinutes:0} phút";
         var invitation = purpose == PasswordTokenPurpose.Invitation;

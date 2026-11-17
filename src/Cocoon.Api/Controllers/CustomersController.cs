@@ -23,22 +23,23 @@ public sealed class CustomersController(AccountManagementService accounts, Recom
         Ok(await accounts.CustomersAsync(query, ct));
 
     /// <summary>
-    /// The generated password never leaves the server: the customer gets an email code to set their own (decision
-    /// 15/11/2026). invitationSent=false means the account exists but the email failed; resend with POST {id}/invitation.
+    /// The generated temporary password never leaves the server in HTTP responses: the customer receives it by email and
+    /// must change it after signing in. invitationSent=false means the account exists but the email failed; resend with POST {id}/invitation.
     /// </summary>
     [HttpPost, ProducesResponseType<CustomerCreated>(StatusCodes.Status201Created)]
     public async Task<ActionResult<CustomerCreated>> Create(CreateCustomerRequest request, CancellationToken ct)
     {
         var result = await accounts.CreateCustomerAsync(AccountId, request.Email, new CustomerInput(request.FullName, request.Phone,
             request.DateOfBirth, request.Gender, request.Address, request.ConsentPersonalData, request.PreferenceIds), ct);
-        var sent = await resets.InviteAsync(result.Id, ct, quiet: true);
+        var sent = await resets.SendTemporaryPasswordAsync(result.Id, result.TemporaryPassword, ct);
         Response.Headers.CacheControl = "no-store";
         return CreatedAtAction(nameof(Get), new { id = result.Id }, new CustomerCreated(result.Id, result.Email, result.Role, result.MustChangePassword, sent));
     }
 
     /// <summary>
-    /// A new code for a customer who has not set a password yet. 409 ALREADY_ACTIVATED afterwards (the customer uses
-    /// "Quên mật khẩu"), 429 within a minute of the last code, 503 EMAIL_NOT_CONFIGURED / EMAIL_SEND_FAILED.
+    /// Issues a new temporary password and emails it to a customer who has not changed their initial password yet.
+    /// 409 ALREADY_ACTIVATED afterwards (the customer uses "Quên mật khẩu"), 429 within a minute of the last email,
+    /// 503 EMAIL_NOT_CONFIGURED / EMAIL_SEND_FAILED.
     /// </summary>
     [HttpPost("{id:int}/invitation"), ProducesResponseType<InvitationSent>(StatusCodes.Status202Accepted)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
@@ -46,7 +47,7 @@ public sealed class CustomersController(AccountManagementService accounts, Recom
     public async Task<IActionResult> Invite(int id, CancellationToken ct)
     {
         await accounts.CustomerAsync(id, ct);  // 404 / 403 unless id is a customer
-        await resets.InviteAsync(id, ct);
+        await resets.ResendTemporaryPasswordAsync(id, ct);
         return Accepted(new InvitationSent(true));
     }
 
@@ -103,6 +104,5 @@ public sealed record CreateCustomerRequest(
     DateOnly? DateOfBirth = null, string? Gender = null,
     [Required, StringLength(500, MinimumLength = 5, ErrorMessage = "Địa chỉ cần 5–500 ký tự.")] string? Address = null, bool ConsentPersonalData = false, int[]? PreferenceIds = null);
 
-/// <summary>No temporary password: the customer sets one from the emailed code.</summary>
+/// <summary>No temporary password in HTTP responses: the customer receives it by email.</summary>
 public sealed record CustomerCreated(int Id, string Email, Cocoon.Domain.Enums.AccountRole Role, bool MustChangePassword, bool InvitationSent);
-public sealed record InvitationSent(bool Sent);
