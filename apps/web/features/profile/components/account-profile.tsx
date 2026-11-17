@@ -21,25 +21,28 @@ const card = "min-w-0 rounded-lg border border-border bg-card p-4 sm:p-6";
 const emptyPassword: PasswordDraft = { currentPassword: "", newPassword: "", confirmPassword: "" };
 const dateTime = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" });
 
-/** Copy from the Stitch S3, M15 and A4 screens. */
+/**
+ * Copy from the Stitch S3, M15 and A4 screens. An empty prefix hides the display code: the admin page shows only
+ * stored data, and an admin has nobody above them to ask for an email change.
+ */
 const variants = {
   staff: {
     loginHref: "/login", prefix: "STF",
     title: "Hồ sơ Nhân viên Chăm sóc khách hàng", description: "Thông tin cá nhân và liên hệ công vụ của nhân viên Cocoon.",
     section: "Thông tin định danh nhân sự", note: "Cập nhật họ tên và số điện thoại liên lạc",
-    codeLabel: "Mã nhân viên", emailLabel: "Email nội bộ", phoneLabel: "Số điện thoại liên lạc", reset: "Hủy thay đổi", save: "Lưu thông tin hồ sơ",
+    codeLabel: "Mã nhân viên", emailLabel: "Email nội bộ", emailHint: "Liên hệ quản trị viên để đổi email.", phoneLabel: "Số điện thoại liên lạc", reset: "Hủy thay đổi", save: "Lưu thông tin hồ sơ",
   },
   manager: {
     loginHref: "/login", prefix: "MGR",
     title: "Hồ sơ Quản lý CRM", description: "Thông tin trưởng nhóm điều phối chăm sóc khách hàng và giám sát chất lượng.",
     section: "Thông tin cá nhân & Liên hệ công vụ", note: "Cập nhật thông tin phối hợp liên bộ phận",
-    codeLabel: "Mã quản lý", emailLabel: "Email công tác", phoneLabel: "Số điện thoại trực", reset: "Hủy chỉnh sửa", save: "Cập nhật hồ sơ",
+    codeLabel: "Mã quản lý", emailLabel: "Email công tác", emailHint: "Liên hệ quản trị viên để đổi email.", phoneLabel: "Số điện thoại trực", reset: "Hủy chỉnh sửa", save: "Cập nhật hồ sơ",
   },
   admin: {
-    loginHref: "/admin/login", prefix: "ADM",
-    title: "Hồ sơ quản trị viên", description: "Thông tin tài khoản công vụ của quản trị viên hệ thống Cocoon CRM.",
-    section: "Thông tin công vụ", note: "Chỉ cập nhật thông tin liên hệ hành chính",
-    codeLabel: "Mã cán bộ quản trị", emailLabel: "Email công vụ", phoneLabel: "Số điện thoại nội bộ", reset: "Khôi phục mặc định", save: "Lưu cập nhật thông tin",
+    loginHref: "/admin/login", prefix: "",
+    title: "Hồ sơ quản trị viên", description: "Thông tin tài khoản của quản trị viên hệ thống Cocoon CRM.",
+    section: "Thông tin tài khoản", note: "Cập nhật họ tên và số điện thoại liên hệ",
+    codeLabel: "", emailLabel: "Email đăng nhập", emailHint: "Email dùng để đăng nhập, không thay đổi được.", phoneLabel: "Số điện thoại", reset: "Hoàn tác", save: "Lưu thông tin",
   },
 } satisfies Record<ProfileVariant, Record<string, string>>;
 
@@ -62,14 +65,14 @@ function Field({ id, label, error, hint, className, children }: { id: string; la
   );
 }
 
-function SummaryCard({ profile, code, rows, stats }: { profile: StaffProfile; code: string; rows: [string, string][]; stats: Stat[] }) {
+function SummaryCard({ profile, code, rows, stats }: { profile: StaffProfile; code: string | null; rows: [string, string][]; stats: Stat[] }) {
   return (
     <section aria-label="Tóm tắt tài khoản" className={cn(card, "flex flex-col items-center text-center")}>
       <span aria-hidden="true" className="mb-4 flex size-20 items-center justify-center rounded-full border-2 border-border bg-primary font-heading text-3xl text-primary-foreground">{initials(profile.fullName)}</span>
       <p className="font-heading text-xl break-words">{profile.fullName || "Chưa đặt tên"}</p>
       <span className="mt-1 rounded-sm bg-status-beige-bg px-3 py-0.5 font-label text-sm uppercase tracking-wider text-status-beige-fg">{roleLabels[profile.role]}</span>
       <dl className="mt-4 w-full space-y-2 border-t border-border pt-4 text-left text-sm">
-        <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Mã:</dt><dd className="font-semibold">#{code}</dd></div>
+        {code && <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Mã:</dt><dd className="font-semibold">#{code}</dd></div>}
         {rows.map(([label, value]) => <div key={label} className="flex justify-between gap-3"><dt className="shrink-0 text-muted-foreground">{label}:</dt><dd className="min-w-0 text-right font-semibold wrap-anywhere">{value}</dd></div>)}
       </dl>
       {stats.length > 0 && (
@@ -86,7 +89,7 @@ function SummaryCard({ profile, code, rows, stats }: { profile: StaffProfile; co
   );
 }
 
-function ProfileForm({ profile, code, copy, onSaved }: { profile: StaffProfile; code: string; copy: Copy; onSaved: (draft: ProfileDraft) => void }) {
+function ProfileForm({ profile, code, copy, onSaved }: { profile: StaffProfile; code: string | null; copy: Copy; onSaved: (draft: ProfileDraft) => void }) {
   const id = useId();
   const saved: ProfileDraft = { fullName: profile.fullName, phone: profile.phone ?? "" };
   const [draft, setDraft] = useState(saved);
@@ -125,13 +128,15 @@ function ProfileForm({ profile, code, copy, onSaved }: { profile: StaffProfile; 
         <p className="text-xs text-muted-foreground">* {copy.note}</p>
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field id={`${id}-fullName`} label="Họ và tên" error={errors.fullName}>
+        <Field id={`${id}-fullName`} label="Họ và tên" error={errors.fullName} className={code ? undefined : "sm:col-span-2"}>
           <input id={`${id}-fullName`} value={draft.fullName} maxLength={150} required autoComplete="name" onChange={(event) => update({ fullName: event.target.value })} aria-invalid={!!errors.fullName} aria-describedby={describedBy("fullName")} className={fieldClass} />
         </Field>
-        <Field id={`${id}-code`} label={copy.codeLabel}>
-          <input id={`${id}-code`} value={code} readOnly className={fieldClass} />
-        </Field>
-        <Field id={`${id}-email`} label={copy.emailLabel} hint="Liên hệ quản trị viên để đổi email.">
+        {code && (
+          <Field id={`${id}-code`} label={copy.codeLabel}>
+            <input id={`${id}-code`} value={code} readOnly className={fieldClass} />
+          </Field>
+        )}
+        <Field id={`${id}-email`} label={copy.emailLabel} hint={copy.emailHint}>
           <input id={`${id}-email`} value={profile.email} readOnly aria-describedby={`${id}-email-hint`} className={fieldClass} />
         </Field>
         <Field id={`${id}-phone`} label={copy.phoneLabel} error={errors.phone} hint={phoneRequired ? "Bắt buộc với tài khoản quản lý." : "Không bắt buộc."}>
@@ -311,7 +316,7 @@ export function AccountProfile({ variant, logout }: AccountProfileProps) {
     );
   }
 
-  const code = staffCode(copy.prefix, profile.id);
+  const code = copy.prefix ? staffCode(copy.prefix, profile.id) : null;
   const rows: [string, string][] = variant === "admin"
     ? [["Đăng nhập gần nhất", lastLogin === undefined ? "Đang tải…" : lastLogin ? dateTime.format(new Date(lastLogin)) : "—"]]
     : [["Email", profile.email]];
