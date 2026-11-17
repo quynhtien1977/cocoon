@@ -306,7 +306,12 @@ function Insights({ id, preview }: { id: number; preview: boolean }) {
             {feedbacks.map((item) => (
               <li key={item.id} className="rounded-md border-l-2 border-gold bg-muted p-3">
                 <p className="text-sm italic">“{item.content}”</p>
-                <p className="mt-2 font-label text-xs uppercase tracking-wider text-muted-foreground">{item.customerName}</p>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-label text-xs uppercase tracking-wider text-muted-foreground">{item.customerName}</p>
+                  <Link href={`/manager/feedback/${item.id}`} className="text-xs text-gold-strong hover:underline">
+                    Xem phản hồi & trả lời →
+                  </Link>
+                </div>
               </li>
             ))}
           </ul>

@@ -116,7 +116,7 @@ public sealed class ProductsController(AppDbContext db) : ApiStubController
         return NoContent();
     }
 
-    [HttpGet("products/{id:int}/insights"), Authorize(Policy = "RequireManager")]
+    [HttpGet("products/{id:int}/insights"), Authorize(Roles = "Customer,Manager")]
     public async Task<IActionResult> Insights(int id, CancellationToken cancellationToken)
     {
         if (!await db.Set<Product>().AnyAsync(p => p.Id == id, cancellationToken)) return NotFound();
@@ -125,6 +125,87 @@ public sealed class ProductsController(AppDbContext db) : ApiStubController
         var total = distribution.Sum(x => x.Count);
         double? average = total == 0 ? null : Math.Round((double)distribution.Sum(x => x.Rating * x.Count) / total, 1);
         return Ok(new ProductInsights(total, average, distribution));
+    }
+
+    [HttpGet("products/{id:int}/reviews"), Authorize(Roles = "Customer,Manager")]
+    public async Task<IActionResult> Reviews(
+        int id,
+        [FromQuery] int? rating,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
+    {
+        if (!await db.Set<Product>().AnyAsync(p => p.Id == id, cancellationToken)) return NotFound();
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 50);
+
+        var query = db.Set<Feedback>().Where(f => f.ProductId == id);
+        if (rating is not null && rating >= 1 && rating <= 5)
+        {
+            query = query.Where(f => f.Rating == rating);
+        }
+
+        var projection = from f in query
+                         join c in db.Set<CustomerProfile>().IgnoreQueryFilters() on f.CustomerId equals c.AccountId into customers
+                         from c in customers.DefaultIfEmpty()
+                         join a in db.Set<Account>().IgnoreQueryFilters() on f.CustomerId equals a.Id into accounts
+                         from a in accounts.DefaultIfEmpty()
+                         join i in db.Set<OrderItem>() on f.OrderItemId equals (int?)i.Id into items
+                         from i in items.DefaultIfEmpty()
+                         join v in db.Set<ProductVariant>().IgnoreQueryFilters() on i.ProductVariantId equals v.Id into variants
+                         from v in variants.DefaultIfEmpty()
+                         orderby f.CreatedAt descending, f.Id descending
+                         select new
+                         {
+                             f.Id,
+                             CustomerName = a == null || a.IsDeleted || c == null ? "Khách đã xóa" : c.FullName,
+                             f.Rating,
+                             f.Content,
+                             f.CreatedAt,
+                             VariantName = v != null ? v.Name : null,
+                             f.FollowUpContent,
+                             f.FollowUpAt,
+                             f.OriginalRating,
+                             f.ContentEditedAt
+                         };
+
+        var total = await projection.CountAsync(cancellationToken);
+        var pagedRows = await projection.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(cancellationToken);
+
+        var feedbackIds = pagedRows.Select(x => x.Id).ToList();
+        var replies = await (from r in db.Set<FeedbackReply>()
+                             join s in db.Set<StaffProfile>().IgnoreQueryFilters() on r.StaffId equals s.AccountId into staff
+                             from s in staff.DefaultIfEmpty()
+                             where feedbackIds.Contains(r.FeedbackId)
+                             orderby r.Round, r.CreatedAt
+                             select new
+                             {
+                                 r.Id,
+                                 r.FeedbackId,
+                                 StaffName = s != null ? s.FullName : "Nhân viên Cocoon",
+                                 r.Content,
+                                 r.CreatedAt,
+                                 r.Round
+                             }).ToListAsync(cancellationToken);
+
+        var repliesLookup = replies.ToLookup(r => r.FeedbackId);
+
+        var itemsList = pagedRows.Select(x => new ProductReviewItem(
+            x.Id,
+            x.CustomerName,
+            x.Rating,
+            x.Content,
+            x.CreatedAt,
+            x.VariantName,
+            x.FollowUpContent != null
+                ? new ProductReviewFollowUp(x.FollowUpContent, x.FollowUpAt ?? x.CreatedAt)
+                : null,
+            repliesLookup[x.Id].Select(r => new ProductReviewReplyItem(r.Id, r.StaffName, r.Content, r.CreatedAt, r.Round)).ToList(),
+            x.OriginalRating,
+            x.ContentEditedAt
+        )).ToList();
+
+        return Ok(new PagedResult<ProductReviewItem>(itemsList, total, page, pageSize));
     }
 }
 
@@ -135,6 +216,19 @@ public sealed record ProductListItem(int Id, string Name, string Sku, int Catego
 public sealed record CategoryItem(int Id, string Name);
 public sealed record RatingCount(int Rating, int Count);
 public sealed record ProductInsights(int TotalFeedback, double? AverageRating, IReadOnlyList<RatingCount> RatingDistribution);
+public sealed record ProductReviewFollowUp(string Content, DateTime CreatedAt);
+public sealed record ProductReviewReplyItem(int Id, string StaffName, string Content, DateTime CreatedAt, int Round);
+public sealed record ProductReviewItem(
+    int Id,
+    string CustomerName,
+    int Rating,
+    string Content,
+    DateTime CreatedAt,
+    string? VariantName,
+    ProductReviewFollowUp? FollowUp,
+    IReadOnlyList<ProductReviewReplyItem> Replies,
+    int? OriginalRating = null,
+    DateTime? ContentEditedAt = null);
 /// <summary>Images is the detail gallery, main photo first; HoverImageUrl is null when the variant has a single photo.</summary>
 public sealed record ProductVariantItem(int Id, string Name, string Sku, decimal Price, string? ImageUrl, string? HoverImageUrl,
     IReadOnlyList<string> Images);
