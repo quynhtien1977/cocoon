@@ -2,14 +2,13 @@
 
 import { useId, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { CircleCheck, Info, ShieldCheck } from "lucide-react";
+import { CircleAlert, CircleCheck, Info, Mail, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
-import { TemporaryPassword } from "@/components/brand/temporary-password";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { AccountRole } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
-import { createAccount, type AccountCreated } from "../api";
+import { createAccount, resendAccountInvitation, type AccountCreated } from "../api";
 import { assignableRoles, roleLabels, roleSummaries, validateAccountDraft } from "../schemas";
 import type { AccountDraft } from "../types";
 
@@ -25,7 +24,9 @@ export function AccountCreateForm() {
   const [created, setCreated] = useState<AccountCreated | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const update = (patch: Partial<AccountDraft>) => { setDraft((current) => ({ ...current, ...patch })); setCreated(null); setSubmitError(null); };
+  const [resending, setResending] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
+  const update = (patch: Partial<AccountDraft>) => { setDraft((current) => ({ ...current, ...patch })); setCreated(null); setSubmitError(null); setResendError(null); };
   const summary = roleSummaries[draft.role];
 
   async function submit(event: FormEvent) {
@@ -34,6 +35,7 @@ export function AccountCreateForm() {
     const found = validateAccountDraft(draft);
     setErrors(found);
     setSubmitError(null);
+    setResendError(null);
     if (Object.keys(found).length) { setCreated(null); return; }
     setSubmitting(true);
     try {
@@ -48,6 +50,21 @@ export function AccountCreateForm() {
       else setSubmitError(error.message);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleResendInvitation() {
+    if (!created || resending) return;
+    setResending(true);
+    setResendError(null);
+    try {
+      const result = await resendAccountInvitation(created.id);
+      setCreated((current) => current && current.id === created.id ? { ...current, invitationSent: result.sent } : current);
+      if (!result.sent) setResendError("Chưa gửi được email mật khẩu tạm. Vui lòng thử lại sau.");
+    } catch (error) {
+      setResendError(error instanceof ApiError ? error.message : "Mất kết nối. Kiểm tra mạng rồi thử lại.");
+    } finally {
+      setResending(false);
     }
   }
 
@@ -92,12 +109,30 @@ export function AccountCreateForm() {
           <p className="border-t border-dashed border-border pt-2 text-sm text-muted-foreground">Phạm vi: {summary.scope}</p>
         </section>
 
-        <p className="flex gap-2 text-sm text-muted-foreground sm:col-span-2"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Mật khẩu ban đầu do hệ thống cấp, không nhập tại đây.</p>
+        <p className="flex gap-2 text-sm text-muted-foreground sm:col-span-2"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Hệ thống sẽ tự tạo mật khẩu tạm và gửi qua email cho người dùng, không hiển thị tại đây.</p>
 
         <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5 sm:col-span-2">
           <div aria-live="polite" className="min-w-0 text-sm">
             {submitError ? <p role="alert" className="text-destructive">Chưa tạo được tài khoản: {submitError}</p>
-              : created ? <p className="flex items-start gap-2 text-status-sage-fg"><CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0 break-words">Đã tạo tài khoản {created.email} ({roleLabels[created.role]}). Mật khẩu tạm: <TemporaryPassword value={created.temporaryPassword} /> Chỉ hiện một lần. Gửi riêng cho người dùng; họ phải đổi mật khẩu khi đăng nhập lần đầu.</span></p> : null}
+              : created ? created.invitationSent ? (
+                <p className="flex items-start gap-2 text-status-sage-fg">
+                  <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                  <span className="min-w-0 break-words">Đã tạo tài khoản {created.email} ({roleLabels[created.role]}). Đã gửi email mật khẩu tạm tới {created.email}. Người dùng cần đổi mật khẩu khi đăng nhập lần đầu.</span>
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <p role="alert" className="flex items-start gap-2 text-amber-800">
+                    <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                    <span className="min-w-0 break-words">Đã tạo tài khoản {created.email} ({roleLabels[created.role]}), nhưng chưa gửi được email mật khẩu tạm tới {created.email}.</span>
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button type="button" variant="outline" size="sm" onClick={handleResendInvitation} disabled={resending} className="min-h-9">
+                      <Mail aria-hidden="true" />{resending ? "Đang gửi…" : "Gửi lại email"}
+                    </Button>
+                    {resendError && <span role="alert" className="text-destructive">{resendError}</span>}
+                  </div>
+                </div>
+              ) : null}
           </div>
           <div className="flex w-full gap-3 sm:ml-auto sm:w-auto">
             <Link href="/admin" className={cn(buttonVariants({ variant: "outline" }), "h-12 flex-1 px-6 sm:flex-none")}>Hủy</Link>

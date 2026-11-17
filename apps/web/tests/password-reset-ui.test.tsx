@@ -204,12 +204,12 @@ test("M3 warns and allows resending activation email when invitationSent is fals
   await user.type(screen.getByLabelText(/Địa chỉ nhận hàng và liên hệ/), "12 Lê Lợi, Q.1, TP. HCM");
   await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }));
 
-  assert.ok(await screen.findByText(/Đã tạo hồ sơ khách hàng Trần Minh Anh, nhưng chưa gửi được email kích hoạt tới chua-gui@cocoon\.demo\./));
+  assert.ok(await screen.findByText(/Đã tạo hồ sơ khách hàng Trần Minh Anh, nhưng chưa gửi được email mật khẩu tạm tới chua-gui@cocoon\.demo\./));
   await user.click(screen.getByRole("button", { name: "Gửi lại email" }));
   assert.ok(await screen.findByText("Không gửi được email lúc này."));
 
   await user.click(screen.getByRole("button", { name: "Gửi lại email" }));
-  assert.ok(await screen.findByText(/Đã tạo hồ sơ khách hàng Trần Minh Anh\. Đã gửi email kích hoạt tới chua-gui@cocoon\.demo\./));
+  assert.ok(await screen.findByText(/Đã tạo hồ sơ khách hàng Trần Minh Anh\. Đã gửi email mật khẩu tạm tới chua-gui@cocoon\.demo\./));
   assert.deepEqual(
     requests.map((r) => `${r.method} ${r.url}`),
     ["POST /api/v1/customers", "POST /api/v1/customers/77/invitation", "POST /api/v1/customers/77/invitation"],
