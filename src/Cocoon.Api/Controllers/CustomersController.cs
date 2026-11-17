@@ -65,15 +65,15 @@ public sealed class CustomersController(AccountManagementService accounts, Recom
 
     [HttpPost("{id:int}/lock"), ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Lock(int id, CancellationToken ct)
-    { await accounts.ChangeStatusAsync(AccountId, id, false, ct, customerOnly: true); return NoContent(); }
+    { await accounts.ChangeStatusAsync(AccountId, id, false, AccountScope.Customer, ct); return NoContent(); }
 
     [HttpPost("{id:int}/unlock"), ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Unlock(int id, CancellationToken ct)
-    { await accounts.ChangeStatusAsync(AccountId, id, true, ct, customerOnly: true); return NoContent(); }
+    { await accounts.ChangeStatusAsync(AccountId, id, true, AccountScope.Customer, ct); return NoContent(); }
 
     [HttpDelete("{id:int}"), ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
-    { await accounts.DeleteAsync(AccountId, id, ct, customerOnly: true); return NoContent(); }
+    { await accounts.DeleteAsync(AccountId, id, AccountScope.Customer, ct); return NoContent(); }
 
     [HttpGet("{id:int}/orders"), ProducesResponseType<CustomerPage<CustomerOrderRow>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<CustomerPage<CustomerOrderRow>>> Orders(int id, CancellationToken ct, int page = 1, int pageSize = 20) =>
