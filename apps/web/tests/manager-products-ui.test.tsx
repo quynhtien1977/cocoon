@@ -58,6 +58,7 @@ test("ManagerProductDetailPage renders unified header, tabs, variants and produc
     preferences: ["Da dầu"],
     preferenceIds: [10],
     averageRating: 2.6,
+    imageUrl: "https://example.com/nuoc-sen.jpg",
     variants: [{ id: 11, name: "140ml", sku: "COC-01-140", price: 195000, imageUrl: null }],
     ingredients: "Chiết xuất hoa sen",
     benefits: "Cấp ẩm và làm dịu",
@@ -101,6 +102,11 @@ test("ManagerProductDetailPage renders unified header, tabs, variants and produc
   assert.ok(await screen.findByRole("heading", { level: 1, name: "Nước sen Hậu Giang" }));
   assert.ok(screen.getByRole("tab", { name: /Thông tin sản phẩm/ }));
   const feedbackTab = screen.getByRole("tab", { name: /Phản hồi & đánh giá/ });
+  assert.ok(screen.getByRole("heading", { name: "Hình ảnh sản phẩm" }));
+  assert.ok(screen.getByText("Ảnh đại diện"));
+  assert.equal(screen.queryByRole("button", { name: /Thêm hình ảnh/ }), null);
+  assert.equal(screen.queryByText(/Hiện chỉ hỗ trợ chọn và xem trước ảnh/), null);
+  assert.equal(screen.queryByText(/JPG, PNG, WebP/), null);
   assert.ok(screen.getByRole("table", { name: "Các biến thể sản phẩm" }));
   assert.ok(screen.getByText("Chiết xuất hoa sen"));
 

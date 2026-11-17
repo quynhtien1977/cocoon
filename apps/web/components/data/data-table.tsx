@@ -17,6 +17,7 @@ export interface DataColumn<T> {
   cell?: (row: T) => ReactNode;
   sortable?: boolean;
   searchable?: boolean;
+  align?: "left" | "center";
 }
 
 export interface DataFilter<T> {
@@ -163,7 +164,7 @@ function TableContent<T>({ data, columns, getRowId, caption, filters = [], param
           <TableHeader><TableRow>{columns.map((column) => <TableHead key={column.id} scope="col" aria-sort={column.sortable ? state.sort === column.id ? state.direction === "asc" ? "ascending" : "descending" : "none" : undefined}>
             {column.sortable ? <button type="button" className="flex min-h-12 items-center gap-2 text-left focus-visible:outline-2 focus-visible:outline-ring" onClick={() => update({ sort: column.id, dir: state.sort === column.id && state.direction === "asc" ? "desc" : "asc", page: "1" })}>
               {column.header}{state.sort !== column.id ? <ArrowUpDown className="size-4" aria-hidden="true" /> : state.direction === "asc" ? <ArrowUp className="size-4" aria-hidden="true" /> : <ArrowDown className="size-4" aria-hidden="true" />}
-            </button> : column.header}
+            </button> : column.align === "center" ? <span className="block w-full text-center">{column.header}</span> : column.header}
           </TableHead>)}</TableRow></TableHeader>
           <TableBody>{rows.length ? rows.map((row) => <TableRow key={getRowId(row)} className={rowLinkClass ? `h-11 ${rowLinkClass}` : "h-11"} onClick={rowHref && openRow(row)}>{columns.map((column) => <TableCell key={column.id}>{column.cell ? column.cell(row) : column.value(row) ?? "—"}</TableCell>)}</TableRow>) : <TableRow><TableCell colSpan={Math.max(1, columns.length)}><EmptyState title={emptyTitle} description={emptyDescription} /></TableCell></TableRow>}</TableBody>
         </Table></div>
