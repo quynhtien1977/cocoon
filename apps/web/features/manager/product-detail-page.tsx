@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowLeft, Check, CircleCheck, ImagePlus, Info, Leaf, MessageSquare, Package, Plus, Save, Star, Tags, X } from "lucide-react";
+import { ArrowLeft, Check, CircleCheck, Images, Leaf, MessageSquare, Package, Plus, Save, Star, Tags, X } from "lucide-react";
 import { EmptyState } from "@/components/brand/empty-state";
 import { PageHeader } from "@/components/brand/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -12,7 +11,6 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApiError } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
-import { useReviewPhotos as useProductPhotos } from "../customer/review-photos";
 import { ProductPhoto } from "./product-photo";
 import { ProductStatusDropdown } from "./product-status";
 import { loadManagerProduct, loadPreferenceCatalog, loadProductFeedback, loadProductInsights, saveProductPreferences, type ManagerProductDetail, type ProductFeedbackItem, type ProductInsights, type ProductPreference } from "./product-detail-service";
@@ -169,67 +167,25 @@ function PreferenceEditor({ product, preview, onSaved }: { product: ManagerProdu
   );
 }
 
-function PhotoEditor({ product }: { product: ManagerProductDetail }) {
-  const state = useProductPhotos();
-  const fileInput = useRef<HTMLInputElement>(null);
+function ProductGallery({ product }: { product: ManagerProductDetail }) {
   const existing = [...new Set([product.imageUrl, ...product.variants.map((variant) => variant.imageUrl)].filter((url): url is string => !!url))];
 
   return (
-    <Panel icon={<ImagePlus className="size-5" />} title="Hình ảnh sản phẩm" description="Ảnh rõ nét, nền sáng giúp khách hàng dễ nhận diện sản phẩm.">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(140px,1fr))]">
-        {existing.map((src, index) => (
-          <figure key={src} className="min-w-0 max-w-44">
-            <ProductPhoto src={src} name={`${product.name} — ảnh ${index + 1}`} className="aspect-square w-full" />
-            <figcaption className="mt-2 truncate text-center text-xs text-muted-foreground">
-              {index === 0 ? "Ảnh đại diện" : `Ảnh sản phẩm ${index + 1}`}
-            </figcaption>
-          </figure>
-        ))}
-        {state.photos.map((photo) => (
-          <figure key={photo.url} className="min-w-0 max-w-44">
-            <div className="relative aspect-square overflow-hidden rounded-md border border-border bg-muted">
-              <Image src={photo.url} alt={`Ảnh mới: ${photo.file.name}`} fill unoptimized className="object-contain" />
-              <button
-                type="button"
-                aria-label={`Bỏ ảnh ${photo.file.name}`}
-                onClick={() => state.remove(photo.url)}
-                className="absolute top-1.5 right-1.5 grid size-8 place-items-center rounded-full border border-border bg-card text-foreground shadow-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
-              >
-                <X className="size-4" aria-hidden="true" />
-              </button>
-            </div>
-            <figcaption title={photo.file.name} className="mt-2 truncate text-center text-xs text-muted-foreground">
-              {photo.file.name}
-              <small className="block text-gold-strong">Chưa lưu</small>
-            </figcaption>
-          </figure>
-        ))}
-        <button
-          type="button"
-          className="flex aspect-square max-w-44 flex-col items-center justify-center gap-2 rounded-md border border-dashed border-input bg-muted/40 p-3 text-xs text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={state.loading || state.photos.length >= 5}
-          onClick={() => fileInput.current?.click()}
-        >
-          <ImagePlus className="size-6 text-gold-strong" strokeWidth={1.5} aria-hidden="true" />
-          <span>{state.loading ? "Đang đọc ảnh…" : "Thêm hình ảnh"}</span>
-        </button>
-      </div>
-      <input
-        ref={fileInput}
-        aria-label="Chọn hình ảnh sản phẩm"
-        type="file"
-        multiple
-        accept="image/jpeg,image/png,image/webp"
-        className="sr-only"
-        disabled={state.loading || state.photos.length >= 5}
-        onChange={(event) => { void state.add(Array.from(event.currentTarget.files ?? [])); event.currentTarget.value = ""; }}
-      />
-      <p className="mt-4 text-xs text-muted-foreground">JPG, PNG, WebP · Tối đa 5 ảnh mới, mỗi ảnh không quá 5 MB.</p>
-      <p className="mt-3 flex items-start gap-2 rounded-md border border-border bg-status-turmeric-bg/60 p-3 text-xs leading-relaxed text-status-turmeric-fg">
-        <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-        <span>Hiện chỉ hỗ trợ chọn và xem trước ảnh. Ảnh mới chưa được lưu lên hệ thống và sẽ mất khi rời trang.</span>
-      </p>
-      {state.error && <p role="alert" className="mt-3 text-sm text-destructive">{state.error}</p>}
+    <Panel icon={<Images className="size-5" />} title="Hình ảnh sản phẩm" description="Ảnh rõ nét, nền sáng giúp khách hàng dễ nhận diện sản phẩm.">
+      {existing.length ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(140px,1fr))]">
+          {existing.map((src, index) => (
+            <figure key={src} className="min-w-0 max-w-44">
+              <ProductPhoto src={src} name={`${product.name} — ảnh ${index + 1}`} className="aspect-square w-full" />
+              <figcaption className="mt-2 truncate text-center text-xs text-muted-foreground">
+                {index === 0 ? "Ảnh đại diện" : `Ảnh sản phẩm ${index + 1}`}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">Chưa có hình ảnh sản phẩm.</p>
+      )}
     </Panel>
   );
 }
@@ -488,7 +444,7 @@ export function ManagerProductDetailPage({ id, preview = false }: { id: string; 
                     setProduct((current) => current && { ...current, preferenceIds, preferences })
                   }
                 />
-                <PhotoEditor product={product} />
+                <ProductGallery product={product} />
                 <Panel title="Biến thể & giá bán" description="Quy cách và thông tin niêm yết của từng sản phẩm." icon={<Package className="size-5" />}>
                   {product.variants.length ? (
                     <div className="overflow-x-auto">
