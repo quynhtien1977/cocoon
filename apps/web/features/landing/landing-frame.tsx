@@ -8,7 +8,6 @@ import { ArrowRight, ClipboardList, Menu, MessageSquare, Package, Search, UserRo
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import styles from "./landing.module.css";
-import { CartDrawer } from "@/features/customer/cart-drawer";
 import { CustomerNotifications } from "@/features/customer/customer-notifications";
 
 const accountMenuLinks = [
@@ -28,7 +27,6 @@ export function LandingFrame({ customer = false, children, onSearch, searchValue
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [cartOpen, setCartOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setQuery] = useState("");
   const query = searchValue ?? searchQuery;
@@ -40,7 +38,7 @@ export function LandingFrame({ customer = false, children, onSearch, searchValue
     { href: anchor("nguyen-lieu"), label: "Nguyên liệu" },
     ...(customer ? [{ href: "/account/surveys", label: "Khảo sát" }, { href: "/account/orders", label: "Đơn hàng" }] : []),
   ];
-  const right = [{ href: anchor("bai-viet"), label: "Bài viết" }, { href: customer ? "/account/cart" : "#ket-noi", label: customer ? "Giỏ hàng" : "Kết nối" }];
+  const right = [{ href: anchor("bai-viet"), label: "Bài viết" }, { href: anchor("ket-noi"), label: "Kết nối" }];
   const returnToTop = (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || (customer && pathname !== home)) return;
     event.preventDefault();
@@ -48,7 +46,7 @@ export function LandingFrame({ customer = false, children, onSearch, searchValue
     window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
   };
   const surveyCount = pendingSurveyCount !== undefined && pendingSurveyCount > 0 ? Math.floor(pendingSurveyCount) : 0;
-  const navLink = (link: { href: string; label: string }) => link.href === "/account/cart" ? <button key={link.href} type="button" aria-haspopup="dialog" onClick={() => { setMenuOpen(false); setCartOpen(true); }}>Giỏ hàng</button> : <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)} aria-current={pathname === link.href ? "page" : undefined}>
+  const navLink = (link: { href: string; label: string }) => <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)} aria-current={pathname === link.href ? "page" : undefined}>
     {link.label}{link.href === "/account/surveys" && surveyCount > 0 && <span className={styles.navBadge}>{surveyCount}</span>}
   </Link>;
 
@@ -130,7 +128,6 @@ export function LandingFrame({ customer = false, children, onSearch, searchValue
       <label htmlFor="landing-search">Bạn đang tìm sản phẩm nào?</label><div><input autoFocus id="landing-search" type="search" value={query} onChange={(event) => { setQuery(event.target.value); if (!customer) onSearch?.(event.target.value); }} placeholder="Tên sản phẩm, ví dụ: bí đao…" /><button type="submit" aria-label="Xem kết quả tìm kiếm"><ArrowRight /></button></div>
     </form>}
     <main id="main-content" tabIndex={-1}>{children}</main>
-    {customer && <CartDrawer open={cartOpen || pathname === "/account/cart"} onContinue={() => setCartOpen(false)} onOpenChange={(open) => { setCartOpen(open); if (!open && pathname === "/account/cart") router.replace("/account", { scroll: false }); }} />}
     <footer className={styles.footer}>
       <div className={styles.footerTop}>
         <div><Link href={customer ? home : "#dau-trang"} onClick={returnToTop} aria-label="Cocoon — Trang chủ"><Image src="/images/landing/logo.svg" alt="Cocoon Original Vietnam" width={184} height={70} /></Link><p>Mỹ phẩm thuần chay<br />cho nét đẹp thuần Việt.</p></div>

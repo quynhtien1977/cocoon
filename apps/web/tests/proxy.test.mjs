@@ -56,7 +56,7 @@ test("expired/tampered tokens, unavailable API and malformed profiles fail close
   }
   for (const profile of [null, {}, { role: 'SuperAdmin' }, { role: '3' }, { role: 1.5 }]) {
     globalThis.fetch = async () => Response.json(profile);
-    denied(await proxy(request('/admin/activity', 'access_token=invalid')), '/admin');
+    denied(await proxy(request('/admin/accounts/new', 'access_token=invalid')), '/admin');
   }
   globalThis.fetch = async () => new Response('not json');
   denied(await proxy(request('/account', 'access_token=invalid')), '/account');
@@ -66,7 +66,7 @@ test("expired/tampered tokens, unavailable API and malformed profiles fail close
 
 test("prefetch/RSC headers and admin login subpaths cannot bypass guards", async () => {
   globalThis.fetch = async () => Response.json({ role: 'Customer' });
-  denied(await proxy(new NextRequest('http://localhost:3000/admin/activity?_rsc=123', { headers: { cookie: 'access_token=test', rsc: '1', 'next-router-prefetch': '1', 'x-role': 'Admin' } })), '/admin');
+  denied(await proxy(new NextRequest('http://localhost:3000/admin/accounts/new?_rsc=123', { headers: { cookie: 'access_token=test', rsc: '1', 'next-router-prefetch': '1', 'x-role': 'Admin' } })), '/admin');
   denied(await proxy(request('/admin/login/hidden', 'access_token=test')), '/admin');
 });
 

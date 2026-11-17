@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
-import { CircleCheck, KeyRound, LoaderCircle, ShieldAlert } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, CircleCheck, KeyRound, LoaderCircle, ShieldAlert } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -276,7 +277,20 @@ export function AccountProfile({ variant, logout }: AccountProfileProps) {
     return () => controller.abort();
   }, [attempt]);
 
-  const header = <PageHeader title={copy.title} description={copy.description} actions={profile ? logout : undefined} />;
+  const header = (
+    <>
+      {variant === "admin" && (
+        <Link
+          href="/admin"
+          className="mb-3 inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          Danh sách tài khoản
+        </Link>
+      )}
+      <PageHeader title={copy.title} description={copy.description} actions={profile ? logout : undefined} />
+    </>
+  );
 
   if (!profile) {
     return (

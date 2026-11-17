@@ -32,7 +32,6 @@ test("portal navigation selects only the relevant section", () => {
     ["staff", "/staff/orders/12", "S4"],
     ["manager", "/manager/orders/12", "M16"],
     ["admin", "/admin/accounts/new", "A2"],
-    ["admin", "/admin/activity", "A3"],
   ]) {
     const items = navFor(portal);
     assert.ok(items.every((item) => item.portal === portal));
