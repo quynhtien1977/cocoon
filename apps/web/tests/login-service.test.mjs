@@ -32,8 +32,8 @@ for (const [role, portal, destination] of [["Customer", "shared", "/account"], [
   });
 }
 
-for (const [role, portal, destination] of [["Customer", "shared", "/account/profile"], ["Manager", "shared", "/manager/profile"], ["Admin", "admin", "/admin/profile"]]) {
-  test(`${role} with a temporary password lands on the profile to change it`, async () => {
+for (const [role, portal, destination] of [["Customer", "shared", "/account"], ["Manager", "shared", "/manager"], ["Staff", "shared", "/staff/feedback"], ["Admin", "admin", "/admin"]]) {
+  test(`${role} still on the emailed password lands on the usual page`, async () => {
     globalThis.fetch = async (url) => url === "/api/v1/me" ? Response.json({ role, mustChangePassword: true }) : new Response(null, { status: 204 });
     assert.equal(await signIn("person@example.com", "test-password", portal), destination);
   });

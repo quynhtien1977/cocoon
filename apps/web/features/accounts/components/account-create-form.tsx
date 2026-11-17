@@ -60,7 +60,7 @@ export function AccountCreateForm() {
     try {
       const result = await resendAccountInvitation(created.id);
       setCreated((current) => current && current.id === created.id ? { ...current, invitationSent: result.sent } : current);
-      if (!result.sent) setResendError("Chưa gửi được email mật khẩu tạm. Vui lòng thử lại sau.");
+      if (!result.sent) setResendError("Chưa gửi được email mật khẩu đăng nhập. Vui lòng thử lại sau.");
     } catch (error) {
       setResendError(error instanceof ApiError ? error.message : "Mất kết nối. Kiểm tra mạng rồi thử lại.");
     } finally {
@@ -116,7 +116,7 @@ export function AccountCreateForm() {
           <p className="border-t border-dashed border-border pt-2 text-sm text-muted-foreground">Phạm vi: {summary.scope}</p>
         </section>
 
-        <p className="flex gap-2 text-sm text-muted-foreground sm:col-span-2"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Hệ thống sẽ tự tạo mật khẩu tạm và gửi qua email cho người dùng, không hiển thị tại đây.</p>
+        <p className="flex gap-2 text-sm text-muted-foreground sm:col-span-2"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Hệ thống sẽ tự tạo mật khẩu và gửi qua email cho người dùng, không hiển thị tại đây.</p>
 
         <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5 sm:col-span-2">
           <div aria-live="polite" className="min-w-0 text-sm">
@@ -124,13 +124,13 @@ export function AccountCreateForm() {
               : created ? created.invitationSent ? (
                 <p className="flex items-start gap-2 text-status-sage-fg">
                   <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                  <span className="min-w-0 break-words">Đã tạo tài khoản {created.email} ({roleLabels[created.role]}). Đã gửi email mật khẩu tạm tới {created.email}. Người dùng cần đổi mật khẩu khi đăng nhập lần đầu.</span>
+                  <span className="min-w-0 break-words">Đã tạo tài khoản {created.email} ({roleLabels[created.role]}). Đã gửi email mật khẩu đăng nhập tới {created.email}. Người dùng đăng nhập được ngay và có thể tự đổi mật khẩu trong trang Hồ sơ.</span>
                 </p>
               ) : (
                 <div className="space-y-2">
                   <p role="alert" className="flex items-start gap-2 text-amber-800">
                     <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                    <span className="min-w-0 break-words">Đã tạo tài khoản {created.email} ({roleLabels[created.role]}), nhưng chưa gửi được email mật khẩu tạm tới {created.email}.</span>
+                    <span className="min-w-0 break-words">Đã tạo tài khoản {created.email} ({roleLabels[created.role]}), nhưng chưa gửi được email mật khẩu đăng nhập tới {created.email}.</span>
                   </p>
                   <div className="flex flex-wrap items-center gap-3">
                     <Button type="button" variant="outline" size="sm" onClick={handleResendInvitation} disabled={resending} className="min-h-9">

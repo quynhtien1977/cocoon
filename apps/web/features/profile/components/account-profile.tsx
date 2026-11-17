@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, CircleCheck, KeyRound, LoaderCircle, ShieldAlert } from "lucide-react";
+import { ArrowLeft, CircleCheck, Info, KeyRound, LoaderCircle } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -149,8 +149,16 @@ function ProfileForm({ profile, code, copy, onSaved }: { profile: StaffProfile; 
   );
 }
 
-/** forced: the account still has the temporary password an admin issued. */
-function PasswordForm({ loginHref, forced }: { loginHref: string; forced: boolean }) {
+/** Shown while the account still uses the password emailed when it was created; changing it is recommended, never required. */
+function GeneratedPasswordNote({ className }: { className?: string }) {
+  return (
+    <p role="status" className={cn("flex gap-2 rounded-md border border-border bg-muted p-4 text-sm text-foreground", className)}>
+      <Info className="mt-0.5 size-4 shrink-0 text-gold-strong" aria-hidden="true" />Bạn đang dùng mật khẩu do hệ thống cấp qua email. Để bảo mật, bạn nên đổi sang mật khẩu của riêng mình.
+    </p>
+  );
+}
+
+function PasswordForm({ loginHref }: { loginHref: string }) {
   const id = useId();
   const [draft, setDraft] = useState(emptyPassword);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -194,8 +202,8 @@ function PasswordForm({ loginHref, forced }: { loginHref: string; forced: boolea
   );
 
   return (
-    <form onSubmit={submit} noValidate aria-labelledby={`${id}-title`} className={cn(card, "space-y-5", forced && "border-status-danger-fg")}>
-      <h2 id={`${id}-title`} className="flex items-center gap-2 border-b border-border pb-3 font-heading text-xl"><KeyRound className="size-5 text-gold-strong" aria-hidden="true" />{forced ? "Đổi mật khẩu tạm" : "Đổi mật khẩu"}</h2>
+    <form onSubmit={submit} noValidate aria-labelledby={`${id}-title`} className={cn(card, "space-y-5")}>
+      <h2 id={`${id}-title`} className="flex items-center gap-2 border-b border-border pb-3 font-heading text-xl"><KeyRound className="size-5 text-gold-strong" aria-hidden="true" />Đổi mật khẩu</h2>
       <div className="grid gap-5 sm:grid-cols-3">
         <Field id={`${id}-currentPassword`} label="Mật khẩu hiện tại" error={errors.currentPassword}>{input("currentPassword", "current-password")}</Field>
         <Field id={`${id}-newPassword`} label="Mật khẩu mới" error={errors.newPassword} hint="8–128 ký tự, có cả chữ và số.">{input("newPassword", "new-password", true)}</Field>
@@ -212,20 +220,16 @@ function PasswordForm({ loginHref, forced }: { loginHref: string; forced: boolea
 
 /** Password card for pages outside this module (the customer profile); the route composes it so features stay separate. */
 export function MyPasswordSection({ loginHref }: { loginHref: string }) {
-  const [forced, setForced] = useState(false);
+  const [generated, setGenerated] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
-    loadMyProfile(controller.signal).then((me) => setForced(me.mustChangePassword === true)).catch(() => undefined);
+    loadMyProfile(controller.signal).then((me) => setGenerated(me.mustChangePassword === true)).catch(() => undefined);
     return () => controller.abort();
   }, []);
   return (
     <div className="space-y-4">
-      {forced && (
-        <p role="alert" className="flex gap-2 rounded-md border border-status-danger-fg bg-status-danger-bg p-4 text-sm text-status-danger-fg">
-          <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Bạn đang dùng mật khẩu tạm. Hãy đổi mật khẩu để dùng đầy đủ tài khoản.
-        </p>
-      )}
-      <PasswordForm loginHref={loginHref} forced={forced} />
+      {generated && <GeneratedPasswordNote />}
+      <PasswordForm loginHref={loginHref} />
     </div>
   );
 }
@@ -315,16 +319,12 @@ export function AccountProfile({ variant, logout }: AccountProfileProps) {
   return (
     <>
       {header}
-      {profile.mustChangePassword && (
-        <p role="alert" className="mb-6 flex gap-2 rounded-md border border-status-danger-fg bg-status-danger-bg p-4 text-sm text-status-danger-fg">
-          <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Bạn đang dùng mật khẩu tạm do quản trị viên cấp. Hãy đổi mật khẩu ở cuối trang trước khi tiếp tục làm việc.
-        </p>
-      )}
+      {profile.mustChangePassword && <GeneratedPasswordNote className="mb-6" />}
       <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <SummaryCard profile={profile} code={code} rows={rows} stats={stats} />
         <div className="min-w-0 space-y-6">
           <ProfileForm profile={profile} code={code} copy={copy} onSaved={(draft) => setProfile((current) => current && { ...current, fullName: draft.fullName, phone: draft.phone || null })} />
-          <PasswordForm loginHref={copy.loginHref} forced={profile.mustChangePassword} />
+          <PasswordForm loginHref={copy.loginHref} />
         </div>
       </div>
     </>

@@ -129,7 +129,7 @@ test("A2 reports missing fields, follows the role summary and creates the accoun
   await user.type(screen.getByLabelText(/Họ và tên/), "Nguyễn Văn An");
   await user.type(screen.getByLabelText(/Email đăng nhập/), "an@cocoon.demo");
   await user.click(screen.getByRole("button", { name: "Tạo tài khoản" }));
-  assert.ok(await screen.findByText(/Đã tạo tài khoản an@cocoon\.demo.*Đã gửi email mật khẩu tạm tới an@cocoon\.demo\./));
+  assert.ok(await screen.findByText(/Đã tạo tài khoản an@cocoon\.demo.*Đã gửi email mật khẩu đăng nhập tới an@cocoon\.demo\./));
   assert.equal(screen.queryByText(/Mật khẩu tạm:/), null);
   assert.equal(screen.queryByRole("button", { name: "Hiện" }), null);
   assert.equal((screen.getByLabelText(/Email đăng nhập/) as HTMLInputElement).value, "");
@@ -152,12 +152,12 @@ test("A2 warns and lets Admin resend the temporary password email when invitatio
   await user.type(screen.getByLabelText(/Email đăng nhập/), "staff.new@cocoon.demo");
   await user.click(screen.getByRole("button", { name: "Tạo tài khoản" }));
 
-  assert.ok(await screen.findByText(/Đã tạo tài khoản staff\.new@cocoon\.demo.*nhưng chưa gửi được email mật khẩu tạm tới staff\.new@cocoon\.demo\./));
+  assert.ok(await screen.findByText(/Đã tạo tài khoản staff\.new@cocoon\.demo.*nhưng chưa gửi được email mật khẩu đăng nhập tới staff\.new@cocoon\.demo\./));
   await user.click(screen.getByRole("button", { name: "Gửi lại email" }));
   assert.ok(await screen.findByText("Chưa gửi được email. Hãy thử lại sau ít phút."));
 
   await user.click(screen.getByRole("button", { name: "Gửi lại email" }));
-  assert.ok(await screen.findByText(/Đã gửi email mật khẩu tạm tới staff\.new@cocoon\.demo\./));
+  assert.ok(await screen.findByText(/Đã gửi email mật khẩu đăng nhập tới staff\.new@cocoon\.demo\./));
   assert.deepEqual(
     requests.map((r) => [r.method, r.url]),
     [
