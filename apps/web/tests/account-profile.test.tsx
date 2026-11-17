@@ -95,6 +95,11 @@ test("A4 shows last login, and an emailed password only gets a gentle reminder a
   assert.equal(screen.queryByText(/mật khẩu tạm/), null);
   assert.ok(screen.getByRole("heading", { name: "Đổi mật khẩu" }));
   assert.ok(await screen.findByText(/08:30.*07\/11\/2026|07\/11\/2026.*08:30/));
+  // Only stored data: no made-up admin code, and no "ask an admin" hint on the admin's own page.
+  assert.equal(screen.queryByText(/ADM-/), null);
+  assert.equal(screen.queryByText(/Liên hệ quản trị viên/), null);
+  assert.ok(screen.getByText("Email dùng để đăng nhập, không thay đổi được."));
+  assert.ok(screen.getByRole("button", { name: "Hoàn tác" }));
   await user.type(screen.getByLabelText("Mật khẩu hiện tại"), "Sai@12345");
   await user.type(screen.getByLabelText("Mật khẩu mới"), "MoiHon2026");
   await user.type(screen.getByLabelText("Nhập lại mật khẩu mới"), "MoiHon2026");
