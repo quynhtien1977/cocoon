@@ -59,8 +59,6 @@ export const screens = {
   M15: { portal: "manager", href: "/manager/profile", title: "Hồ sơ", description: "Thông tin cá nhân và đổi mật khẩu." },
 
   A1: { portal: "admin", href: "/admin", nav: true, title: "Tài khoản", description: "Danh sách tài khoản, phân quyền, khóa, xóa." },
-  A2: { portal: "admin", href: "/admin/accounts/new", nav: true, title: "Tạo tài khoản", description: "Tạo tài khoản nội bộ và gán role." },
-  A3: { portal: "admin", href: "/admin/activity", nav: true, title: "Nhật ký hoạt động", description: "Theo dõi hoạt động quản trị hệ thống." },
   A4: { portal: "admin", href: "/admin/profile", title: "Hồ sơ", description: "Thông tin cá nhân và đổi mật khẩu." },
 } satisfies Record<string, Omit<Screen, "code">>;
 

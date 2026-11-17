@@ -38,7 +38,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </Link>
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="border-b border-border bg-card px-6 py-4 text-sm text-muted-foreground">Cocoon CRM <span aria-hidden="true" className="px-2">/</span> Quản trị hệ thống</div>
+          <div className="border-b border-border bg-card px-6 py-4 text-sm text-muted-foreground">
+            <Link href="/" className="hover:text-foreground">Cocoon CRM</Link> <span aria-hidden="true" className="px-2">/</span> <Link href="/admin" className="hover:text-foreground">Quản trị hệ thống</Link>
+          </div>
           <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1280px] flex-1 p-6 outline-none">{children}</main>
           <footer className="px-6 py-4 text-xs text-muted-foreground">Cocoon CRM · Không gian quản trị</footer>
         </div>

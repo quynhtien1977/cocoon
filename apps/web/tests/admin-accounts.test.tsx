@@ -118,6 +118,7 @@ test("A2 reports missing fields, follows the role summary and creates the accoun
   stubFetch(() => json({ id: 42, email: "an@cocoon.demo", role: "Admin", mustChangePassword: true, invitationSent: true }, 201));
   const user = userEvent.setup();
   render(<AccountCreateForm />);
+  assert.equal(screen.getByRole("link", { name: "Danh sách tài khoản" }).getAttribute("href"), "/admin");
   await user.click(screen.getByRole("button", { name: "Tạo tài khoản" }));
   assert.ok(screen.getByText("Nhập họ và tên."));
   assert.ok(screen.getByText("Nhập email đăng nhập."));

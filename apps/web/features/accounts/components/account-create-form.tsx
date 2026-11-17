@@ -2,7 +2,7 @@
 
 import { useId, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { CircleAlert, CircleCheck, Info, Mail, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CircleCheck, Info, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { AccountRole } from "@/lib/auth/roles";
@@ -73,6 +73,13 @@ export function AccountCreateForm() {
 
   return (
     <>
+      <Link
+        href="/admin"
+        className="mb-3 inline-flex min-h-12 items-center gap-1 font-label text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" aria-hidden="true" />
+        Danh sách tài khoản
+      </Link>
       <PageHeader title="Tạo tài khoản người dùng mới" description="Khởi tạo thông tin người dùng và gán vai trò trên Cocoon CRM." />
       <form onSubmit={submit} noValidate className="grid max-w-[880px] gap-5 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 sm:gap-x-6 sm:p-8">
         <div className="space-y-2 sm:col-span-2">

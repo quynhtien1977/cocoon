@@ -28,7 +28,7 @@ try {
     await delay(100);
   }
   assert.ok(ready, 'Next server starts');
-  const portals = [['/account', '/account/orders', 'Customer'], ['/staff', '/staff/feedback', 'Staff'], ['/manager', '/manager/customers', 'Manager'], ['/admin', '/admin/activity', 'Admin']];
+  const portals = [['/account', '/account/orders', 'Customer'], ['/staff', '/staff/feedback', 'Staff'], ['/manager', '/manager/customers', 'Manager'], ['/admin', '/admin/accounts/new', 'Admin']];
   for (const [root, child, allowedRole] of portals) {
     for (const token of [undefined, 'invalid', 'unavailable', 'Customer', 'Staff', 'Manager', 'Admin']) {
       for (const path of [root, child]) {

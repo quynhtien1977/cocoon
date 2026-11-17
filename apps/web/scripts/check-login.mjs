@@ -298,7 +298,7 @@ try {
   for (const href of ['/account/products', '/account/surveys', '/account/orders']) {
     assert.equal(await evaluate(`!!document.querySelector('header nav[aria-label="Điều hướng chính"] a[href="${href}"]')`), true);
   }
-  assert.equal(await evaluate(() => !!document.querySelector('header nav[aria-label="Khám phá"] button[aria-haspopup="dialog"]')), true);
+  assert.equal(await evaluate(() => !!document.querySelector('header nav[aria-label="Khám phá"] a[href*="ket-noi"]')), true);
   await screenshot('customer-home-desktop');
   await evaluate(() => document.querySelector('header a[href="/account/products"]').click());
   await until(() => evaluate(() => location.pathname === '/account/products' && document.querySelectorAll('#catalog-grid article').length === 5));
@@ -318,16 +318,6 @@ try {
   await evaluate(() => document.querySelector('header a[href="/account"]').click());
   await until(() => evaluate(() => location.pathname === '/account' && !!document.querySelector('#bestseller-track')));
   await evaluate(() => document.querySelector('#bestseller-track').scrollIntoView({ behavior: 'instant', block: 'center' }));
-  const cartScroll = await evaluate(() => scrollY);
-  await evaluate(() => { const b = document.querySelector('header nav[aria-label="Khám phá"] button'); b.focus({ preventScroll: true }); b.click(); });
-  await until(() => evaluate(() => !!document.querySelector('[aria-label="Đóng giỏ hàng"]')));
-  await delay(350);
-  assert.equal(await evaluate(() => location.pathname), '/account', 'Cart opens without route navigation');
-  assert.ok(Math.abs(await evaluate(() => scrollY) - cartScroll) < 5);
-  await screenshot('cart-desktop');
-  await key('Escape');
-  await until(() => evaluate(() => !document.querySelector('[role="dialog"]')));
-  assert.ok(Math.abs(await evaluate(() => scrollY) - cartScroll) < 5);
   await evaluate(() => document.querySelector('#bestseller-track article a').click());
   await until(() => evaluate(() => location.pathname.includes('/account/products/') && !!document.querySelector('h1')));
   assert.equal(await evaluate(() => location.hostname), '127.0.0.1', 'Customer product stays on own site');
@@ -336,11 +326,7 @@ try {
   assert.equal(await evaluate(() => document.querySelector('button[aria-label="Xem ảnh sản phẩm 2"]').getAttribute('aria-pressed')), 'true');
   await until(() => evaluate(() => [...document.querySelectorAll('main img')].every(img => img.complete && img.naturalWidth > 0)));
   await screenshot('product-detail-desktop');
-  await navigate('/account/cart');
-  await until(() => evaluate(() => !!document.querySelector('[role="dialog"] a[href="/account/products"]')));
-  await evaluate(() => document.querySelector('[role="dialog"] a').click());
-  await until(() => evaluate(() => location.pathname === '/account/products' && !document.querySelector('[role="dialog"]')));
-  console.log('PASS cart drawer: scroll, Escape, direct route, continue shopping; internal product detail and gallery');
+  console.log('PASS product detail: internal product detail and gallery');
   await navigate('/login');
   await until(() => evaluate(() => !!document.querySelector('#login-email')));
   await evaluate(() => document.querySelector('#login-email').focus());
@@ -362,15 +348,6 @@ try {
     await until(() => evaluate(() => location.pathname === '/account/products' && !document.querySelector('[role="dialog"]')));
     assert.equal(await evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Catalog does not overflow');
     await screenshot(`customer-products-${width}`);
-    await evaluate(() => document.querySelector('header button[aria-label="Mở menu"]').click());
-    await until(() => evaluate(() => !!document.querySelector('[role="dialog"] nav button')));
-    await evaluate(() => document.querySelector('[role="dialog"] nav button').click());
-    await until(() => evaluate(() => !!document.querySelector('[aria-label="Đóng giỏ hàng"]') && document.querySelectorAll('[role="dialog"]').length === 1));
-    await delay(350);
-    assert.equal(await evaluate(() => { const r = document.querySelector('[role="dialog"]').getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight; }), true, 'Cart fits viewport');
-    await screenshot(`cart-${width}`);
-    await evaluate(() => document.querySelector('[aria-label="Đóng giỏ hàng"]').click());
-    await until(() => evaluate(() => !document.querySelector('[role="dialog"]')));
   }
   console.log('PASS customer responsive: 1024/390/320px menu and catalog');
   for (const width of [1366, 390, 320]) {
