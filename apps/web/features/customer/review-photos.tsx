@@ -71,6 +71,5 @@ export function ReviewPhotoPicker({ state, disabled }: { state: ReturnType<typeo
     <ReviewPhotoGallery photos={state.photos} onRemove={state.remove} disabled={disabled || state.loading} />
     <button type="button" className={styles.add} disabled={disabled || state.loading || state.photos.length >= maxPhotos} onClick={() => input.current?.click()}><ImagePlus size={22} />{state.loading ? "Đang đọc ảnh…" : `Thêm ảnh (${state.photos.length}/5)`}</button>
     {state.error && <p role="alert" className={styles.error}>{state.error}</p>}
-    <p className={styles.local}>Ảnh hiện chỉ được xem trên thiết bị này. Tính năng gửi ảnh kèm đánh giá chưa được hỗ trợ.</p>
   </section>;
 }

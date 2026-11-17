@@ -85,6 +85,30 @@ public sealed class ProductsApiTests : IClassFixture<DatabaseFixture>, IDisposab
         var empty = await Json(await Send(HttpMethod.Get, $"/api/v1/products/{shop.UntaggedId}/insights", manager));
         Assert.Equal(0, empty.GetProperty("totalFeedback").GetInt32());
         Assert.Equal(JsonValueKind.Null, empty.GetProperty("averageRating").ValueKind);
+
+        var customer = FoundationFactory.Token("Customer", shop.CustomerId);
+        var customerInsights = await Json(await Send(HttpMethod.Get, $"/api/v1/products/{shop.TaggedId}/insights", customer));
+        Assert.Equal(2, customerInsights.GetProperty("totalFeedback").GetInt32());
+
+        var reviews = await Json(await Send(HttpMethod.Get, $"/api/v1/products/{shop.TaggedId}/reviews?page=1&pageSize=10", customer));
+        Assert.Equal(2, reviews.GetProperty("totalCount").GetInt32());
+        var items = reviews.GetProperty("items").EnumerateArray().ToList();
+        Assert.Equal(2, items.Count);
+        Assert.Contains(items, x => x.GetProperty("content").GetString() == "Rất thích" && x.GetProperty("rating").GetInt32() == 5);
+        Assert.Contains(items, x => x.GetProperty("content").GetString() == "Khá tốt" && x.GetProperty("rating").GetInt32() == 4);
+
+        var fiveStarReviews = await Json(await Send(HttpMethod.Get, $"/api/v1/products/{shop.TaggedId}/reviews?rating=5", customer));
+        Assert.Equal(1, fiveStarReviews.GetProperty("totalCount").GetInt32());
+        var single = fiveStarReviews.GetProperty("items").EnumerateArray().Single();
+        Assert.Equal("Rất thích", single.GetProperty("content").GetString());
+        Assert.Equal("Da mình có vẻ đỡ hơn sau 1 tuần dùng", single.GetProperty("followUp").GetProperty("content").GetString());
+        var replies = single.GetProperty("replies").EnumerateArray().ToList();
+        Assert.Equal(2, replies.Count);
+        Assert.Equal(1, replies[0].GetProperty("round").GetInt32());
+        Assert.Equal("Cảm ơn bạn đã ủng hộ Cocoon!", replies[0].GetProperty("content").GetString());
+        Assert.Equal("Quản lý", replies[0].GetProperty("staffName").GetString());
+        Assert.Equal(2, replies[1].GetProperty("round").GetInt32());
+        Assert.Equal("Chúc mừng bạn, hãy kiên trì sử dụng nhé!", replies[1].GetProperty("content").GetString());
     }
 
     private sealed record Shop(int ManagerId, int CustomerId, int CategoryId, int TaggedId, int UntaggedId, string Sku,
@@ -106,10 +130,24 @@ public sealed class ProductsApiTests : IClassFixture<DatabaseFixture>, IDisposab
         db.AddRange(tagged, untagged);
         await db.SaveChangesAsync();
         var sku = $"SKU-{tag}".ToUpperInvariant();
+        var f1 = new Feedback
+        {
+            CustomerId = customer.Id,
+            ProductId = tagged.Id,
+            Rating = 5,
+            Content = "Rất thích",
+            FollowUpContent = "Da mình có vẻ đỡ hơn sau 1 tuần dùng",
+            FollowUpAt = DateTime.UtcNow
+        };
+        var f2 = new Feedback { CustomerId = customer.Id, ProductId = tagged.Id, Rating = 4, Content = "Khá tốt" };
         db.AddRange(new ProductVariant { ProductId = tagged.Id, Name = "140ml", Sku = sku, Price = 145000 },
             new ProductPreference { ProductId = tagged.Id, PreferenceId = preference.Id },
-            new Feedback { CustomerId = customer.Id, ProductId = tagged.Id, Rating = 5, Content = "Rất thích" },
-            new Feedback { CustomerId = customer.Id, ProductId = tagged.Id, Rating = 4, Content = "Khá tốt" });
+            f1, f2);
+        await db.SaveChangesAsync();
+        db.AddRange(
+            new FeedbackReply { FeedbackId = f1.Id, StaffId = manager.Id, Round = 1, Content = "Cảm ơn bạn đã ủng hộ Cocoon!" },
+            new FeedbackReply { FeedbackId = f1.Id, StaffId = manager.Id, Round = 2, Content = "Chúc mừng bạn, hãy kiên trì sử dụng nhé!" }
+        );
         await db.SaveChangesAsync();
         return new Shop(manager.Id, customer.Id, category.Id, tagged.Id, untagged.Id, sku, preference.Name, other.Id);
     }

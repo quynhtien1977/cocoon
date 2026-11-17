@@ -8,6 +8,8 @@ import { loadProduct, type ApiProduct } from "./product-service";
 import { CheckoutDialog } from "./checkout-dialog";
 import styles from "./product-detail.module.css";
 import { RecommendationSection } from "./recommendation-section";
+import { RatingStars } from "@/components/brand/rating-stars";
+import { ProductReviewsSection } from "./product-reviews-section";
 
 export function ApiProductDetail({ id }: { id: string }) {
   const [product, setProduct] = useState<ApiProduct | null>(null);
@@ -123,6 +125,14 @@ export function ApiProductDetail({ id }: { id: string }) {
             <div className={styles.info}>
               <p className={styles.category}>{product.categoryName || "Cocoon"}</p>
               <h1>{product.name}</h1>
+              {product.averageRating && (
+                <div className="mb-2 flex items-center gap-2">
+                  <RatingStars value={product.averageRating ?? null} />
+                  <a href="#danh-gia" className="text-xs text-[#81765e] hover:underline">
+                    ({product.feedbackCount ?? 0} đánh giá)
+                  </a>
+                </div>
+              )}
               <p className={styles.size}>
                 {variant ? variant.name : product.variants.map((item) => item.name).join(" · ")}
               </p>
@@ -238,6 +248,12 @@ export function ApiProductDetail({ id }: { id: string }) {
           variant={variant}
           quantity={quantity}
         />
+      )}
+
+      {product && !loading && !error && (
+        <div id="danh-gia">
+          <ProductReviewsSection productId={product.id} productName={product.name} />
+        </div>
       )}
 
       {product && !loading && !error && <RecommendationSection excludeProductId={product.id} />}
