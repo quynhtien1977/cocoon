@@ -1,9 +1,16 @@
+using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using Cocoon.Application.Email;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Cocoon.Tests;
 
@@ -76,20 +83,29 @@ public sealed class AdminAccountsApiTests : AccountApiTestBase
     }
 
     [Fact]
-    public async Task Admin_creates_profiles_and_password_once_then_searches_without_secrets()
+    public async Task Admin_creates_profiles_and_emails_temporary_password_once_then_searches_without_secrets()
     {
         var admin = await Actor(AccountRole.Admin);
+        var outbox = new Outbox();
+        using var mailFactory = Factory.WithWebHostBuilder(builder => builder.ConfigureServices(services => services.AddSingleton<IEmailSender>(outbox)));
+        using var client = mailFactory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
         foreach (var role in Enum.GetValues<AccountRole>())
         {
             var email = $"{role}@example.test";
-            using var response = await Send(HttpMethod.Post, "/api/v1/admin/accounts", "Admin", admin,
-                new { email = email.ToUpperInvariant(), fullName = "  Đặng Ánh  ", role = role.ToString(), phone = "0912345678" });
+            using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v1/admin/accounts") { Content = JsonContent.Create(new { email = email.ToUpperInvariant(), fullName = "  Đặng Ánh  ", role = role.ToString(), phone = "0912345678" }) };
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", FoundationFactory.Token("Admin", admin));
+            using var response = await client.SendAsync(req);
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
             Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
             var created = await Json(response);
             var id = created.GetProperty("id").GetInt32();
-            var temporary = created.GetProperty("temporaryPassword").GetString()!;
+            Assert.False(created.TryGetProperty("temporaryPassword", out _));
             Assert.True(created.GetProperty("mustChangePassword").GetBoolean());
+            Assert.True(created.GetProperty("invitationSent").GetBoolean());
+            var mail = Assert.Single(outbox.To(email));
+            var temporary = Regex.Match(mail.Text, @"Mật khẩu tạm: ([^\r\n]+)").Groups[1].Value;
+            Assert.False(string.IsNullOrWhiteSpace(temporary));
+            Assert.Contains(role == AccountRole.Admin ? "/admin/login" : "/login", mail.Text);
             await using var db = Database.CreateContext();
             var saved = await db.Set<Account>().SingleAsync(a => a.Id == id);
             Assert.NotEqual(PasswordVerificationResult.Failed, new PasswordHasher<Account>().VerifyHashedPassword(saved, saved.PasswordHash, temporary));
@@ -141,6 +157,7 @@ public sealed class AdminAccountsApiTests : AccountApiTestBase
         var actor = await Actor(Enum.Parse<AccountRole>(role));
         foreach (var (method, route, body) in new (HttpMethod, string, object?)[] {
             (HttpMethod.Get, "", null), (HttpMethod.Post, "", new { email = "new@example.test", fullName = "Họ tên", role = "Admin" }),
+            (HttpMethod.Post, $"/{actor}/invitation", null),
             (HttpMethod.Patch, $"/{actor}/role", new { role = "Admin" }),
             (HttpMethod.Patch, $"/{actor}/status", new { isActive = false }), (HttpMethod.Delete, $"/{actor}", null) })
             Assert.Equal(HttpStatusCode.Forbidden, (await Send(method, "/api/v1/admin/accounts" + route, role, actor, body)).StatusCode);
@@ -189,10 +206,17 @@ public sealed class AdminAccountsApiTests : AccountApiTestBase
     public async Task Temporary_password_only_allows_change_and_old_refresh_is_revoked()
     {
         var admin = await Actor(AccountRole.Admin);
+        var outbox = new Outbox();
+        using var mailFactory = Factory.WithWebHostBuilder(builder => builder.ConfigureServices(services => services.AddSingleton<IEmailSender>(outbox)));
+        using var client = mailFactory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
         var email = "temporary@example.test";
-        var created = await Json(await Send(HttpMethod.Post, "/api/v1/admin/accounts", "Admin", admin, new { email, fullName = "Khách mới", role = "Customer" }));
+        using var createReq = new HttpRequestMessage(HttpMethod.Post, "/api/v1/admin/accounts") { Content = JsonContent.Create(new { email, fullName = "Khách mới", role = "Customer" }) };
+        createReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", FoundationFactory.Token("Admin", admin));
+        var created = await Json(await client.SendAsync(createReq));
         var id = created.GetProperty("id").GetInt32();
-        var temporary = created.GetProperty("temporaryPassword").GetString()!;
+        Assert.False(created.TryGetProperty("temporaryPassword", out _));
+        Assert.True(created.GetProperty("invitationSent").GetBoolean());
+        var temporary = Regex.Match(Assert.Single(outbox.To(email)).Text, @"Mật khẩu tạm: ([^\r\n]+)").Groups[1].Value;
         var login = await Send(HttpMethod.Post, "/api/v1/auth/login", body: new { email, password = temporary });
         Assert.True((await Json(login)).GetProperty("mustChangePassword").GetBoolean());
         await Problem(await Send(HttpMethod.Get, "/api/v1/me/orders", "Customer", id), HttpStatusCode.Forbidden, "PASSWORD_CHANGE_REQUIRED");
@@ -207,5 +231,12 @@ public sealed class AdminAccountsApiTests : AccountApiTestBase
             Assert.NotNull(t.RevokedAt);
             Assert.True(t.ExpiresAt <= DateTime.UtcNow);
         });
+    }
+
+    private sealed class Outbox : IEmailSender
+    {
+        private readonly ConcurrentQueue<EmailMessage> _sent = new();
+        public IReadOnlyList<EmailMessage> To(string email) => _sent.Where(m => m.To.Equals(email, StringComparison.OrdinalIgnoreCase)).ToList();
+        public Task SendAsync(EmailMessage message, CancellationToken ct) { _sent.Enqueue(message); return Task.CompletedTask; }
     }
 }

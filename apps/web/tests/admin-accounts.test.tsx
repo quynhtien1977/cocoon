@@ -114,8 +114,8 @@ test("A1 locks, unlocks and deletes through ConfirmDialog; cancel changes nothin
   ]);
 });
 
-test("A2 reports missing fields, follows the role summary and creates the account", async () => {
-  stubFetch(() => json({ id: 42, email: "an@cocoon.demo", role: "Admin", temporaryPassword: "Coc!TEMP9a", mustChangePassword: true }, 201));
+test("A2 reports missing fields, follows the role summary and creates the account without exposing temporaryPassword", async () => {
+  stubFetch(() => json({ id: 42, email: "an@cocoon.demo", role: "Admin", mustChangePassword: true, invitationSent: true }, 201));
   const user = userEvent.setup();
   render(<AccountCreateForm />);
   await user.click(screen.getByRole("button", { name: "Tạo tài khoản" }));
@@ -128,12 +128,43 @@ test("A2 reports missing fields, follows the role summary and creates the accoun
   await user.type(screen.getByLabelText(/Họ và tên/), "Nguyễn Văn An");
   await user.type(screen.getByLabelText(/Email đăng nhập/), "an@cocoon.demo");
   await user.click(screen.getByRole("button", { name: "Tạo tài khoản" }));
-  assert.ok(await screen.findByText(/Đã tạo tài khoản an@cocoon.demo/));
-  assert.equal(screen.queryByText("Coc!TEMP9a"), null, "temporary password is masked until revealed");
-  await user.click(screen.getByRole("button", { name: "Hiện" }));
-  assert.ok(screen.getByText("Coc!TEMP9a"));
+  assert.ok(await screen.findByText(/Đã tạo tài khoản an@cocoon\.demo.*Đã gửi email mật khẩu tạm tới an@cocoon\.demo\./));
+  assert.equal(screen.queryByText(/Mật khẩu tạm:/), null);
+  assert.equal(screen.queryByRole("button", { name: "Hiện" }), null);
   assert.equal((screen.getByLabelText(/Email đăng nhập/) as HTMLInputElement).value, "");
   assert.deepEqual(sent(), [["POST", "/api/v1/admin/accounts", { email: "an@cocoon.demo", fullName: "Nguyễn Văn An", role: 0, phone: null }]]);
+});
+
+test("A2 warns and lets Admin resend the temporary password email when invitationSent is false", async () => {
+  let attempt = 0;
+  stubFetch((url) => {
+    if (url.endsWith("/admin/accounts")) {
+      return json({ id: 88, email: "staff.new@cocoon.demo", role: "Staff", mustChangePassword: true, invitationSent: false }, 201);
+    }
+    attempt += 1;
+    if (attempt === 1) return json({ status: 503, code: "EMAIL_SEND_FAILED", detail: "Chưa gửi được email. Hãy thử lại sau ít phút." }, 503);
+    return json({ sent: true }, 202);
+  });
+  const user = userEvent.setup();
+  render(<AccountCreateForm />);
+  await user.type(screen.getByLabelText(/Họ và tên/), "Lê Nhân Viên");
+  await user.type(screen.getByLabelText(/Email đăng nhập/), "staff.new@cocoon.demo");
+  await user.click(screen.getByRole("button", { name: "Tạo tài khoản" }));
+
+  assert.ok(await screen.findByText(/Đã tạo tài khoản staff\.new@cocoon\.demo.*nhưng chưa gửi được email mật khẩu tạm tới staff\.new@cocoon\.demo\./));
+  await user.click(screen.getByRole("button", { name: "Gửi lại email" }));
+  assert.ok(await screen.findByText("Chưa gửi được email. Hãy thử lại sau ít phút."));
+
+  await user.click(screen.getByRole("button", { name: "Gửi lại email" }));
+  assert.ok(await screen.findByText(/Đã gửi email mật khẩu tạm tới staff\.new@cocoon\.demo\./));
+  assert.deepEqual(
+    requests.map((r) => [r.method, r.url]),
+    [
+      ["POST", "/api/v1/admin/accounts"],
+      ["POST", "/api/v1/admin/accounts/88/invitation"],
+      ["POST", "/api/v1/admin/accounts/88/invitation"],
+    ],
+  );
 });
 
 test("A2 shows EMAIL_TAKEN next to the email field and keeps the draft", async () => {

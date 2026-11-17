@@ -57,7 +57,7 @@ export function CustomerCreateForm() {
     try {
       const result = await resendInvitation(created.id);
       setCreated((current) => current && current.id === created.id ? { ...current, invitationSent: result.sent } : current);
-      if (!result.sent) setResendError("Chưa gửi được email kích hoạt. Vui lòng thử lại sau.");
+      if (!result.sent) setResendError("Chưa gửi được email mật khẩu tạm. Vui lòng thử lại sau.");
     } catch (error) {
       setResendError(error instanceof ApiError ? error.message : "Mất kết nối. Kiểm tra mạng rồi thử lại.");
     } finally {
@@ -119,13 +119,13 @@ export function CustomerCreateForm() {
               : created ? created.invitationSent ? (
                 <p className="flex items-start gap-2 text-status-sage-fg">
                   <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                  <span>Đã tạo hồ sơ khách hàng {created.fullName}. Đã gửi email kích hoạt tới {created.email}. <Link href={`/manager/customers/${created.id}`} className="font-semibold underline">Xem hồ sơ</Link></span>
+                  <span>Đã tạo hồ sơ khách hàng {created.fullName}. Đã gửi email mật khẩu tạm tới {created.email}. <Link href={`/manager/customers/${created.id}`} className="font-semibold underline">Xem hồ sơ</Link></span>
                 </p>
               ) : (
                 <div className="space-y-2">
                   <p role="alert" className="flex items-start gap-2 text-amber-800">
                     <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                    <span>Đã tạo hồ sơ khách hàng {created.fullName}, nhưng chưa gửi được email kích hoạt tới {created.email}. <Link href={`/manager/customers/${created.id}`} className="font-semibold underline">Xem hồ sơ</Link></span>
+                    <span>Đã tạo hồ sơ khách hàng {created.fullName}, nhưng chưa gửi được email mật khẩu tạm tới {created.email}. <Link href={`/manager/customers/${created.id}`} className="font-semibold underline">Xem hồ sơ</Link></span>
                   </p>
                   <div className="flex flex-wrap items-center gap-3">
                     <Button type="button" variant="outline" size="sm" onClick={handleResendInvitation} disabled={resending} className="min-h-9">

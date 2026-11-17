@@ -75,7 +75,7 @@ public sealed partial class AccountManagementService
         };
     }
 
-    public Task<AccountCreated> CreateCustomerAsync(int actor, string email, CustomerInput input, CancellationToken ct) => Write(async () =>
+    public Task<ProvisionedAccount> CreateCustomerAsync(int actor, string email, CustomerInput input, CancellationToken ct) => Write(async () =>
     {
         await ValidateCustomer(input, ct);
         var created = await CreateCoreAsync(actor, email, input.FullName, AccountRole.Customer, ct);

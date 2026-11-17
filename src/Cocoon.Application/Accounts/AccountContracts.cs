@@ -16,7 +16,11 @@ public sealed class AccountOperationException(int status, string code, string de
     public string? Field { get; } = field;
 }
 
-public sealed record AccountCreated(int Id, string Email, AccountRole Role, string TemporaryPassword, bool MustChangePassword);
+/// <summary>Returned from Admin/Manager creation endpoints; never carries the plaintext temporary password.</summary>
+public sealed record AccountCreated(int Id, string Email, AccountRole Role, bool MustChangePassword, bool InvitationSent);
+public sealed record InvitationSent(bool Sent);
+/// <summary>Internal creation result holding the generated password only long enough for the email sender.</summary>
+public sealed record ProvisionedAccount(int Id, string Email, AccountRole Role, bool MustChangePassword, string TemporaryPassword);
 public sealed record AccountRow(int Id, string Email, string FullName, string? Phone, AccountRole Role, string Status, DateTime? LastLoginAt);
 public sealed record AccountPage(IReadOnlyList<AccountRow> Items, int TotalCount, int Page, int PageSize);
 public sealed record AccountQuery(int Page = 1, int PageSize = 20, string? Search = null, AccountRole? Role = null,

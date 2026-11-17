@@ -40,7 +40,7 @@ public sealed class PasswordResetApiTests : IClassFixture<DatabaseFixture>, IDis
     public void Dispose() => _factory.Dispose();
 
     [Fact]
-    public async Task Manager_created_customer_gets_an_email_code_and_sets_their_own_password()
+    public async Task Manager_created_customer_gets_temporary_password_by_email_and_must_change_on_first_login()
     {
         var manager = await Manager();
         var email = $"khach-{Guid.NewGuid():N}@example.test";
@@ -48,47 +48,81 @@ public sealed class PasswordResetApiTests : IClassFixture<DatabaseFixture>, IDis
         var body = await Json(created);
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         Assert.True(body.GetProperty("invitationSent").GetBoolean());
+        Assert.True(body.GetProperty("mustChangePassword").GetBoolean());
         Assert.False(body.TryGetProperty("temporaryPassword", out _));  // the generated password never leaves the server
 
         var mail = Assert.Single(_outbox.To(email));
-        Assert.Equal("Kích hoạt tài khoản Cocoon của bạn", mail.Subject);
-        Assert.Contains($"/reset-password?email={Uri.EscapeDataString(email)}", mail.Text);
-        Assert.Contains("24 giờ", mail.Text);
-        var code = Code(mail);
+        Assert.Equal("Thông tin đăng nhập tài khoản Cocoon của bạn", mail.Subject);
+        Assert.Contains("/login", mail.Text);
+        Assert.DoesNotContain("/admin/login", mail.Text);
+        var temporary = TemporaryPassword(mail);
+        Assert.False(string.IsNullOrWhiteSpace(temporary));
 
-        var ticket = await Ticket(email.ToUpperInvariant(), code);
-        // A weak password is refused without spending the ticket.
-        await AssertProblem(await Reset(ticket, "ngan"), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
-        Assert.Equal(HttpStatusCode.NoContent, (await Reset(ticket, NewPassword)).StatusCode);
+        using var loginRes = await Post("/api/v1/auth/login", new { email, password = temporary });
+        var loginBody = await Json(loginRes);
+        Assert.True(loginBody.GetProperty("mustChangePassword").GetBoolean());
+        var id = body.GetProperty("id").GetInt32();
+        await AssertProblem(await Send(HttpMethod.Get, "/api/v1/me/orders", FoundationFactory.Token("Customer", id)), HttpStatusCode.Forbidden, "PASSWORD_CHANGE_REQUIRED");
+
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Post, "/api/v1/auth/change-password",
+            FoundationFactory.Token("Customer", id), new { currentPassword = temporary, newPassword = NewPassword })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await Post("/api/v1/auth/login", new { email, password = NewPassword })).StatusCode);
-        await AssertProblem(await Reset(ticket, "MatKhauKhac9"), HttpStatusCode.BadRequest, "RESET_EXPIRED");
-        await AssertProblem(await Verify(email, code), HttpStatusCode.BadRequest, "INVALID_CODE");
 
         await using var db = _database.CreateContext();
-        var account = await db.Set<Account>().SingleAsync(a => a.Email == email);
+        var account = await db.Set<Account>().SingleAsync(a => a.Id == id);
         Assert.False(account.MustChangePassword);
-        Assert.Contains(await db.Set<ActivityLog>().Where(l => l.EntityId == account.Id).Select(l => l.Action).ToListAsync(), a => a == "PasswordSetFromInvitation");
-        var id = body.GetProperty("id").GetInt32();
         await AssertProblem(await Send(HttpMethod.Post, $"/api/v1/customers/{id}/invitation", manager), HttpStatusCode.Conflict, "ALREADY_ACTIVATED");
     }
 
     [Fact]
-    public async Task Resending_an_invitation_is_manager_only_rate_limited_and_cancels_the_older_code()
+    public async Task Resending_an_invitation_is_manager_only_rate_limited_and_replaces_old_temporary_password()
     {
         var manager = await Manager();
         var email = $"khach-{Guid.NewGuid():N}@example.test";
         var id = (await Json(await Send(HttpMethod.Post, "/api/v1/customers", manager, NewCustomer(email)))).GetProperty("id").GetInt32();
-        var first = Code(Assert.Single(_outbox.To(email)));
+        var first = TemporaryPassword(Assert.Single(_outbox.To(email)));
         await AssertProblem(await Send(HttpMethod.Post, $"/api/v1/customers/{id}/invitation", manager), HttpStatusCode.TooManyRequests, "TOO_MANY_REQUESTS");
         Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Post, $"/api/v1/customers/{id}/invitation", await Token(AccountRole.Staff))).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Post, $"/api/v1/customers/{id}/invitation", await Token(AccountRole.Customer))).StatusCode);
 
         await Backdate(email);
         Assert.Equal(HttpStatusCode.Accepted, (await Send(HttpMethod.Post, $"/api/v1/customers/{id}/invitation", manager)).StatusCode);
-        var second = Code(_outbox.To(email).Last());
-        if (first != second)
-            await AssertProblem(await Verify(email, first), HttpStatusCode.BadRequest, "INVALID_CODE");
-        Assert.Equal(HttpStatusCode.NoContent, (await Reset(await Ticket(email, second), NewPassword)).StatusCode);
+        var second = TemporaryPassword(_outbox.To(email).Last());
+        Assert.NotEqual(first, second);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Post("/api/v1/auth/login", new { email, password = first })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await Post("/api/v1/auth/login", new { email, password = second })).StatusCode);
+    }
+
+    [Fact]
+    public async Task Admin_created_account_emails_temporary_password_and_supports_resend_and_role_login_link()
+    {
+        var admin = await Token(AccountRole.Admin);
+        var email = $"staff-{Guid.NewGuid():N}@example.test";
+        using var created = await Send(HttpMethod.Post, "/api/v1/admin/accounts", admin,
+            new { email, fullName = "Nhân viên mới", role = "Staff", phone = "0901234567" });
+        var body = await Json(created);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        Assert.False(body.TryGetProperty("temporaryPassword", out _));
+        Assert.True(body.GetProperty("invitationSent").GetBoolean());
+        var id = body.GetProperty("id").GetInt32();
+        var first = TemporaryPassword(Assert.Single(_outbox.To(email)));
+        Assert.Contains("/login", _outbox.To(email).Single().Text);
+        Assert.DoesNotContain("/admin/login", _outbox.To(email).Single().Text);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Post, $"/api/v1/admin/accounts/{id}/invitation", await Manager())).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Post, $"/api/v1/admin/accounts/{id}/invitation", await Token(AccountRole.Staff))).StatusCode);
+        await AssertProblem(await Send(HttpMethod.Post, $"/api/v1/admin/accounts/{id}/invitation", admin), HttpStatusCode.TooManyRequests, "TOO_MANY_REQUESTS");
+
+        await Backdate(email);
+        Assert.Equal(HttpStatusCode.Accepted, (await Send(HttpMethod.Post, $"/api/v1/admin/accounts/{id}/invitation", admin)).StatusCode);
+        var second = TemporaryPassword(_outbox.To(email).Last());
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Post("/api/v1/auth/login", new { email, password = first })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await Post("/api/v1/auth/login", new { email, password = second })).StatusCode);
+
+        // Creating an Admin puts /admin/login in the email.
+        var newAdminEmail = $"adm-{Guid.NewGuid():N}@example.test";
+        await Send(HttpMethod.Post, "/api/v1/admin/accounts", admin, new { email = newAdminEmail, fullName = "Quản trị mới", role = "Admin" });
+        Assert.Contains("/admin/login", Assert.Single(_outbox.To(newAdminEmail)).Text);
     }
 
     [Fact]
@@ -195,7 +229,14 @@ public sealed class PasswordResetApiTests : IClassFixture<DatabaseFixture>, IDis
         await AssertProblem(await Send(HttpMethod.Post, $"/api/v1/customers/{id}/invitation", manager), HttpStatusCode.ServiceUnavailable, "EMAIL_SEND_FAILED");
         _outbox.Fail = false;
         Assert.Equal(HttpStatusCode.Accepted, (await Send(HttpMethod.Post, $"/api/v1/customers/{id}/invitation", manager)).StatusCode);
-        Assert.Single(_outbox.To(email));
+        var temp = TemporaryPassword(Assert.Single(_outbox.To(email)));
+        Assert.Equal(HttpStatusCode.OK, (await Post("/api/v1/auth/login", new { email, password = temp })).StatusCode);
+
+        // If a later resend fails after cooldown, the earlier emailed temporary password remains valid.
+        await Backdate(email);
+        _outbox.Fail = true;
+        await AssertProblem(await Send(HttpMethod.Post, $"/api/v1/customers/{id}/invitation", manager), HttpStatusCode.ServiceUnavailable, "EMAIL_SEND_FAILED");
+        Assert.Equal(HttpStatusCode.OK, (await Post("/api/v1/auth/login", new { email, password = temp })).StatusCode);
     }
 
     [Fact]
@@ -215,6 +256,7 @@ public sealed class PasswordResetApiTests : IClassFixture<DatabaseFixture>, IDis
     };
 
     private static string Code(EmailMessage mail) => Regex.Match(mail.Text, @"Mã xác nhận: (\d{6})").Groups[1].Value;
+    private static string TemporaryPassword(EmailMessage mail) => Regex.Match(mail.Text, @"Mật khẩu tạm: ([^\r\n]+)").Groups[1].Value;
 
     private Task<HttpResponseMessage> Verify(string email, string code) => Post("/api/v1/auth/password/verify", new { email, code });
 
