@@ -13,9 +13,11 @@ namespace Cocoon.Infrastructure.Accounts;
 
 public sealed partial class AccountManagementService(AppDbContext db, IAccountPasswords passwords)
 {
+    /// <summary>The Admin console list: internal accounts only (customers belong to the manager's customer list).</summary>
     public async Task<AccountPage> ListAsync(AccountQuery query, CancellationToken ct)
     {
         if (query.Role is not null && !Enum.IsDefined(query.Role.Value)) Invalid("role", "Vai trò không hợp lệ.");
+        if (query.Role == AccountRole.Customer) Invalid("role", "Danh sách quản trị chỉ gồm tài khoản nội bộ.");
         if (query.Status is not (null or "Active" or "Locked")) Invalid("status", "Trạng thái không hợp lệ.");
         if (query.Order is not (null or "asc" or "desc")) Invalid("order", "Thứ tự không hợp lệ.");
         if (query.Sort is not (null or "fullName" or "email" or "role" or "status" or "lastLoginAt" or "createdAt"))
@@ -27,6 +29,7 @@ public sealed partial class AccountManagementService(AppDbContext db, IAccountPa
                    from s in staff.DefaultIfEmpty()
                    select new { A = a, Name = a.Role == AccountRole.Customer ? c.FullName : s.FullName,
                        Normalized = c.FullNameNormalized, Phone = a.Role == AccountRole.Customer ? c.Phone : s.Phone };
+        rows = rows.Where(x => x.A.Role != AccountRole.Customer);
         if (query.Role is not null) rows = rows.Where(x => x.A.Role == query.Role);
         if (query.Status is not null) rows = rows.Where(x => x.A.IsActive == (query.Status == "Active"));
         var term = query.Search?.Trim().ToLowerInvariant();
@@ -52,8 +55,12 @@ public sealed partial class AccountManagementService(AppDbContext db, IAccountPa
         return new(items, total, page, size);
     }
 
-    public Task<ProvisionedAccount> CreateAsync(int actor, string email, string fullName, AccountRole role, string? phone, CancellationToken ct) =>
-        Write(() => CreateCoreAsync(actor, email, fullName, role, ct, phone), ct);
+    /// <summary>Admin creates internal accounts only; customers register themselves or are added by a manager.</summary>
+    public Task<ProvisionedAccount> CreateAsync(int actor, string email, string fullName, AccountRole role, string? phone, CancellationToken ct)
+    {
+        if (role == AccountRole.Customer) throw OutOfScope(AccountScope.Internal);
+        return Write(() => CreateCoreAsync(actor, email, fullName, role, ct, phone), ct);
+    }
 
     /// <summary>Strong random temporary password emailed to newly created accounts (8–128 chars, letter + digit).</summary>
     public static string GenerateTemporaryPassword() => "Coc!" + Convert.ToHexString(RandomNumberGenerator.GetBytes(8)) + "9a";
@@ -86,32 +93,27 @@ public sealed partial class AccountManagementService(AppDbContext db, IAccountPa
         return new ProvisionedAccount(account.Id, email, role, true, temporary);
     }
 
+    /// <summary>Moves an account between Admin, Manager and Staff. Customer is neither a source nor a target.</summary>
     public Task<bool> ChangeRoleAsync(int actor, int id, AccountRole role, CancellationToken ct) => Write(async () =>
     {
         if (!Enum.IsDefined(role)) Invalid("role", "Vai trò không hợp lệ.");
         var account = await Find(id, ct);
+        EnsureScope(account, AccountScope.Internal);
+        if (role == AccountRole.Customer) throw OutOfScope(AccountScope.Internal);
         if (account.Role == role) return true;
         await KeepAdmin(account, role == AccountRole.Admin && account.IsActive, ct);
-        var customer = await db.Set<CustomerProfile>().IgnoreQueryFilters().SingleOrDefaultAsync(p => p.AccountId == id, ct);
-        var staff = await db.Set<StaffProfile>().IgnoreQueryFilters().SingleOrDefaultAsync(p => p.AccountId == id, ct);
-        if (role == AccountRole.Customer && customer is null)
-        {
-            var name = staff?.FullName ?? "";
-            db.Add(new CustomerProfile { AccountId = id, FullName = name, FullNameNormalized = SearchText.Normalize(name), Phone = staff?.Phone });
-        }
-        if (role != AccountRole.Customer && staff is null)
-            db.Add(new StaffProfile { AccountId = id, FullName = customer?.FullName ?? "", Phone = customer?.Phone, Position = role.ToString() });
+        if (!await db.Set<StaffProfile>().IgnoreQueryFilters().AnyAsync(p => p.AccountId == id, ct))
+            db.Add(new StaffProfile { AccountId = id, FullName = "", Position = role.ToString() });
         account.Role = role;
         await Revoke(id, ct);
         Audit(actor, id, "AccountRoleChanged");
         return true;
     }, ct);
 
-    public Task<bool> ChangeStatusAsync(int actor, int id, bool active, CancellationToken ct, bool customerOnly = false) => Write(async () =>
+    public Task<bool> ChangeStatusAsync(int actor, int id, bool active, AccountScope scope, CancellationToken ct) => Write(async () =>
     {
         var account = await Find(id, ct);
-        if (customerOnly && account.Role != AccountRole.Customer)
-            throw new AccountOperationException(403, "FORBIDDEN", "Chỉ được quản lý tài khoản Customer.");
+        EnsureScope(account, scope);
         if (actor == id && !active) throw new AccountOperationException(409, "SELF_MODIFICATION_FORBIDDEN", "Không thể tự khóa tài khoản.");
         var clearsLoginLockout = active && (account.LockoutEnd is not null || account.FailedLoginCount != 0);
         if (account.IsActive == active && !clearsLoginLockout) return true;
@@ -123,11 +125,10 @@ public sealed partial class AccountManagementService(AppDbContext db, IAccountPa
         return true;
     }, ct);
 
-    public Task<bool> DeleteAsync(int actor, int id, CancellationToken ct, bool customerOnly = false) => Write(async () =>
+    public Task<bool> DeleteAsync(int actor, int id, AccountScope scope, CancellationToken ct) => Write(async () =>
     {
         var account = await Find(id, ct);
-        if (customerOnly && account.Role != AccountRole.Customer)
-            throw new AccountOperationException(403, "FORBIDDEN", "Chỉ được quản lý tài khoản Customer.");
+        EnsureScope(account, scope);
         if (actor == id) throw new AccountOperationException(409, "SELF_MODIFICATION_FORBIDDEN", "Không thể tự xóa tài khoản.");
         await KeepAdmin(account, false, ct);
         account.IsDeleted = true;
@@ -157,6 +158,20 @@ public sealed partial class AccountManagementService(AppDbContext db, IAccountPa
     private async Task<Account> Find(int id, CancellationToken ct) =>
         await db.Set<Account>().SingleOrDefaultAsync(a => a.Id == id, ct)
         ?? throw new AccountOperationException(404, "NOT_FOUND", "Không tìm thấy tài khoản.");
+
+    /// <summary>404 for a missing account, 403 when it is on the other side of the Admin/Manager line.</summary>
+    public async Task EnsureScopeAsync(int id, AccountScope scope, CancellationToken ct) =>
+        EnsureScope(await db.Set<Account>().AsNoTracking().SingleOrDefaultAsync(a => a.Id == id, ct)
+            ?? throw new AccountOperationException(404, "NOT_FOUND", "Không tìm thấy tài khoản."), scope);
+
+    private static void EnsureScope(Account account, AccountScope scope)
+    {
+        if ((account.Role == AccountRole.Customer) != (scope == AccountScope.Customer)) throw OutOfScope(scope);
+    }
+
+    private static AccountOperationException OutOfScope(AccountScope scope) => scope == AccountScope.Customer
+        ? new AccountOperationException(403, "FORBIDDEN", "Chỉ được quản lý tài khoản Customer.")
+        : new AccountOperationException(403, "FORBIDDEN", "Tài khoản khách hàng do người quản lý quản lý; quản trị viên chỉ quản lý tài khoản nội bộ.");
 
     private async Task KeepAdmin(Account account, bool remainsActiveAdmin, CancellationToken ct)
     {

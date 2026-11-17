@@ -31,12 +31,13 @@ test("portal navigation selects only the relevant section", () => {
     ["staff", "/staff/feedback/example", "S1"],
     ["staff", "/staff/orders/12", "S4"],
     ["manager", "/manager/orders/12", "M16"],
-    ["admin", "/admin/accounts/new", "A2"],
   ]) {
     const items = navFor(portal);
     assert.ok(items.every((item) => item.portal === portal));
     assert.deepEqual(items.filter((item) => isNavActive(path, item)).map((item) => item.code), [expected]);
   }
+  // The create form is opened from the A1 button, not from the menu.
+  assert.deepEqual(navFor("admin").map((item) => item.code), ["A1"]);
 });
 
 test("manager Báo cáo groups Phân tích and Bảng báo cáo; a report page selects the group and that page only", () => {

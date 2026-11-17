@@ -16,6 +16,12 @@ public sealed class AccountOperationException(int status, string code, string de
     public string? Field { get; } = field;
 }
 
+/// <summary>
+/// Which accounts a caller may act on (decision 17/11/2026): Admin manages internal accounts (Admin, Manager, Staff) only;
+/// Manager manages Customer accounts only. Neither side can move an account across the line.
+/// </summary>
+public enum AccountScope { Internal, Customer }
+
 /// <summary>Returned from Admin/Manager creation endpoints; never carries the plaintext temporary password.</summary>
 public sealed record AccountCreated(int Id, string Email, AccountRole Role, bool MustChangePassword, bool InvitationSent);
 public sealed record InvitationSent(bool Sent);

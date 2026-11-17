@@ -27,8 +27,9 @@ const accountRows: AccountListItem[] = [
   { id: 2, fullName: "Trần Quản Lý", email: "manager@cocoon.test", phone: "0900 000 102", role: "Manager", status: "Active", lastLoginAt: null },
   { id: 3, fullName: "Lê Nhân Viên", email: "staff1@cocoon.test", phone: "0900 000 103", role: "Staff", status: "Active", lastLoginAt: "2026-10-28T09:30:00Z" },
   { id: 4, fullName: "Võ Nhân Viên", email: "staff2@cocoon.test", phone: null, role: "Staff", status: "Locked", lastLoginAt: null },
-  { id: 5, fullName: "Phạm Khách Hàng", email: "customer@cocoon.test", phone: null, role: "Customer", status: "Active", lastLoginAt: null },
 ];
+const internalRoleLabels = ["Nhân viên", "Quản lý", "Quản trị viên"];
+const optionLabels = (select: HTMLElement) => within(select).getAllByRole("option", { hidden: true }).map((option) => option.textContent);
 const listPage = () => json({ items: accountRows, totalCount: accountRows.length, page: 1, pageSize: 100 });
 /** GET returns the list; every write succeeds with 204. */
 const api: Respond = (_url, init) => (init?.method ?? "GET") === "GET" ? listPage() : new Response(null, { status: 204 });
@@ -67,6 +68,7 @@ test("A1 changes role only after confirmation", async () => {
   const account = accountRows.find((row) => row.role === "Staff")!;
   await user.click(within(rowOf(account.fullName)).getByRole("button", { name: `Đổi vai trò ${account.fullName}` }));
   const dialog = await screen.findByRole("alertdialog");
+  assert.deepEqual(optionLabels(within(dialog).getByLabelText("Vai trò")), internalRoleLabels, "customer accounts are not assignable from Admin");
   await user.selectOptions(within(dialog).getByLabelText("Vai trò"), "Manager");
   assert.ok(within(rowOf(account.fullName)).getByText("Nhân viên"), "unchanged until confirmed");
   assert.deepEqual(sent(), [listRequest], "nothing sent before confirming");
@@ -124,12 +126,13 @@ test("A2 reports missing fields, follows the role summary and creates the accoun
   assert.ok(screen.getByText("Nhập email đăng nhập."));
   assert.equal(screen.getByLabelText(/Họ và tên/).getAttribute("aria-invalid"), "true");
   assert.deepEqual(sent(), [], "invalid form sends nothing");
+  assert.deepEqual(optionLabels(screen.getByLabelText(/Phân quyền vai trò/)), internalRoleLabels, "Admin creates internal accounts only");
   await user.selectOptions(screen.getByLabelText(/Phân quyền vai trò/), "Admin");
   assert.ok(screen.getByText("Đặc quyền vai trò: Quản trị viên"));
   await user.type(screen.getByLabelText(/Họ và tên/), "Nguyễn Văn An");
   await user.type(screen.getByLabelText(/Email đăng nhập/), "an@cocoon.demo");
   await user.click(screen.getByRole("button", { name: "Tạo tài khoản" }));
-  assert.ok(await screen.findByText(/Đã tạo tài khoản an@cocoon\.demo.*Đã gửi email mật khẩu tạm tới an@cocoon\.demo\./));
+  assert.ok(await screen.findByText(/Đã tạo tài khoản an@cocoon\.demo.*Đã gửi email mật khẩu đăng nhập tới an@cocoon\.demo\./));
   assert.equal(screen.queryByText(/Mật khẩu tạm:/), null);
   assert.equal(screen.queryByRole("button", { name: "Hiện" }), null);
   assert.equal((screen.getByLabelText(/Email đăng nhập/) as HTMLInputElement).value, "");
@@ -152,12 +155,12 @@ test("A2 warns and lets Admin resend the temporary password email when invitatio
   await user.type(screen.getByLabelText(/Email đăng nhập/), "staff.new@cocoon.demo");
   await user.click(screen.getByRole("button", { name: "Tạo tài khoản" }));
 
-  assert.ok(await screen.findByText(/Đã tạo tài khoản staff\.new@cocoon\.demo.*nhưng chưa gửi được email mật khẩu tạm tới staff\.new@cocoon\.demo\./));
+  assert.ok(await screen.findByText(/Đã tạo tài khoản staff\.new@cocoon\.demo.*nhưng chưa gửi được email mật khẩu đăng nhập tới staff\.new@cocoon\.demo\./));
   await user.click(screen.getByRole("button", { name: "Gửi lại email" }));
   assert.ok(await screen.findByText("Chưa gửi được email. Hãy thử lại sau ít phút."));
 
   await user.click(screen.getByRole("button", { name: "Gửi lại email" }));
-  assert.ok(await screen.findByText(/Đã gửi email mật khẩu tạm tới staff\.new@cocoon\.demo\./));
+  assert.ok(await screen.findByText(/Đã gửi email mật khẩu đăng nhập tới staff\.new@cocoon\.demo\./));
   assert.deepEqual(
     requests.map((r) => [r.method, r.url]),
     [
@@ -187,5 +190,5 @@ test("account draft maps to CreateAccountRequest with API role ordinals", () => 
   assert.deepEqual(validateAccountDraft({ fullName: "A", email: "a@b.vn", phone: "", role: "Staff" }), {});
   assert.deepEqual(toCreateAccountRequest({ fullName: " Nguyễn An ", email: " an@cocoon.demo ", phone: " 0912 345 678 ", role: "Manager" }), { email: "an@cocoon.demo", fullName: "Nguyễn An", role: 1, phone: "0912 345 678" });
   assert.equal(toCreateAccountRequest({ fullName: "A", email: "a@b.vn", phone: "", role: "Admin" }).phone, null);
-  assert.equal(toCreateAccountRequest({ fullName: "A", email: "a@b.vn", phone: "", role: "Customer" }).role, 3);
+  assert.equal(toCreateAccountRequest({ fullName: "A", email: "a@b.vn", phone: "", role: "Staff" }).role, 2);
 });

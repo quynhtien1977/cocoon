@@ -54,7 +54,7 @@ function AccountActions({ row, align = "end", onRole, onToggleLock, onDelete }: 
 }
 
 const filters: DataFilter<AccountListItem>[] = [
-  { id: "role", label: "Vai trò", options: (Object.keys(roleLabels) as AccountRole[]).map((value) => ({ value, label: roleLabels[value] })), matches: (row, value) => row.role === value },
+  { id: "role", label: "Vai trò", options: assignableRoles.map((value) => ({ value, label: roleLabels[value] })), matches: (row, value) => row.role === value },
   { id: "status", label: "Trạng thái", options: [{ value: "Active", label: "Hoạt động" }, { value: "Locked", label: "Đã khóa" }], matches: (row, value) => row.status === value },
 ];
 
@@ -87,7 +87,7 @@ export function AccountList() {
 
   return (
     <>
-      <PageHeader title="Quản trị tài khoản" description="Quản lý tài khoản và phân quyền người dùng trong toàn hệ thống Cocoon CRM." actions={
+      <PageHeader title="Quản trị tài khoản" description="Tài khoản và phân quyền của quản trị viên, quản lý và nhân viên. Tài khoản khách hàng do người quản lý phụ trách." actions={
         <Link href="/admin/accounts/new" className={cn(buttonVariants(), "h-12 px-4")}><Plus aria-hidden="true" />Tạo tài khoản mới</Link>
       } />
       <DataTable data={accounts} columns={columns} getRowId={(row) => row.id} caption="Tài khoản" filters={filters} loading={loading} error={error} onRetry={() => { setEdited(null); retry(); }} cardsUntil="xl" renderCard={(row) => (

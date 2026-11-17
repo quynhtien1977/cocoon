@@ -23,8 +23,8 @@ public sealed class CustomersController(AccountManagementService accounts, Recom
         Ok(await accounts.CustomersAsync(query, ct));
 
     /// <summary>
-    /// The generated temporary password never leaves the server in HTTP responses: the customer receives it by email and
-    /// must change it after signing in. invitationSent=false means the account exists but the email failed; resend with POST {id}/invitation.
+    /// The generated password never leaves the server in HTTP responses: the customer receives it by email and can use it
+    /// right away (changing it is optional). invitationSent=false means the account exists but the email failed; resend with POST {id}/invitation.
     /// </summary>
     [HttpPost, ProducesResponseType<CustomerCreated>(StatusCodes.Status201Created)]
     public async Task<ActionResult<CustomerCreated>> Create(CreateCustomerRequest request, CancellationToken ct)
@@ -65,15 +65,15 @@ public sealed class CustomersController(AccountManagementService accounts, Recom
 
     [HttpPost("{id:int}/lock"), ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Lock(int id, CancellationToken ct)
-    { await accounts.ChangeStatusAsync(AccountId, id, false, ct, customerOnly: true); return NoContent(); }
+    { await accounts.ChangeStatusAsync(AccountId, id, false, AccountScope.Customer, ct); return NoContent(); }
 
     [HttpPost("{id:int}/unlock"), ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Unlock(int id, CancellationToken ct)
-    { await accounts.ChangeStatusAsync(AccountId, id, true, ct, customerOnly: true); return NoContent(); }
+    { await accounts.ChangeStatusAsync(AccountId, id, true, AccountScope.Customer, ct); return NoContent(); }
 
     [HttpDelete("{id:int}"), ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
-    { await accounts.DeleteAsync(AccountId, id, ct, customerOnly: true); return NoContent(); }
+    { await accounts.DeleteAsync(AccountId, id, AccountScope.Customer, ct); return NoContent(); }
 
     [HttpGet("{id:int}/orders"), ProducesResponseType<CustomerPage<CustomerOrderRow>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<CustomerPage<CustomerOrderRow>>> Orders(int id, CancellationToken ct, int page = 1, int pageSize = 20) =>

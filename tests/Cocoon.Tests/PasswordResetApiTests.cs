@@ -40,7 +40,7 @@ public sealed class PasswordResetApiTests : IClassFixture<DatabaseFixture>, IDis
     public void Dispose() => _factory.Dispose();
 
     [Fact]
-    public async Task Manager_created_customer_gets_temporary_password_by_email_and_must_change_on_first_login()
+    public async Task Manager_created_customer_gets_a_password_by_email_that_works_at_once_and_may_be_changed()
     {
         var manager = await Manager();
         var email = $"khach-{Guid.NewGuid():N}@example.test";
@@ -62,7 +62,8 @@ public sealed class PasswordResetApiTests : IClassFixture<DatabaseFixture>, IDis
         var loginBody = await Json(loginRes);
         Assert.True(loginBody.GetProperty("mustChangePassword").GetBoolean());
         var id = body.GetProperty("id").GetInt32();
-        await AssertProblem(await Send(HttpMethod.Get, "/api/v1/me/orders", FoundationFactory.Token("Customer", id)), HttpStatusCode.Forbidden, "PASSWORD_CHANGE_REQUIRED");
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, "/api/v1/me/orders", FoundationFactory.Token("Customer", id))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, "/api/v1/me/preferences", FoundationFactory.Token("Customer", id))).StatusCode);
 
         Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Post, "/api/v1/auth/change-password",
             FoundationFactory.Token("Customer", id), new { currentPassword = temporary, newPassword = NewPassword })).StatusCode);
@@ -240,13 +241,13 @@ public sealed class PasswordResetApiTests : IClassFixture<DatabaseFixture>, IDis
     }
 
     [Fact]
-    public async Task An_account_waiting_to_change_its_password_can_still_use_the_code_endpoints()
+    public async Task An_account_still_on_its_emailed_password_uses_every_endpoint_including_the_code_ones()
     {
         var email = await Customer(mustChange: true);
         var id = await IdOf(email);
         using var forgot = await Send(HttpMethod.Post, "/api/v1/auth/password/forgot", FoundationFactory.Token("Customer", id), new { email });
         Assert.Equal(HttpStatusCode.Accepted, forgot.StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Get, "/api/v1/me/orders", FoundationFactory.Token("Customer", id))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, "/api/v1/me/orders", FoundationFactory.Token("Customer", id))).StatusCode);
     }
 
     private static object NewCustomer(string email) => new
@@ -256,7 +257,7 @@ public sealed class PasswordResetApiTests : IClassFixture<DatabaseFixture>, IDis
     };
 
     private static string Code(EmailMessage mail) => Regex.Match(mail.Text, @"Mã xác nhận: (\d{6})").Groups[1].Value;
-    private static string TemporaryPassword(EmailMessage mail) => Regex.Match(mail.Text, @"Mật khẩu tạm: ([^\r\n]+)").Groups[1].Value;
+    private static string TemporaryPassword(EmailMessage mail) => Regex.Match(mail.Text, @"Mật khẩu: ([^\r\n]+)").Groups[1].Value;
 
     private Task<HttpResponseMessage> Verify(string email, string code) => Post("/api/v1/auth/password/verify", new { email, code });
 
