@@ -22,8 +22,8 @@ public sealed class AdminAccountsController(AccountManagementService accounts, P
         Ok(await accounts.ListAsync(query, ct));
 
     /// <summary>
-    /// The generated temporary password never leaves the server in HTTP responses: the user receives it by email and must
-    /// change it after first login. invitationSent=false means the account exists but the email failed; resend with POST {id}/invitation.
+    /// The generated password never leaves the server in HTTP responses: the user receives it by email and can use it right
+    /// away (changing it is optional). invitationSent=false means the account exists but the email failed; resend with POST {id}/invitation.
     /// </summary>
     [HttpPost]
     [ProducesResponseType<AccountCreated>(StatusCodes.Status201Created)]

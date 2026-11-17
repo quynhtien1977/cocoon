@@ -32,8 +32,8 @@ public sealed class PasswordResetOptions
 public sealed record PasswordTicket(string Ticket, DateTime ExpiresAt);
 
 /// <summary>
-/// Email password delivery: newly created accounts receive a generated temporary password directly by email (must change
-/// on first login), while "Quên mật khẩu" keeps a 6-digit HMAC one-time code with a short-lived ticket.
+/// Email password delivery: newly created accounts receive a generated password by email that works right away (changing it
+/// is recommended, not required), while "Quên mật khẩu" keeps a 6-digit HMAC one-time code with a short-lived ticket.
 /// </summary>
 public sealed class PasswordResetService(AppDbContext db, IAccountPasswords passwords, IEmailSender email,
     IOptions<PasswordResetOptions> options, ILogger<PasswordResetService> logger)
@@ -273,9 +273,9 @@ public sealed class PasswordResetService(AppDbContext db, IAccountPasswords pass
         var subject = "Thông tin đăng nhập tài khoản Cocoon của bạn";
         var text = $"Xin chào {name},\n\n{intro}\n\n"
             + $"Email đăng nhập: {account.Email}\n"
-            + $"Mật khẩu tạm: {temporaryPassword}\n\n"
+            + $"Mật khẩu: {temporaryPassword}\n\n"
             + $"Đăng nhập tại: {link}\n"
-            + "Hệ thống sẽ yêu cầu bạn đổi sang mật khẩu mới ngay sau lần đăng nhập đầu tiên. Mật khẩu tạm cũ (nếu có trước đó) không còn hiệu lực.\n\n"
+            + "Bạn dùng được mật khẩu này ngay. Để bảo mật, nên đổi sang mật khẩu của riêng bạn trong trang Hồ sơ. Mật khẩu trong email cấp trước đó (nếu có) không còn hiệu lực.\n\n"
             + "— Cocoon Việt Nam";
         var html = $"""
             <div style="font-family:Arial,sans-serif;color:#2b261d;max-width:520px">
@@ -283,10 +283,10 @@ public sealed class PasswordResetService(AppDbContext db, IAccountPasswords pass
               <p>{WebUtility.HtmlEncode(intro)}</p>
               <div style="background:#f7f3e9;border:1px solid #dfd3bf;border-radius:6px;padding:16px;margin:20px 0">
                 <p style="margin:0 0 8px"><strong>Email:</strong> {WebUtility.HtmlEncode(account.Email)}</p>
-                <p style="margin:0"><strong>Mật khẩu tạm:</strong> <code style="font-size:16px;font-weight:bold">{WebUtility.HtmlEncode(temporaryPassword)}</code></p>
+                <p style="margin:0"><strong>Mật khẩu:</strong> <code style="font-size:16px;font-weight:bold">{WebUtility.HtmlEncode(temporaryPassword)}</code></p>
               </div>
               <p><a href="{WebUtility.HtmlEncode(link)}" style="color:#806b3f;font-weight:bold">Đăng nhập ngay</a></p>
-              <p style="color:#827a67;font-size:13px">Hệ thống sẽ yêu cầu bạn đổi sang mật khẩu mới ngay sau khi đăng nhập. Nếu có email cấp lại mới hơn, mật khẩu tạm cũ sẽ không còn hiệu lực.</p>
+              <p style="color:#827a67;font-size:13px">Bạn dùng được mật khẩu này ngay. Để bảo mật, nên đổi sang mật khẩu của riêng bạn trong trang Hồ sơ. Nếu có email cấp lại mới hơn, mật khẩu trong email này không còn hiệu lực.</p>
               <p>— Cocoon Việt Nam</p>
             </div>
             """;

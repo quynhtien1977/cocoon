@@ -23,8 +23,8 @@ public sealed class CustomersController(AccountManagementService accounts, Recom
         Ok(await accounts.CustomersAsync(query, ct));
 
     /// <summary>
-    /// The generated temporary password never leaves the server in HTTP responses: the customer receives it by email and
-    /// must change it after signing in. invitationSent=false means the account exists but the email failed; resend with POST {id}/invitation.
+    /// The generated password never leaves the server in HTTP responses: the customer receives it by email and can use it
+    /// right away (changing it is optional). invitationSent=false means the account exists but the email failed; resend with POST {id}/invitation.
     /// </summary>
     [HttpPost, ProducesResponseType<CustomerCreated>(StatusCodes.Status201Created)]
     public async Task<ActionResult<CustomerCreated>> Create(CreateCustomerRequest request, CancellationToken ct)

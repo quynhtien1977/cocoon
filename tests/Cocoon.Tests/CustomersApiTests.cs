@@ -32,7 +32,8 @@ public sealed class CustomersApiTests : AccountApiTestBase
         Assert.False(body.TryGetProperty("temporaryPassword", out _));
         Assert.True(body.GetProperty("mustChangePassword").GetBoolean());
         Assert.Equal(JsonValueKind.False, body.GetProperty("invitationSent").ValueKind);  // no SMTP host in tests
-        await Problem(await Send(HttpMethod.Get, "/api/v1/me/orders", "Customer", id), HttpStatusCode.Forbidden, "PASSWORD_CHANGE_REQUIRED");
+        // Still on the emailed password, yet nothing is blocked (decision 17/11/2026).
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, "/api/v1/me/orders", "Customer", id)).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Put, $"/api/v1/customers/{id}", "Manager", manager, new {
             fullName = "Đặng Thị Ánh", phone = "0911234567", dateOfBirth = birth.AddDays(1), gender = "Nữ", address = "Quận 5",
             consentPersonalData = true, role = "Admin", email = "overwrite@example.test" })).StatusCode);

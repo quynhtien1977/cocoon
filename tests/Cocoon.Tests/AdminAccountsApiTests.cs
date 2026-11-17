@@ -103,7 +103,7 @@ public sealed class AdminAccountsApiTests : AccountApiTestBase
             Assert.True(created.GetProperty("mustChangePassword").GetBoolean());
             Assert.True(created.GetProperty("invitationSent").GetBoolean());
             var mail = Assert.Single(outbox.To(email));
-            var temporary = Regex.Match(mail.Text, @"Mật khẩu tạm: ([^\r\n]+)").Groups[1].Value;
+            var temporary = Regex.Match(mail.Text, @"Mật khẩu: ([^\r\n]+)").Groups[1].Value;
             Assert.False(string.IsNullOrWhiteSpace(temporary));
             Assert.Contains(role == AccountRole.Admin ? "/admin/login" : "/login", mail.Text);
             await using var db = Database.CreateContext();
@@ -203,27 +203,30 @@ public sealed class AdminAccountsApiTests : AccountApiTestBase
     }
 
     [Fact]
-    public async Task Temporary_password_only_allows_change_and_old_refresh_is_revoked()
+    public async Task Emailed_password_works_right_away_and_changing_it_clears_the_flag_and_old_sessions()
     {
         var admin = await Actor(AccountRole.Admin);
         var outbox = new Outbox();
         using var mailFactory = Factory.WithWebHostBuilder(builder => builder.ConfigureServices(services => services.AddSingleton<IEmailSender>(outbox)));
         using var client = mailFactory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
-        var email = "temporary@example.test";
-        using var createReq = new HttpRequestMessage(HttpMethod.Post, "/api/v1/admin/accounts") { Content = JsonContent.Create(new { email, fullName = "Khách mới", role = "Customer" }) };
+        var email = "first-password@example.test";
+        using var createReq = new HttpRequestMessage(HttpMethod.Post, "/api/v1/admin/accounts") { Content = JsonContent.Create(new { email, fullName = "Nhân viên mới", role = "Staff" }) };
         createReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", FoundationFactory.Token("Admin", admin));
         var created = await Json(await client.SendAsync(createReq));
         var id = created.GetProperty("id").GetInt32();
         Assert.False(created.TryGetProperty("temporaryPassword", out _));
         Assert.True(created.GetProperty("invitationSent").GetBoolean());
-        var temporary = Regex.Match(Assert.Single(outbox.To(email)).Text, @"Mật khẩu tạm: ([^\r\n]+)").Groups[1].Value;
+        var mail = Assert.Single(outbox.To(email));
+        Assert.DoesNotContain("yêu cầu bạn đổi", mail.Text);
+        var temporary = Regex.Match(mail.Text, @"Mật khẩu: ([^\r\n]+)").Groups[1].Value;
         var login = await Send(HttpMethod.Post, "/api/v1/auth/login", body: new { email, password = temporary });
         Assert.True((await Json(login)).GetProperty("mustChangePassword").GetBoolean());
-        await Problem(await Send(HttpMethod.Get, "/api/v1/me/orders", "Customer", id), HttpStatusCode.Forbidden, "PASSWORD_CHANGE_REQUIRED");
-        await Problem(await Send(HttpMethod.Post, "/api/v1/auth/change-password", "Customer", id, new { currentPassword = "Wrong12345", newPassword = Password }), HttpStatusCode.BadRequest, "INVALID_CURRENT_PASSWORD");
-        await Problem(await Send(HttpMethod.Post, "/api/v1/auth/change-password", "Customer", id, new { currentPassword = temporary, newPassword = "weak" }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
-        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Post, "/api/v1/auth/change-password", "Customer", id, new { currentPassword = temporary, newPassword = Password })).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, "/api/v1/me/orders", "Customer", id)).StatusCode);
+        // The emailed password is a real password: every screen works before (and without) changing it.
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, "/api/v1/staff/feedback", "Staff", id)).StatusCode);
+        await Problem(await Send(HttpMethod.Post, "/api/v1/auth/change-password", "Staff", id, new { currentPassword = "Wrong12345", newPassword = Password }), HttpStatusCode.BadRequest, "INVALID_CURRENT_PASSWORD");
+        await Problem(await Send(HttpMethod.Post, "/api/v1/auth/change-password", "Staff", id, new { currentPassword = temporary, newPassword = "weak" }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+        Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Post, "/api/v1/auth/change-password", "Staff", id, new { currentPassword = temporary, newPassword = Password })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, "/api/v1/staff/feedback", "Staff", id)).StatusCode);
         await using var db = Database.CreateContext();
         Assert.False((await db.Set<Account>().SingleAsync(a => a.Id == id)).MustChangePassword);
         Assert.All(await db.Set<RefreshToken>().Where(t => t.AccountId == id).ToListAsync(), t =>

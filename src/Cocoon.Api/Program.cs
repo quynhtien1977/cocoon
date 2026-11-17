@@ -44,7 +44,7 @@ builder.Services.AddSerilog(config => config
     .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
     .Enrich.FromLogContext()
     .WriteTo.Console(new RenderedCompactJsonFormatter()));
-builder.Services.AddControllers(options => { options.Filters.Add(new AuthorizeFilter()); options.Filters.Add<MustChangePasswordFilter>(); })
+builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilter()))
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
     .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = context =>
     {
