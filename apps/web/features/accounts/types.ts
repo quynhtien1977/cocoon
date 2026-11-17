@@ -3,6 +3,9 @@ import type { AccountRole } from "@/lib/auth/roles";
 
 export type AccountStatus = "Active" | "Locked";
 
+/** The roles the Admin console lists, creates and assigns; customers are managed from the manager portal. */
+export type InternalRole = Exclude<AccountRole, "Customer">;
+
 export interface AccountListItem {
   id: number;
   fullName: string;
@@ -18,5 +21,5 @@ export interface AccountDraft {
   fullName: string;
   email: string;
   phone: string;
-  role: AccountRole;
+  role: InternalRole;
 }

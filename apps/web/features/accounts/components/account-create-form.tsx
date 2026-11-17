@@ -5,12 +5,11 @@ import Link from "next/link";
 import { ArrowLeft, CircleAlert, CircleCheck, Info, Mail, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
-import type { AccountRole } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
 import { createAccount, resendAccountInvitation, type AccountCreated } from "../api";
 import { assignableRoles, roleLabels, roleSummaries, validateAccountDraft } from "../schemas";
-import type { AccountDraft } from "../types";
+import type { AccountDraft, InternalRole } from "../types";
 
 const fieldClass = "min-h-12 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-destructive";
 const labelClass = "font-label text-sm uppercase tracking-wider";
@@ -80,7 +79,7 @@ export function AccountCreateForm() {
         <ArrowLeft className="size-4" aria-hidden="true" />
         Danh sách tài khoản
       </Link>
-      <PageHeader title="Tạo tài khoản người dùng mới" description="Khởi tạo thông tin người dùng và gán vai trò trên Cocoon CRM." />
+      <PageHeader title="Tạo tài khoản người dùng mới" description="Khởi tạo tài khoản nội bộ (quản trị viên, quản lý, nhân viên) và gán vai trò." />
       <form onSubmit={submit} noValidate className="grid max-w-[880px] gap-5 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 sm:gap-x-6 sm:p-8">
         <div className="space-y-2 sm:col-span-2">
           <label htmlFor={`${id}-fullName`} className={labelClass}>Họ và tên <span aria-hidden="true" className="text-destructive">*</span></label>
@@ -96,7 +95,7 @@ export function AccountCreateForm() {
         </div>
         <div className="space-y-2">
           <label htmlFor={`${id}-role`} className={labelClass}>Phân quyền vai trò <span aria-hidden="true" className="text-destructive">*</span></label>
-          <select id={`${id}-role`} value={draft.role} onChange={(event) => update({ role: event.target.value as AccountRole })} className={fieldClass}>
+          <select id={`${id}-role`} value={draft.role} onChange={(event) => update({ role: event.target.value as InternalRole })} className={fieldClass}>
             {assignableRoles.map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}
           </select>
         </div>
