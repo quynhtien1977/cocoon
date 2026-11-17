@@ -215,7 +215,10 @@ export function PlanEditor({ initial, planId: initialId, products, preferences, 
             <>
               <SegmentFilterBuilder value={draft.segment} onChange={(segment) => update({ segment })} preferences={preferences} categories={categories} matchCount={matchCount} />
               <section aria-labelledby={`${id}-sample`} className={card}>
-                <h2 id={`${id}-sample`} className="font-heading text-lg">Khách hàng mẫu</h2>
+                <header className="flex flex-wrap items-baseline justify-between gap-2">
+                  <h2 id={`${id}-sample`} className="font-heading text-lg">Một số khách hàng gợi ý</h2>
+                  {!previewError && preview && matchCount > 0 && <span className="font-label text-sm tracking-wider text-muted-foreground tabular-nums" aria-label={`Hiển thị ${preview.sample.length} trên ${matchCount} khách hàng phù hợp`}>{preview.sample.length}/{matchCount}</span>}
+                </header>
                 {previewError ? <p role="alert" className="mt-2 text-sm text-destructive">Chưa đếm được khách phù hợp. Kiểm tra kết nối rồi đổi tiêu chí để thử lại.</p>
                   : !preview && !ageError ? <p role="status" className="mt-2 text-sm text-muted-foreground">Đang đếm khách phù hợp…</p>
                   : matchCount === 0 || !preview ? <p className="mt-2 text-sm text-muted-foreground">Chưa có khách phù hợp. Bỏ bớt tiêu chí để mở rộng phân khúc.</p> : (

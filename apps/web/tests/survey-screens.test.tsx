@@ -2,7 +2,7 @@ import "./dom-setup.mjs";
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import type { ReactNode } from "react";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 import { SurveyBuilder, SurveyBuilderPage } from "../features/surveys/components/survey-builder";
@@ -162,12 +162,11 @@ test("M8 collapses questions and previews the draft read-only", async () => {
   assert.equal(within(dialog).getAllByRole("radio").every((input) => (input as HTMLInputElement).disabled), true);
 });
 
-test("M7 loads surveys, offers actions by status, publishes and deletes drafts through the API", async () => {
+test("M7 loads surveys, offers actions by status and deletes drafts through the API", async () => {
   let rows = [listRow(83, "Draft", "Nghiên cứu mặt nạ nghệ"), listRow(84, "Draft", "Nhu cầu dung tích lớn"), listRow(81, "Open", "Hài lòng gel bí đao"), listRow(75, "Closed", "Thói quen chống nắng")];
   stubFetch((url, init) => {
     const id = Number(url.match(/surveys\/(\d+)/)?.[1]);
     if (init?.method === "DELETE") rows = rows.filter((row) => row.id !== id);
-    if (url.endsWith("/publish")) rows = rows.map((row) => row.id === id ? { ...row, status: "Open" } : row);
     return init?.method === "GET" ? page(rows) : new Response(null, { status: 204 });
   });
   const user = userEvent.setup();
@@ -176,6 +175,7 @@ test("M7 loads surveys, offers actions by status, publishes and deletes drafts t
   const draftRow = within(table).getByText("Nghiên cứu mặt nạ nghệ").closest("tr")!;
   assert.equal(within(draftRow).getByRole("link", { name: "Chỉnh sửa Nghiên cứu mặt nạ nghệ" }).getAttribute("href"), "/manager/surveys/83/edit");
   assert.equal(within(draftRow).queryByRole("link", { name: /Xem kết quả/ }), null);
+  assert.equal(within(draftRow).queryByRole("button", { name: /Mở khảo sát/ }), null);
   const closedRow = within(table).getByText("Thói quen chống nắng").closest("tr")!;
   assert.equal(within(closedRow).getByRole("link", { name: "Thói quen chống nắng" }).getAttribute("href"), "/manager/surveys/75/results");
   assert.equal(within(closedRow).queryByRole("link", { name: /Chỉnh sửa|Gửi khảo sát/ }), null);
@@ -184,13 +184,9 @@ test("M7 loads surveys, offers actions by status, publishes and deletes drafts t
 
   await user.click(within(draftRow).getByRole("button", { name: "Xóa Nghiên cứu mặt nạ nghệ" }));
   await user.click(await screen.findByRole("button", { name: "Xóa bản nháp" }));
-  const afterDelete = await screen.findByRole("table", { name: /Khảo sát/ });
-  await user.click(await within(afterDelete).findByRole("button", { name: "Mở khảo sát Nhu cầu dung tích lớn" }));
-  await user.click(await screen.findByRole("button", { name: "Mở khảo sát" }));
   const reloaded = await screen.findByRole("table", { name: /Khảo sát/ });
-  assert.ok(await within(reloaded).findByRole("button", { name: "Đóng khảo sát Nhu cầu dung tích lớn" }));
-  assert.equal(within(reloaded).queryByText("Nghiên cứu mặt nạ nghệ"), null);
-  assert.deepEqual(writes(), [["DELETE", "/api/v1/surveys/83", undefined], ["POST", "/api/v1/surveys/84/publish", undefined]]);
+  await waitFor(() => assert.equal(within(reloaded).queryByText("Nghiên cứu mặt nạ nghệ"), null));
+  assert.deepEqual(writes(), [["DELETE", "/api/v1/surveys/83", undefined]]);
 });
 
 test("M7 keeps the close dialog open with the API message on conflict", async () => {
