@@ -207,6 +207,30 @@ public sealed class AuthApiTests : IClassFixture<DatabaseFixture>, IDisposable
     }
 
     [Fact]
+    public async Task Locking_one_account_leaves_another_signed_in_account_working()
+    {
+        // Two browsers with separate cookie jars, as two Chrome profiles or a normal and a private window.
+        var (first, second) = (NewEmail(), NewEmail());
+        var firstCookies = Cookies(await Register(first));
+        var secondCookies = Cookies(await Register(second));
+        await using (var db = _database.CreateContext())
+        {
+            // What a manager's lock does: deactivate and end that account's refresh tokens only.
+            var account = await db.Set<Account>().SingleAsync(x => x.Email == first);
+            account.IsActive = false;
+            await db.Set<RefreshToken>().Where(t => t.AccountId == account.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, DateTime.UtcNow).SetProperty(t => t.ExpiresAt, DateTime.UtcNow));
+            await db.SaveChangesAsync();
+        }
+        using (var locked = await Send(HttpMethod.Get, "/api/v1/me", firstCookies))
+            Assert.Equal(HttpStatusCode.Unauthorized, locked.StatusCode);
+        using (var other = await Send(HttpMethod.Get, "/api/v1/me", secondCookies))
+            Assert.Equal(HttpStatusCode.OK, other.StatusCode);
+        using var refreshed = await Send(HttpMethod.Post, "/api/v1/auth/refresh", secondCookies);
+        Assert.True(refreshed.IsSuccessStatusCode, $"refresh of the other account: HTTP {(int)refreshed.StatusCode}");
+    }
+
+    [Fact]
     public async Task Updating_preferences_replaces_declared_and_keeps_survey_ones()
     {
         var (a, b, fromSurvey) = (await AddPreference(), await AddPreference(), await AddPreference());
