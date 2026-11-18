@@ -70,6 +70,7 @@ public sealed partial class AccountManagementService(AppDbContext db, IAccountPa
         fullName = fullName.Trim();
         phone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
         RequireManagerPhone(role, phone);
+        if (phone?.Length > 32) Invalid("phone", "Số điện thoại tối đa 32 ký tự.");
         if (email.Length > 256 || !new EmailAddressAttribute().IsValid(email)) Invalid("email", "Email không hợp lệ.");
         if (fullName.Length is < 2 or > 200) Invalid("fullName", "Họ tên cần từ 2 đến 200 ký tự.");
         if (!Enum.IsDefined(role)) Invalid("role", "Vai trò không hợp lệ.");
@@ -79,7 +80,7 @@ public sealed partial class AccountManagementService(AppDbContext db, IAccountPa
         var account = new Account { Email = email, Role = role, MustChangePassword = true };
         account.PasswordHash = passwords.Hash(account, temporary);
         if (role == AccountRole.Customer)
-            db.Add(new CustomerProfile { Account = account, FullName = fullName, FullNameNormalized = SearchText.Normalize(fullName) });
+            db.Add(new CustomerProfile { Account = account, FullName = fullName, FullNameNormalized = SearchText.Normalize(fullName), Phone = phone });
         else db.Add(new StaffProfile { Account = account, FullName = fullName, Phone = phone, Position = role.ToString() });
         await db.SaveChangesAsync(ct);
         Audit(actor, account.Id, "AccountCreated");

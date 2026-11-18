@@ -2,7 +2,7 @@
 
 import { useId, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { ArrowLeft, CircleCheck, Info, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CircleAlert, CircleCheck, Info, Mail, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { AccountRole } from "@/lib/auth/roles";

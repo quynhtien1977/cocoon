@@ -111,8 +111,16 @@ public sealed class AdminAccountsApiTests : AccountApiTestBase
             Assert.NotEqual(PasswordVerificationResult.Failed, new PasswordHasher<Account>().VerifyHashedPassword(saved, saved.PasswordHash, temporary));
             Assert.Equal(email.ToLowerInvariant(), saved.Email);
             Assert.True(saved.MustChangePassword);
-            if (role == AccountRole.Customer) Assert.True(await db.Set<CustomerProfile>().AnyAsync(p => p.AccountId == id));
-            else Assert.True(await db.Set<StaffProfile>().AnyAsync(p => p.AccountId == id));
+            if (role == AccountRole.Customer)
+            {
+                var profile = await db.Set<CustomerProfile>().SingleAsync(p => p.AccountId == id);
+                Assert.Equal("0912345678", profile.Phone);
+            }
+            else
+            {
+                var profile = await db.Set<StaffProfile>().SingleAsync(p => p.AccountId == id);
+                Assert.Equal("0912345678", profile.Phone);
+            }
             await Problem(await Send(HttpMethod.Post, "/api/v1/admin/accounts", "Admin", admin,
                 new { email, fullName = "Trùng email", role = "Staff" }), HttpStatusCode.Conflict, "EMAIL_TAKEN");
         }
