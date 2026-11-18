@@ -5,12 +5,11 @@ import Link from "next/link";
 import { ArrowLeft, CircleAlert, CircleCheck, Info, Mail, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
-import type { AccountRole } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
 import { createAccount, resendAccountInvitation, type AccountCreated } from "../api";
 import { assignableRoles, roleLabels, roleSummaries, validateAccountDraft } from "../schemas";
-import type { AccountDraft } from "../types";
+import type { AccountDraft, InternalRole } from "../types";
 
 const fieldClass = "min-h-12 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-destructive";
 const labelClass = "font-label text-sm uppercase tracking-wider";
@@ -60,7 +59,7 @@ export function AccountCreateForm() {
     try {
       const result = await resendAccountInvitation(created.id);
       setCreated((current) => current && current.id === created.id ? { ...current, invitationSent: result.sent } : current);
-      if (!result.sent) setResendError("Chưa gửi được email mật khẩu tạm. Vui lòng thử lại sau.");
+      if (!result.sent) setResendError("Chưa gửi được email mật khẩu đăng nhập. Vui lòng thử lại sau.");
     } catch (error) {
       setResendError(error instanceof ApiError ? error.message : "Mất kết nối. Kiểm tra mạng rồi thử lại.");
     } finally {
@@ -80,7 +79,7 @@ export function AccountCreateForm() {
         <ArrowLeft className="size-4" aria-hidden="true" />
         Danh sách tài khoản
       </Link>
-      <PageHeader title="Tạo tài khoản người dùng mới" description="Khởi tạo thông tin người dùng và gán vai trò trên Cocoon CRM." />
+      <PageHeader title="Tạo tài khoản người dùng mới" description="Khởi tạo tài khoản nội bộ (quản trị viên, quản lý, nhân viên) và gán vai trò." />
       <form onSubmit={submit} noValidate className="grid max-w-[880px] gap-5 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 sm:gap-x-6 sm:p-8">
         <div className="space-y-2 sm:col-span-2">
           <label htmlFor={`${id}-fullName`} className={labelClass}>Họ và tên <span aria-hidden="true" className="text-destructive">*</span></label>
@@ -96,7 +95,7 @@ export function AccountCreateForm() {
         </div>
         <div className="space-y-2">
           <label htmlFor={`${id}-role`} className={labelClass}>Phân quyền vai trò <span aria-hidden="true" className="text-destructive">*</span></label>
-          <select id={`${id}-role`} value={draft.role} onChange={(event) => update({ role: event.target.value as AccountRole })} className={fieldClass}>
+          <select id={`${id}-role`} value={draft.role} onChange={(event) => update({ role: event.target.value as InternalRole })} className={fieldClass}>
             {assignableRoles.map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}
           </select>
         </div>
@@ -116,7 +115,7 @@ export function AccountCreateForm() {
           <p className="border-t border-dashed border-border pt-2 text-sm text-muted-foreground">Phạm vi: {summary.scope}</p>
         </section>
 
-        <p className="flex gap-2 text-sm text-muted-foreground sm:col-span-2"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Hệ thống sẽ tự tạo mật khẩu tạm và gửi qua email cho người dùng, không hiển thị tại đây.</p>
+        <p className="flex gap-2 text-sm text-muted-foreground sm:col-span-2"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />Hệ thống sẽ tự tạo mật khẩu và gửi qua email cho người dùng, không hiển thị tại đây.</p>
 
         <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5 sm:col-span-2">
           <div aria-live="polite" className="min-w-0 text-sm">
@@ -124,13 +123,13 @@ export function AccountCreateForm() {
               : created ? created.invitationSent ? (
                 <p className="flex items-start gap-2 text-status-sage-fg">
                   <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                  <span className="min-w-0 break-words">Đã tạo tài khoản {created.email} ({roleLabels[created.role]}). Đã gửi email mật khẩu tạm tới {created.email}. Người dùng cần đổi mật khẩu khi đăng nhập lần đầu.</span>
+                  <span className="min-w-0 break-words">Đã tạo tài khoản {created.email} ({roleLabels[created.role]}). Đã gửi email mật khẩu đăng nhập tới {created.email}. Người dùng đăng nhập được ngay và có thể tự đổi mật khẩu trong trang Hồ sơ.</span>
                 </p>
               ) : (
                 <div className="space-y-2">
                   <p role="alert" className="flex items-start gap-2 text-amber-800">
                     <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                    <span className="min-w-0 break-words">Đã tạo tài khoản {created.email} ({roleLabels[created.role]}), nhưng chưa gửi được email mật khẩu tạm tới {created.email}.</span>
+                    <span className="min-w-0 break-words">Đã tạo tài khoản {created.email} ({roleLabels[created.role]}), nhưng chưa gửi được email mật khẩu đăng nhập tới {created.email}.</span>
                   </p>
                   <div className="flex flex-wrap items-center gap-3">
                     <Button type="button" variant="outline" size="sm" onClick={handleResendInvitation} disabled={resending} className="min-h-9">

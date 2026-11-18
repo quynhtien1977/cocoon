@@ -22,8 +22,8 @@ public sealed class AdminAccountsController(AccountManagementService accounts, P
         Ok(await accounts.ListAsync(query, ct));
 
     /// <summary>
-    /// The generated temporary password never leaves the server in HTTP responses: the user receives it by email and must
-    /// change it after first login. invitationSent=false means the account exists but the email failed; resend with POST {id}/invitation.
+    /// The generated password never leaves the server in HTTP responses: the user receives it by email and can use it right
+    /// away (changing it is optional). invitationSent=false means the account exists but the email failed; resend with POST {id}/invitation.
     /// </summary>
     [HttpPost]
     [ProducesResponseType<AccountCreated>(StatusCodes.Status201Created)]
@@ -44,6 +44,7 @@ public sealed class AdminAccountsController(AccountManagementService accounts, P
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Invite(int id, CancellationToken ct)
     {
+        await accounts.EnsureScopeAsync(id, AccountScope.Internal, ct);  // 404 / 403 for a customer account
         await resets.ResendTemporaryPasswordAsync(id, ct);
         return Accepted(new InvitationSent(true));
     }
@@ -56,12 +57,12 @@ public sealed class AdminAccountsController(AccountManagementService accounts, P
     [HttpPatch("{id:int}/status")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ChangeStatus(int id, ChangeStatusRequest request, CancellationToken ct)
-    { await accounts.ChangeStatusAsync(AccountId, id, request.IsActive!.Value, ct); return NoContent(); }
+    { await accounts.ChangeStatusAsync(AccountId, id, request.IsActive!.Value, AccountScope.Internal, ct); return NoContent(); }
 
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
-    { await accounts.DeleteAsync(AccountId, id, ct); return NoContent(); }
+    { await accounts.DeleteAsync(AccountId, id, AccountScope.Internal, ct); return NoContent(); }
 }
 
 public sealed record CreateAccountRequest([Required, EmailAddress, StringLength(256)] string Email,

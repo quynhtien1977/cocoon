@@ -1,20 +1,22 @@
 import { z } from "zod";
 import type { components } from "@/lib/api/schema";
 import type { AccountRole } from "@/lib/auth/roles";
-import type { AccountDraft } from "./types";
+import type { AccountDraft, InternalRole } from "./types";
 
 type CreateAccountRequest = components["schemas"]["CreateAccountRequest"];
 
 export { roleLabels } from "@/lib/auth/roles";
 
-/** Least privilege first, so the form's default is the narrowest role. */
-export const assignableRoles: AccountRole[] = ["Staff", "Manager", "Admin", "Customer"];
+/**
+ * Admin manages internal accounts only (decision 17/11/2026); customer accounts belong to the manager's customer pages.
+ * Least privilege first, so the form's default is the narrowest role.
+ */
+export const assignableRoles: InternalRole[] = ["Staff", "Manager", "Admin"];
 
-export const roleSummaries: Record<AccountRole, { tag: string; description: string; scope: string }> = {
+export const roleSummaries: Record<InternalRole, { tag: string; description: string; scope: string }> = {
   Staff: { tag: "Xử lý phản hồi", description: "Xem và trả lời những phản hồi được giao.", scope: "Không gian nhân viên: phản hồi được giao." },
   Manager: { tag: "Điều phối vận hành", description: "Quản lý khách hàng, phân công phản hồi, tạo khảo sát và theo dõi báo cáo.", scope: "Không gian quản lý: khách hàng, phản hồi, khảo sát, sản phẩm, gợi ý, báo cáo." },
-  Admin: { tag: "Toàn quyền tài khoản", description: "Tạo tài khoản, đổi vai trò, khóa và xóa tài khoản.", scope: "Admin console: quản trị tài khoản toàn hệ thống." },
-  Customer: { tag: "Tài khoản thành viên", description: "Xem đơn hàng, gửi phản hồi, làm khảo sát và nhận gợi ý sản phẩm.", scope: "Cổng khách hàng, không vào được back-office." },
+  Admin: { tag: "Quản trị tài khoản nội bộ", description: "Tạo tài khoản nội bộ, đổi vai trò, khóa và xóa tài khoản.", scope: "Admin console: tài khoản quản trị viên, quản lý và nhân viên." },
 };
 
 // Ordinals follow declaration order in Cocoon.Domain.Enums (System.Text.Json default serialization).
@@ -25,7 +27,7 @@ export const accountDraftSchema = z.object({
   email: z.string().trim().min(1, "Nhập email đăng nhập.").max(256, "Email tối đa 256 ký tự.").email("Email không hợp lệ."),
   // Same rule as the profile pages: 8–15 digits, common separators allowed.
   phone: z.string().trim().max(32, "Số điện thoại tối đa 32 ký tự.").refine((value) => !value || (/^\+?[\d\s().-]+$/.test(value) && value.replace(/\D/g, "").length >= 8 && value.replace(/\D/g, "").length <= 15), "Nhập số điện thoại hợp lệ (8–15 chữ số)."),
-  role: z.enum(["Admin", "Manager", "Staff", "Customer"]),
+  role: z.enum(["Admin", "Manager", "Staff"]),
 }).superRefine((value, ctx) => {
   if (value.role === "Manager" && !value.phone) ctx.addIssue({ code: "custom", path: ["phone"], message: "Quản lý cần có số điện thoại." });
 });
