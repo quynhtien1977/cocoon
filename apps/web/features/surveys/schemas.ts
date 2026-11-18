@@ -1,7 +1,11 @@
 import { z } from "zod";
 import type { components } from "@/lib/api/schema";
 import type { SegmentFilterValue } from "@/components/data/segment-filter-builder";
-import type { QuestionResult, QuestionType, SurveyDetail, SurveyDraft, SurveyPurpose } from "./types";
+import type { QuestionMediaDraft, QuestionResult, QuestionType, SurveyDetail, SurveyDraft, SurveyPurpose } from "./types";
+import { youtubeVideoId } from "./youtube";
+
+/** Mirrors SurveyMedia.MaxPerQuestion. */
+export const MAX_QUESTION_MEDIA = 6;
 
 type SurveyUpsertRequest = components["schemas"]["SurveyUpsertRequest"];
 type RecipientsRequest = components["schemas"]["RecipientsRequest"];
@@ -37,8 +41,16 @@ const question = z.object({
   type: z.enum(["SingleChoice", "MultiChoice", "Rating", "ShortText"]),
   isRequired: z.boolean(),
   options: z.array(option),
+  media: z.array(z.union([
+    z.object({ key: z.string(), type: z.literal("Image"), imageId: z.number().int().positive(), url: z.string() }),
+    z.object({ key: z.string(), type: z.literal("Video"), videoUrl: z.string().max(500, "Link video tối đa 500 ký tự.") }),
+  ])).max(MAX_QUESTION_MEDIA, `Mỗi câu hỏi có tối đa ${MAX_QUESTION_MEDIA} ảnh hoặc video.`).optional(),
 }).superRefine((value, ctx) => {
   if (isChoice(value.type) && value.options.length < 2) ctx.addIssue({ code: "custom", path: ["options"], message: "Câu chọn lựa cần ít nhất 2 lựa chọn." });
+  value.media?.forEach((item, index) => {
+    if (item.type === "Video" && !youtubeVideoId(item.videoUrl))
+      ctx.addIssue({ code: "custom", path: ["media", index, "videoUrl"], message: "Video cần là link YouTube (youtube.com/watch?v=…, youtu.be/…, /shorts/…)." });
+  });
 });
 
 export const surveyDraftSchema = z.object({
@@ -79,6 +91,12 @@ export function toSurveyUpsertRequest(draft: SurveyDraft): SurveyUpsertRequest {
       type: questionTypeOrdinal[item.type],
       isRequired: item.isRequired,
       options: isChoice(item.type) ? item.options.map((choice) => ({ text: choice.text.trim(), preferenceId: choice.preferenceId })) : [],
+      // Optional: a text-only question sends no media; every save sends the full list, as questions are replaced.
+      ...(item.media !== undefined && {
+        media: item.media.map((entry) => entry.type === "Image"
+          ? { type: "Image" as const, imageId: entry.imageId }
+          : { type: "Video" as const, videoUrl: entry.videoUrl.trim() }),
+      }),
     })),
   };
 }
@@ -98,6 +116,13 @@ export function fromSurveyDetail(survey: SurveyDetail): SurveyDraft {
     questions: survey.questions.map((item) => ({
       key: `q${item.id}`, text: item.text, type: item.type, isRequired: item.isRequired,
       options: item.options.map((choice) => ({ key: `o${choice.id}`, text: choice.text, preferenceId: choice.preferenceId })),
+      // The API always returns media (empty for text-only); keep it so the next save sends it back.
+      ...(item.media !== undefined && {
+        media: item.media.flatMap((entry, index): QuestionMediaDraft[] =>
+          entry.type === "Image" && entry.imageId !== null && entry.url
+            ? [{ key: `m${item.id}-${index}`, type: "Image", imageId: entry.imageId, url: entry.url }]
+            : entry.type === "Video" && entry.videoUrl ? [{ key: `m${item.id}-${index}`, type: "Video", videoUrl: entry.videoUrl }] : []),
+      }),
     })),
   };
 }

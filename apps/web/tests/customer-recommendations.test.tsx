@@ -14,7 +14,7 @@ afterEach(() => { cleanup(); globalThis.fetch = originalFetch; });
 const accountRouter = { push() {}, replace() {}, back() {}, forward() {}, refresh() {}, prefetch() {}, bfcacheId: "account" };
 // Product cards use the landing ProductLink, which reads the App Router and the current path.
 const inAccount = (ui: ReactNode) => <AppRouterContext.Provider value={accountRouter}><PathnameContext.Provider value="/account">{ui}</PathnameContext.Provider></AppRouterContext.Provider>;
-const row = { id: 71, score: 82.5, product: { id: 12, name: "Nước dưỡng tóc bưởi", minPrice: 162000, imageUrl: "/images/landing/product-1.jpg", avgRating: 4.5 }, reasons: [{ code: "preference", label: "Hợp sở thích của bạn" }, { code: "popular", label: "Được yêu thích" }, { code: "new", label: "Gợi ý mới" }] };
+const row = { id: 71, score: 82.5, product: { id: 12, name: "Nước dưỡng tóc bưởi", minPrice: 162000, imageUrl: "/images/landing/product-1.jpg", avgRating: 4.5 }, reasons: [{ code: "preference", label: "Hợp nhu cầu của bạn" }, { code: "popular", label: "Được yêu thích" }, { code: "new", label: "Gợi ý mới" }] };
 
 test("recommendations read the existing customer contract and use recommendation IDs for clicks", async () => {
   const calls: { url: string; method: string }[] = [];
@@ -52,7 +52,7 @@ test("shared section excludes the viewed product, shows real details and records
   assert.equal(link.getAttribute("href"), "/account/products/12");
   assert.equal(screen.queryByText("Sản phẩm đang xem"), null);
   assert.ok(screen.getByText(/162\.000/));
-  assert.ok(screen.getByText("Hợp sở thích của bạn"));
+  assert.ok(screen.getByText("Hợp nhu cầu của bạn"));
   assert.equal(screen.queryByText("Gợi ý mới"), null);
   const imageLink = screen.getByRole("link", { name: /XEM SẢN PHẨM/ });
   for (const anchor of [link, imageLink]) anchor.addEventListener("click", event => event.preventDefault());
@@ -65,10 +65,10 @@ test("section exposes retry on API errors and a preference action for an actuall
   globalThis.fetch = async () => Response.json({}, { status: 501 });
   render(<RecommendationSection home />);
   await screen.findByRole("alert");
-  assert.equal(screen.queryByRole("link", { name: "Cập nhật sở thích" }), null);
+  assert.equal(screen.queryByRole("link", { name: "Cập nhật nhu cầu" }), null);
   globalThis.fetch = async () => Response.json([]);
   fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
-  const preferences = await screen.findByRole("link", { name: "Cập nhật sở thích" });
+  const preferences = await screen.findByRole("link", { name: "Cập nhật nhu cầu" });
   assert.equal(preferences.getAttribute("href"), "/account/profile");
   assert.equal(document.querySelector("#goi-y-cho-ban")?.tagName, "SECTION");
 });
@@ -84,4 +84,19 @@ test("landing CTA keeps the home anchor through login; authenticated customers n
   globalThis.fetch = async () => Response.json({ role: "Customer" });
   fireEvent.click(screen.getByRole("link", { name: "Gợi ý cho bạn" }));
   await waitFor(() => assert.equal(paths.at(-1), "/account#goi-y-cho-ban"));
+});
+
+test("recommendation cards fade to the same hover photo as the shop card, and stay still without one", async () => {
+  const hover = "https://image.cocoonvietnam.com/uploads/back.jpg";
+  const [withHover, without] = parseRecommendations([
+    { ...row, product: { ...row.product, hoverImageUrl: hover } },
+    { ...row, id: 72, product: { ...row.product, id: 13 } },
+  ]);
+  assert.equal(withHover.product.hoverImageUrl, hover);
+  assert.equal(without.product.hoverImageUrl, null);
+  globalThis.fetch = async () => Response.json([{ ...row, product: { ...row.product, hoverImageUrl: hover } }]);
+  const { container } = render(inAccount(<RecommendationSection />));
+  await screen.findByText("Nước dưỡng tóc bưởi");
+  const sources = [...container.querySelectorAll("img")].map(img => decodeURIComponent(img.getAttribute("src") ?? ""));
+  assert.ok(sources.some(src => src.includes("back.jpg")), "hover photo is rendered");
 });

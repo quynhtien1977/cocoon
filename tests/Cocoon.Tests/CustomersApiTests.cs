@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -27,10 +28,12 @@ public sealed class CustomersApiTests : AccountApiTestBase
         var body = await Json(created);
         var id = body.GetProperty("id").GetInt32();
         Assert.Equal("Customer", body.GetProperty("role").GetString());
-        var temporary = body.GetProperty("temporaryPassword").GetString()!;
-        using var login = await Send(HttpMethod.Post, "/api/v1/auth/login", body: new { email, password = temporary });
-        Assert.True((await Json(login)).GetProperty("mustChangePassword").GetBoolean());
-        await Problem(await Send(HttpMethod.Get, "/api/v1/me/orders", "Customer", id), HttpStatusCode.Forbidden, "PASSWORD_CHANGE_REQUIRED");
+        // The generated temporary password never leaves the server in HTTP responses (PasswordResetApiTests).
+        Assert.False(body.TryGetProperty("temporaryPassword", out _));
+        Assert.True(body.GetProperty("mustChangePassword").GetBoolean());
+        Assert.Equal(JsonValueKind.False, body.GetProperty("invitationSent").ValueKind);  // no SMTP host in tests
+        // Still on the emailed password, yet nothing is blocked (decision 17/11/2026).
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, "/api/v1/me/orders", "Customer", id)).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await Send(HttpMethod.Put, $"/api/v1/customers/{id}", "Manager", manager, new {
             fullName = "Đặng Thị Ánh", phone = "0911234567", dateOfBirth = birth.AddDays(1), gender = "Nữ", address = "Quận 5",
             consentPersonalData = true, role = "Admin", email = "overwrite@example.test" })).StatusCode);
@@ -45,7 +48,14 @@ public sealed class CustomersApiTests : AccountApiTestBase
         Assert.Equal(0, (await Json(await Send(HttpMethod.Get, "/api/v1/customers?page=2147483647&pageSize=100", "Manager", manager)))
             .GetProperty("items").GetArrayLength());
         await Problem(await Send(HttpMethod.Post, "/api/v1/customers", "Manager", manager,
-            new { email, fullName = "Khách trùng" }), HttpStatusCode.Conflict, "EMAIL_TAKEN");
+            new { email, fullName = "Khách trùng", phone = "0901234568", address = "Hồ Chí Minh" }), HttpStatusCode.Conflict, "EMAIL_TAKEN");
+        foreach (var invalid in new object[] {
+            new { email = "thieu-mien@example", fullName = "Khách mới", phone = "0901234569", address = "Hồ Chí Minh" },
+            new { email = "sdt-sai@example.test", fullName = "Khách mới", phone = "901234569", address = "Hồ Chí Minh" },
+            new { email = "thieu-sdt@example.test", fullName = "Khách mới", address = "Hồ Chí Minh" },
+            new { email = "dia-chi-ngan@example.test", fullName = "Khách mới", phone = "0901234569", address = "HCM" },
+            new { email = "thieu-dia-chi@example.test", fullName = "Khách mới", phone = "0901234569" } })
+            await Problem(await Send(HttpMethod.Post, "/api/v1/customers", "Manager", manager, invalid), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
         await using var verify = Database.CreateContext();
         Assert.Equal(AccountRole.Customer, (await verify.Set<Account>().SingleAsync(a => a.Id == id)).Role);
     }
@@ -165,7 +175,7 @@ public sealed class CustomersApiTests : AccountApiTestBase
             await setup.SaveChangesAsync();
         }
         await Problem(await Send(HttpMethod.Post, "/api/v1/customers", "Manager", manager,
-            new { email = "invalid@example.test", fullName = "Khách mới", consentPersonalData = true, preferenceIds = new[] { int.MaxValue } }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+            new { email = "invalid@example.test", fullName = "Khách mới", phone = "0901234570", address = "Hồ Chí Minh", consentPersonalData = true, preferenceIds = new[] { int.MaxValue } }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
         await Problem(await Send(HttpMethod.Put, $"/api/v1/customers/{customer}", "Manager", manager,
             new { fullName = "Khách", dateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1) }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
         await Problem(await Send(HttpMethod.Put, $"/api/v1/customers/{customer}", "Manager", manager,

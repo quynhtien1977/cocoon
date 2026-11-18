@@ -29,11 +29,22 @@ test("portal navigation selects only the relevant section", () => {
     ["customer", "/account/feedback/new", "C3"],
     ["manager", "/manager/surveys/example/edit", "M7"],
     ["staff", "/staff/feedback/example", "S1"],
-    ["admin", "/admin/accounts/new", "A2"],
-    ["admin", "/admin/activity", "A3"],
+    ["staff", "/staff/orders/12", "S4"],
+    ["manager", "/manager/orders/12", "M16"],
   ]) {
     const items = navFor(portal);
     assert.ok(items.every((item) => item.portal === portal));
     assert.deepEqual(items.filter((item) => isNavActive(path, item)).map((item) => item.code), [expected]);
   }
+  // The create form is opened from the A1 button, not from the menu.
+  assert.deepEqual(navFor("admin").map((item) => item.code), ["A1"]);
+});
+
+test("manager Báo cáo groups Phân tích and Bảng báo cáo; a report page selects the group and that page only", () => {
+  const items = navFor("manager");
+  const reports = items.find((item) => item.code === "M18");
+  assert.deepEqual(reports.children.map((child) => [child.title, child.href]), [["Phân tích", "/manager/reports/analytics"], ["Bảng báo cáo", "/manager/reports/customers"]]);
+  assert.ok(!items.some((item) => item.code === "M19" || item.code === "M20"), "sub-pages are not top-level items");
+  assert.deepEqual(items.filter((item) => isNavActive("/manager/reports/customers", item)).map((item) => item.code), ["M18"]);
+  assert.deepEqual(reports.children.filter((child) => isNavActive("/manager/reports/customers", child)).map((child) => child.code), ["M20"]);
 });

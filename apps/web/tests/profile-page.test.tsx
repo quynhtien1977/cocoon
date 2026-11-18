@@ -24,20 +24,24 @@ test("registered information pre-fills the two forms; undo and independent saves
   render(<ProfilePage />);
   const name = await screen.findByLabelText(/Họ và tên/);
   assert.equal((name as HTMLInputElement).value, "Nguyễn An");
-  assert.equal((screen.getByLabelText("Email đăng ký") as HTMLInputElement).readOnly, true);
-  await screen.findByRole("button", { name: "Lưu sở thích" });
+  const email = screen.getByLabelText("Email đăng ký") as HTMLInputElement;
+  assert.equal(email.readOnly, true);
+  assert.match(email.className, /\bread-only:cursor-not-allowed\b/);
+  assert.match(email.className, /\bread-only:bg-muted\b/);
+  assert.match(email.className, /\bread-only:text-muted-foreground\b/);
+  await screen.findByRole("button", { name: "Lưu nhu cầu" });
   fireEvent.change(name, { target: { value: "Tên mới" } });
   fireEvent.click(screen.getByRole("button", { name: "Hoàn tác thông tin" }));
   assert.equal((name as HTMLInputElement).value, "Nguyễn An");
   fireEvent.change(name, { target: { value: "Tên mới" } });
-  fireEvent.click(screen.getByRole("button", { name: "Bỏ tất cả sở thích" }));
+  fireEvent.click(screen.getByRole("button", { name: "Bỏ tất cả nhu cầu" }));
   fireEvent.click(screen.getByRole("button", { name: "Lưu thông tin" }));
   await screen.findByText("Đã lưu thông tin cá nhân.");
   assert.equal(writes.length, 1);
   assert.equal(writes[0].url, "/api/v1/me");
   assert.equal((writes[0].body as typeof initial).fullName, "Tên mới");
-  fireEvent.click(screen.getByRole("button", { name: "Lưu sở thích" }));
-  await screen.findByText("Đã lưu sở thích.");
+  fireEvent.click(screen.getByRole("button", { name: "Lưu nhu cầu" }));
+  await screen.findByText("Đã lưu nhu cầu.");
   assert.deepEqual(writes[1], { url: "/api/v1/me/preferences", body: { preferenceIds: [] } });
 });
 
@@ -60,9 +64,9 @@ test("unavailable preferences do not prevent personal edits or submit an empty p
   globalThis.fetch = async input => String(input).endsWith("/me") ? Response.json(initial) : Response.json({}, { status: 501 });
   render(<ProfilePage />);
   await screen.findByLabelText(/Họ và tên/);
-  const preferences = screen.getByRole("region", { name: "Sở thích của bạn" });
+  const preferences = screen.getByRole("region", { name: "Nhu cầu của bạn" });
   await within(preferences).findByRole("alert");
-  assert.equal(within(preferences).queryByRole("button", { name: "Lưu sở thích" }), null);
+  assert.equal(within(preferences).queryByRole("button", { name: "Lưu nhu cầu" }), null);
   assert.ok(within(preferences).getByRole("button", { name: "Thử lại" }));
 });
 

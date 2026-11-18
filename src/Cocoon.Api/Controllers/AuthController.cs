@@ -30,7 +30,7 @@ public sealed class AuthController(AppDbContext db, TokenService tokens, IPasswo
             return EmailTaken();
         var preferenceIds = request.PreferenceIds.Distinct().ToArray();
         if (!await PreferencesExist(db, preferenceIds, cancellationToken))
-            return Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Có sở thích không còn tồn tại. Hãy tải lại trang.");
+            return Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Có nhu cầu không còn tồn tại. Hãy tải lại trang.");
 
         var account = new Account { Email = email, Role = AccountRole.Customer };
         account.PasswordHash = hasher.HashPassword(account, request.Password);
@@ -195,7 +195,7 @@ public sealed class ProfileController(AppDbContext db, RecommendationService rec
     {
         var ids = request.PreferenceIds.Distinct().ToArray();
         if (!await AuthController.PreferencesExist(db, ids, cancellationToken))
-            return Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Có sở thích không còn tồn tại. Hãy tải lại trang.");
+            return Fail(StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Có nhu cầu không còn tồn tại. Hãy tải lại trang.");
         var current = await db.Set<CustomerPreference>().Where(c => c.CustomerId == AccountId).ToListAsync(cancellationToken);
         db.RemoveRange(current.Where(c => c.Source == PreferenceSource.Declared && !ids.Contains(c.PreferenceId)));
         foreach (var existing in current.Where(c => ids.Contains(c.PreferenceId)))

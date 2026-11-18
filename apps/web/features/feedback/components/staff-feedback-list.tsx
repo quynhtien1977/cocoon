@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Info } from "lucide-react";
+import { CircleCheck, Hourglass, Info } from "lucide-react";
 import { PageHeader } from "@/components/brand/page-header";
 import { RatingStars } from "@/components/brand/rating-stars";
 import { StatTile } from "@/components/brand/stat-tile";
@@ -46,8 +46,8 @@ export function StaffFeedbackList() {
     <>
       <PageHeader title="Phản hồi được giao xử lý" description="Phản hồi quản lý giao cho bạn. Ưu tiên các phản hồi điểm thấp." />
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4">
-        <StatTile label="Chờ trả lời" value={data ? waiting : "—"} />
-        <StatTile label="Đã hoàn thành" value={data ? assigned.length - waiting : "—"} />
+        <StatTile label="Chờ trả lời" value={data ? waiting : "—"} icon={<Hourglass />} hint={data ? `${assigned.filter((row) => needsAction(row) && row.rating <= 2).length} phản hồi ≤ 2 sao` : undefined} />
+        <StatTile label="Đã hoàn thành" value={data ? assigned.length - waiting : "—"} icon={<CircleCheck />} hint={data ? `${assigned.filter((row) => row.status === "Closed").length} phản hồi đã đóng` : undefined} />
       </div>
       <DataTable data={assigned} columns={columns} getRowId={(row) => row.id} caption="Phản hồi được giao" filters={filters} loading={loading} error={error} onRetry={retry} cardsUntil="wide" renderCard={(row) => (
         <article className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">

@@ -72,8 +72,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         variant.Property(x => x.Sku).HasMaxLength(100);
         variant.Property(x => x.Price).HasPrecision(18, 2);
         variant.Property(x => x.ImageUrl).HasMaxLength(2048);
+        variant.Property(x => x.HoverImageUrl).HasMaxLength(2048);
         variant.ToTable(table => table.HasCheckConstraint("CK_ProductVariant_Price", "\"Price\" > 0"));
         variant.HasQueryFilter(x => !x.IsDeleted);
+
+        var variantImage = model.Entity<ProductVariantImage>();
+        variantImage.HasKey(x => x.Id);
+        variantImage.HasOne<ProductVariant>().WithMany().HasForeignKey(x => x.ProductVariantId);
+        variantImage.HasIndex(x => new { x.ProductVariantId, x.SortOrder }).IsUnique();
+        variantImage.Property(x => x.Url).HasMaxLength(2048);
+        variantImage.ToTable(table => table.HasCheckConstraint("CK_ProductVariantImage_SortOrder", "\"SortOrder\" > 0"));
 
         var feedback = model.Entity<Feedback>();
         feedback.HasKey(x => x.Id);
@@ -107,6 +115,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         assignment.HasOne<Feedback>().WithMany().HasForeignKey(x => x.FeedbackId);
         assignment.HasOne<StaffProfile>().WithMany().HasForeignKey(x => x.StaffId);
         assignment.HasOne<StaffProfile>().WithMany().HasForeignKey(x => x.AssignedBy);
+        var photo = model.Entity<FeedbackPhoto>();
+        photo.HasKey(x => x.Id);
+        photo.HasOne<Feedback>().WithMany().HasForeignKey(x => x.FeedbackId);
+        photo.HasIndex(x => x.FeedbackId);
+        photo.HasIndex(x => x.ObjectKey).IsUnique();
+        photo.Property(x => x.ObjectKey).HasMaxLength(200);
+        photo.Property(x => x.ContentType).HasMaxLength(32);
+
         var reply = model.Entity<FeedbackReply>();
         reply.HasKey(x => x.Id);
         // At most two replies: one to the feedback, one to the customer's follow-up.
@@ -132,6 +148,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         question.HasOne<Survey>().WithMany().HasForeignKey(x => x.SurveyId);
         question.Property(x => x.Type).HasConversion<string>().HasMaxLength(32);
         question.Property(x => x.Text).HasMaxLength(1000);
+        var surveyImage = model.Entity<SurveyImage>();
+        surveyImage.HasKey(x => x.Id);
+        surveyImage.HasOne<Survey>().WithMany().HasForeignKey(x => x.SurveyId);
+        surveyImage.HasIndex(x => x.ObjectKey).IsUnique();
+        surveyImage.Property(x => x.ObjectKey).HasMaxLength(300);
+        surveyImage.Property(x => x.ContentType).HasMaxLength(32);
+        var questionMedia = model.Entity<SurveyQuestionMedia>();
+        questionMedia.HasKey(x => x.Id);
+        questionMedia.HasOne<SurveyQuestion>().WithMany().HasForeignKey(x => x.QuestionId);
+        questionMedia.HasOne<SurveyImage>().WithMany().HasForeignKey(x => x.ImageId);
+        questionMedia.HasIndex(x => new { x.QuestionId, x.SortOrder }).IsUnique();
+        questionMedia.Property(x => x.Kind).HasConversion<string>().HasMaxLength(16);
+        questionMedia.Property(x => x.YoutubeVideoId).HasMaxLength(11);
+        questionMedia.ToTable(table => table.HasCheckConstraint("CK_SurveyQuestionMedia_Kind",
+            "(\"Kind\" = 'Image' AND \"ImageId\" IS NOT NULL AND \"YoutubeVideoId\" IS NULL) OR "
+            + "(\"Kind\" = 'Video' AND \"YoutubeVideoId\" IS NOT NULL AND \"ImageId\" IS NULL)"));
         var option = model.Entity<QuestionOption>();
         option.HasKey(x => x.Id);
         option.HasOne<SurveyQuestion>().WithMany().HasForeignKey(x => x.QuestionId);
@@ -165,7 +197,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         order.Property(x => x.Channel).HasConversion<string>().HasMaxLength(32);
         order.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
         order.Property(x => x.TotalAmount).HasPrecision(12, 0);
+        order.Property(x => x.ShippingAddress).HasMaxLength(1000);
+        order.HasOne<Account>().WithMany().HasForeignKey(x => x.ConfirmedBy);
+        order.ToTable(table => table.HasCheckConstraint("CK_Order_Confirmed", "(\"ConfirmedAt\" IS NULL) = (\"ConfirmedBy\" IS NULL)"));
         order.HasIndex(x => new { x.CustomerId, x.OrderedAt }).IsDescending(false, true);
+        // The back-office queue lists orders by status, newest first.
+        order.HasIndex(x => new { x.Status, x.OrderedAt }).IsDescending(false, true);
         var orderItem = model.Entity<OrderItem>();
         orderItem.HasKey(x => x.Id);
         orderItem.HasOne<Order>().WithMany().HasForeignKey(x => x.OrderId);
@@ -218,7 +255,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         reset.HasKey(x => x.Id);
         reset.HasOne<Account>().WithMany().HasForeignKey(x => x.AccountId);
         reset.HasIndex(x => x.TokenHash).IsUnique();
+        reset.HasIndex(x => new { x.AccountId, x.CreatedAt });
         reset.Property(x => x.TokenHash).HasMaxLength(128);
+        reset.Property(x => x.Purpose).HasConversion<string>().HasMaxLength(16);
+        reset.ToTable(table => table.HasCheckConstraint("CK_PasswordResetToken_Attempts", "\"Attempts\" >= 0"));
 
         foreach (var entity in model.Model.GetEntityTypes())
         {

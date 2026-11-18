@@ -3,7 +3,14 @@ import { loadAllPages } from "@/lib/api/pages";
 import type { CreateCustomerBody } from "./schemas";
 import type { CustomerDetail, CustomerFeedback, CustomerListItem, CustomerOrder, CustomerSurvey, Preference } from "./types";
 
-export interface CustomerCreated { id: number; email: string; temporaryPassword: string }
+/**
+ * POST /customers: no temporary password in HTTP responses; the generated temporary password is sent directly to the
+ * customer's email. invitationSent=false means the account exists but the email failed: offer resendInvitation.
+ */
+export interface CustomerCreated { id: number; email: string; mustChangePassword: boolean; invitationSent: boolean }
+
+/** Issues a new temporary password email for a customer who has not changed their initial password: 409 ALREADY_ACTIVATED, 429 TOO_MANY_REQUESTS, 503 EMAIL_*. */
+export const resendInvitation = (id: number) => apiRequest<{ sent: boolean }>(`/customers/${id}/invitation`, { method: "POST" });
 
 export const loadCustomers = (signal?: AbortSignal) => loadAllPages<CustomerListItem>("/customers", signal);
 export const loadPreferences = (signal?: AbortSignal) => apiRequest<Preference[]>("/preferences", { signal });

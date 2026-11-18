@@ -1,3 +1,4 @@
+using Cocoon.Application.Shop;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,6 +26,21 @@ public abstract class ApiStubController : ControllerBase
         var problem = ProblemDetailsFactory.CreateProblemDetails(HttpContext, status, detail: detail);
         problem.Extensions["code"] = code;
         return new ObjectResult(problem) { StatusCode = status };
+    }
+
+    /// <summary>Runs a shop action and maps expected failures: 400 with the field, 404 as plain NotFound, others with their code.</summary>
+    protected async Task<IActionResult> ShopResult(Func<Task<IActionResult>> action)
+    {
+        try { return await action(); }
+        catch (ShopException error) when (error.Status == StatusCodes.Status400BadRequest)
+        {
+            ModelState.AddModelError(error.Field ?? "", error.Message);
+            var problem = ProblemDetailsFactory.CreateValidationProblemDetails(HttpContext, ModelState);
+            problem.Extensions["code"] = error.Code;
+            return BadRequest(problem);
+        }
+        catch (ShopException error) when (error.Status == StatusCodes.Status404NotFound) { return NotFound(); }
+        catch (ShopException error) { return Fail(error.Status, error.Code, error.Message); }
     }
 }
 

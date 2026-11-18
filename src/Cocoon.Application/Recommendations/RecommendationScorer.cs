@@ -69,7 +69,7 @@ public static class RecommendationScorer
         var parts = new (string Key, string Code, decimal Weight, decimal Value, string? Label)[]
         {
             ("preference", "PREFERENCE", w.Preference, tagCount == 0 ? 0 : (decimal)declared.Count / tagCount,
-                declared.Count > 0 ? $"Hợp với sở thích {c.DeclaredPreferences[declared[0]]}" : null),
+                declared.Count > 0 ? $"Hợp với nhu cầu {c.DeclaredPreferences[declared[0]]}" : null),
             ("survey", "SURVEY", w.Survey, tagCount == 0 ? 0 : (decimal)p.PreferenceIds.Count(c.SurveyPreferences.Contains) / tagCount,
                 "Từ câu trả lời khảo sát của bạn"),
             ("category", "CATEGORY", w.Category, Math.Clamp(c.CategoryShare.GetValueOrDefault(p.CategoryId), 0, 1), $"Bạn hay chọn {p.CategoryName}"),

@@ -13,8 +13,13 @@ internal static class DemoCatalog
         ["Da dầu", "Da khô", "Da nhạy cảm", "Mụn", "Thâm nám", "Tóc gãy rụng",
          "Mùi thảo mộc", "Thuần chay", "Chống nắng", "Dưỡng thể", "Cấp ẩm", "Chăm sóc môi"];
 
-    internal sealed record CatalogVariant(string Name, decimal Price, string ImageUrl, string SourceUrl);
-    internal sealed record CatalogProduct(string LegacyName, string Name, string Category, CatalogVariant[] Variants);
+    /// <summary>HoverImageUrl and Gallery (photos after the main one) come from the same official product page.</summary>
+    internal sealed record CatalogVariant(string Name, decimal Price, string ImageUrl, string SourceUrl, string? HoverImageUrl = null,
+        string[]? Gallery = null);
+    /// <summary>Product page text (Vietnamese) from the first variant's official page, plain text with line breaks.</summary>
+    internal sealed record CatalogContent(string Description, string Benefits, string Ingredients, string Usage);
+    internal sealed record CatalogProduct(string LegacyName, string Name, string Category, CatalogVariant[] Variants,
+        CatalogContent? Content = null);
     private sealed record CatalogSnapshot(CatalogProduct[] Products);
 
     // A reviewed, embedded snapshot: seed never depends on the network or the frontend filesystem.

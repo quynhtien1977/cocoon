@@ -36,6 +36,7 @@ Monorepo đồ án HTTTDN 841065: Next.js chạy trên host, ASP.NET Core .NET 1
 | PostgreSQL | `localhost:5433` (`DB_HOST_PORT`) | `db:5432` |
 | API | <http://localhost:5080> (`API_HTTP_PORT`) | `api:8080` |
 | Web | <http://localhost:3000> | chạy trên host, không nằm trong Compose |
+| MinIO (ảnh phản hồi) | API S3 `localhost:9010`, console <http://localhost:9011> (`MINIO_HOST_PORT`, `MINIO_CONSOLE_PORT`) | `minio:9000` |
 
 Các cổng chỉ bind `127.0.0.1`. Cổng DB mặc định là `5433` để không đụng PostgreSQL cài sẵn trên Windows ở `5432`. Đổi `DB_HOST_PORT` chỉ đổi cổng ra host; container API luôn nối `db:5432` và Compose tự ghép chuỗi kết nối, không cần lưu chuỗi này trong `.env`. Công cụ DB trên host (DBeaver, pgAdmin, `psql`) nối `localhost:5433` với `POSTGRES_USER`/`POSTGRES_PASSWORD` trong `.env`.
 
@@ -50,6 +51,8 @@ rtk docker compose exec api dotnet ef database update -p src/Cocoon.Infrastructu
 ```
 
 Script đầu tiên chỉ tạo `.env` từ `.env.example` khi chưa có, sinh mật khẩu DB và khóa JWT độc lập, không in giá trị. Nếu đã có `.env`, script giữ nguyên giá trị; bạn tự đối chiếu đủ tên biến với `.env.example`. Mặc định database `cocoon`, DB host port `5433`, API `5080`, web `3000`. Giữ `POSTGRES_DB=cocoon`: seed và database test chỉ chạy với database tên `cocoon`. Không đưa `.env` vào Git.
+
+Đã có `.env` cũ từ trước khi có MinIO? Thêm `MINIO_ROOT_USER=cocoon` và `MINIO_ROOT_PASSWORD=<chuỗi ngẫu nhiên dài>` (xem `.env.example`), nếu không `docker compose` báo thiếu biến. Ảnh phản hồi nằm trong bucket `MINIO_BUCKET` (mặc định `cocoon-feedback`, API tự tạo khi upload lần đầu) và volume `minio-data`; MinIO không mở ra ngoài, ảnh chỉ đọc được qua `GET /api/v1/feedback-photos/{id}` sau khi API kiểm tra quyền. Image MinIO chính thức trên Docker Hub/quay.io không còn kéo được nên Compose dùng bản build của Chainguard, ghim theo digest.
 
 Đã có `.env` cũ với `DB_HOST_PORT=5432`? Sửa thành `5433` (hoặc xóa dòng để dùng mặc định) rồi chạy `rtk docker compose up -d` để tạo lại container. Volume `postgres-data` giữ nguyên dữ liệu. Gặp lỗi kết nối xem [Xử lý sự cố](#xử-lý-sự-cố).
 

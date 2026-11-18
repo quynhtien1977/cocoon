@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { CircleCheck, CircleStop, ClipboardList, FilePen, Info, Pencil, Play, Plus, Send, Timer, Trash2 } from "lucide-react";
+import { CircleCheck, CircleStop, ClipboardList, FilePen, Info, Pencil, Plus, Send, Timer, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/brand/confirm-dialog";
 import { PageHeader } from "@/components/brand/page-header";
 import { StatTile } from "@/components/brand/stat-tile";
@@ -11,7 +11,7 @@ import { DataTable, type DataColumn, type DataFilter } from "@/components/data/d
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useApiData } from "@/lib/api/use-api-data";
 import { cn } from "@/lib/utils";
-import { closeSurvey, deleteSurvey, loadSurveys, publishSurvey } from "../api";
+import { closeSurvey, deleteSurvey, loadSurveys } from "../api";
 import { purposeLabels } from "../schemas";
 import type { SurveyListItem, SurveyPurpose, SurveyStatus } from "../types";
 
@@ -34,17 +34,13 @@ const PurposeChip = ({ purpose }: { purpose: SurveyPurpose }) => <span className
 function Progress({ row }: { row: SurveyListItem }) {
   const rate = responseRate(row);
   if (rate === null) return <span className="text-sm text-muted-foreground">Chưa gửi</span>;
-  return (
-    <span className="flex min-w-36 items-center gap-3">
-      <span aria-hidden="true" className="h-1.5 w-full max-w-24 bg-muted"><span className={cn("block h-full", row.status === "Closed" ? "bg-status-sage-fg" : "bg-gold")} style={{ width: `${rate * 100}%` }} /></span>
-      <span className="text-sm whitespace-nowrap tabular-nums">{row.responseCount}/{row.recipientCount} <span className="text-muted-foreground">({percent.format(rate)})</span></span>
-    </span>
-  );
+  return <span className="text-sm whitespace-nowrap tabular-nums">{row.responseCount}/{row.recipientCount} <span className="text-muted-foreground">({percent.format(rate)})</span></span>;
 }
 
 // Sending is the step that moves a survey forward, so it is the one filled button; the rest are icon buttons with a tooltip, as in the account list.
-const sendAction = "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 font-label text-sm uppercase tracking-wider whitespace-nowrap text-primary-foreground hover:bg-primary/80 focus-visible:outline-2 focus-visible:outline-ring";
-const iconAction = "inline-flex size-12 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring";
+// Cards (phones/tablets) keep 48px touch targets; the table only shows on wide screens with a pointer, so it uses 40px.
+const sendAction = "inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 font-label text-sm uppercase tracking-wider whitespace-nowrap text-primary-foreground hover:bg-primary/80 focus-visible:outline-2 focus-visible:outline-ring";
+const iconAction = "inline-flex items-center justify-center rounded-md hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring";
 
 // Questions can only be edited while Draft, so a Draft opens in the editor; any other survey opens on its results.
 const surveyHref = (row: SurveyListItem) => `/manager/surveys/${row.id}/${row.status === "Draft" ? "edit" : "results"}`;
@@ -52,28 +48,25 @@ const surveyHref = (row: SurveyListItem) => `/manager/surveys/${row.id}/${row.st
 const SurveyLink = ({ row }: { row: SurveyListItem }) => <Link href={surveyHref(row)} className="font-semibold underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring">{row.title}</Link>;
 
 /**
- * Edit, open and delete only while Draft (spec: questions lock once a survey opens); a Closed survey has nothing left to do.
- * In the table every action keeps its own slot (send, edit, open/close, delete) so the same button lines up on every row.
+ * Edit and delete only while Draft (spec: questions lock once a survey opens); a Closed survey has nothing left to do.
+ * In the table the actions sit in fixed slots (send · edit or close · delete) so the same button lines up on every row.
  */
 function Actions({ row, onChanged, card = false }: { row: SurveyListItem; onChanged: () => void; card?: boolean }) {
   const run = (action: (id: number) => Promise<void>) => async () => { await action(row.id); onChanged(); };
   const slot = (action: ReactNode) => action || (card ? null : <span aria-hidden="true" />);
+  const icon = card ? "size-12" : "size-10";
   return (
-    <span className={card ? "flex flex-wrap items-center gap-1" : "grid grid-cols-[7.5rem_repeat(3,3rem)] items-center justify-end gap-1"}>
-      {slot(row.status !== "Closed" && <Link href={`/manager/surveys/${row.id}/send`} aria-label={`Gửi khảo sát ${row.title}`} className={cn(sendAction, card && "w-auto")}><Send className="size-4" aria-hidden="true" />Gửi khảo sát</Link>)}
-      {slot(row.status === "Draft" && <Link href={`/manager/surveys/${row.id}/edit`} aria-label={`Chỉnh sửa ${row.title}`} title="Chỉnh sửa" className={iconAction}><Pencil className="size-5" aria-hidden="true" /></Link>)}
-      {slot(row.status === "Draft" ? (
-        <ConfirmDialog portal="manager" title="Mở khảo sát?" description={`“${row.title}” sẽ chuyển sang Đang mở; từ đó câu hỏi bị khóa, không sửa được nữa.`} confirmLabel="Mở khảo sát"
-          trigger={<Button type="button" variant="ghost" size="icon-lg" className="size-12" aria-label={`Mở khảo sát ${row.title}`} title="Mở khảo sát"><Play aria-hidden="true" /></Button>}
-          onConfirm={run(publishSurvey)} />
-      ) : row.status === "Open" && (
+    <span className={card ? "flex flex-wrap items-center gap-1" : "grid grid-cols-[auto_repeat(2,2.5rem)] items-center justify-end gap-0.5"}>
+      {slot(row.status !== "Closed" && <Link href={`/manager/surveys/${row.id}/send`} aria-label={`Gửi khảo sát ${row.title}`} className={cn(sendAction, card ? "min-h-12" : "mr-1 min-h-10")}><Send className="size-4" aria-hidden="true" />Gửi khảo sát</Link>)}
+      {slot(row.status === "Draft" ? <Link href={`/manager/surveys/${row.id}/edit`} aria-label={`Chỉnh sửa ${row.title}`} title="Chỉnh sửa" className={cn(iconAction, icon)}><Pencil className="size-5" aria-hidden="true" /></Link>
+        : row.status === "Open" && (
         <ConfirmDialog portal="manager" title="Đóng khảo sát?" description={`Khách sẽ không trả lời “${row.title}” được nữa. Kết quả đã thu vẫn được giữ.`} confirmLabel="Đóng khảo sát"
-          trigger={<Button type="button" variant="ghost" size="icon-lg" className="size-12 text-muted-foreground" aria-label={`Đóng khảo sát ${row.title}`} title="Đóng khảo sát"><CircleStop aria-hidden="true" /></Button>}
+          trigger={<Button type="button" variant="ghost" size="icon-lg" className={cn(icon, "text-muted-foreground")} aria-label={`Đóng khảo sát ${row.title}`} title="Đóng khảo sát"><CircleStop aria-hidden="true" /></Button>}
           onConfirm={run(closeSurvey)} />
       ))}
       {slot(row.status === "Draft" && (
         <ConfirmDialog portal="manager" title="Xóa bản nháp khảo sát?" description={`“${row.title}” sẽ bị xóa cùng toàn bộ câu hỏi. Không thể hoàn tác.`} confirmLabel="Xóa bản nháp"
-          trigger={<Button type="button" variant="ghost" size="icon-lg" className="size-12 text-destructive" aria-label={`Xóa ${row.title}`} title="Xóa bản nháp"><Trash2 aria-hidden="true" /></Button>}
+          trigger={<Button type="button" variant="ghost" size="icon-lg" className={cn(icon, "text-destructive")} aria-label={`Xóa ${row.title}`} title="Xóa bản nháp"><Trash2 aria-hidden="true" /></Button>}
           onConfirm={run(deleteSurvey)} />
       ))}
     </span>

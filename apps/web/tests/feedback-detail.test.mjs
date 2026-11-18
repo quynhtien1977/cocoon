@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { loadFeedbackDetail, parseFeedbackDetail } from "../features/customer/feedback-detail-service.ts";
+import { deleteFeedbackPhoto, loadFeedbackDetail, parseFeedbackDetail } from "../features/customer/feedback-detail-service.ts";
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
@@ -16,6 +16,12 @@ test("feedback detail reads only the customer endpoint and orders staff replies 
   assert.equal(result.content, "Dịu nhẹ");
   assert.deepEqual(result.replies.map(reply => reply.id), [1, 2]);
   assert.equal(parseFeedbackDetail({ ...detail, status: 3 }, 12).status, "Replied");
+});
+
+test("photos keep only API photo paths, so a response cannot point images elsewhere", () => {
+  const photos = [{ id: 3, url: "/api/v1/feedback-photos/3" }, { id: 4, url: "https://evil.example/x.jpg" }, { id: 0, url: "/api/v1/feedback-photos/0" }];
+  assert.deepEqual(parseFeedbackDetail({ ...detail, photos }, 12).photos, [{ id: 3, url: "/api/v1/feedback-photos/3" }]);
+  assert.deepEqual(parseFeedbackDetail(detail, 12).photos, []);
 });
 
 test("missing replies, wrong IDs and malformed details never masquerade as an unanswered review", () => {
@@ -37,4 +43,13 @@ test("invalid IDs and demo feedback never call the API; real errors never fall b
   assert.equal(calls, 0);
   await assert.rejects(loadFeedbackDetail("2"), error => error.status === 501);
   assert.equal(calls, 1);
+});
+
+test("deleting a photo calls the owner endpoint and returns the photos left", async () => {
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, "/api/v1/me/feedback/photos/3");
+    assert.equal(options.method, "DELETE");
+    return Response.json([{ id: 4, url: "/api/v1/feedback-photos/4" }]);
+  };
+  assert.deepEqual(await deleteFeedbackPhoto(3), [{ id: 4, url: "/api/v1/feedback-photos/4" }]);
 });

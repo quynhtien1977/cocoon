@@ -79,7 +79,7 @@ test("profile reports invalid fields and an unchanged form without calling the A
   assert.equal(requests.filter((item) => item.method === "PUT").length, 0);
 });
 
-test("A4 shows last login, and a temporary password unlocks the change form", async () => {
+test("A4 shows last login, and an emailed password only gets a gentle reminder above the change form", async () => {
   let attempt = 0;
   stubFetch((url) => {
     if (url.includes("/admin/accounts")) return json({ items: [{ id: 1, lastLoginAt: "2026-11-07T01:30:00Z" }], totalCount: 1, page: 1, pageSize: 20 });
@@ -91,8 +91,15 @@ test("A4 shows last login, and a temporary password unlocks the change form", as
   });
   const user = userEvent.setup();
   render(<AccountProfile variant="admin" />);
-  assert.match((await screen.findByRole("alert")).textContent ?? "", /mật khẩu tạm/);
+  assert.match((await screen.findByText(/mật khẩu do hệ thống cấp/)).textContent ?? "", /nên đổi/);
+  assert.equal(screen.queryByText(/mật khẩu tạm/), null);
+  assert.ok(screen.getByRole("heading", { name: "Đổi mật khẩu" }));
   assert.ok(await screen.findByText(/08:30.*07\/11\/2026|07\/11\/2026.*08:30/));
+  // Only stored data: no made-up admin code, and no "ask an admin" hint on the admin's own page.
+  assert.equal(screen.queryByText(/ADM-/), null);
+  assert.equal(screen.queryByText(/Liên hệ quản trị viên/), null);
+  assert.ok(screen.getByText("Email dùng để đăng nhập, không thay đổi được."));
+  assert.ok(screen.getByRole("button", { name: "Hoàn tác" }));
   await user.type(screen.getByLabelText("Mật khẩu hiện tại"), "Sai@12345");
   await user.type(screen.getByLabelText("Mật khẩu mới"), "MoiHon2026");
   await user.type(screen.getByLabelText("Nhập lại mật khẩu mới"), "MoiHon2026");

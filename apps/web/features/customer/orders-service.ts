@@ -1,8 +1,25 @@
 import { apiRequest } from "../../lib/api/client";
 
-export type OrderItem = { id: number; name: string; variant: string; imageUrl: string | null; productSlug?: string; quantity: number; unitPrice: number; review: { id: number; rating: number } | null };
-export type CustomerOrder = { id: number; code: string; orderedAt: string; status: "Completed" | "Cancelled" | "Returned"; totalAmount: number; items: OrderItem[] };
-export type OrderFilter = "all" | "delivered" | "reviewed" | "unreviewed";
+/** review.createdAt: when the customer reviewed the line (ISO); "Đã đánh giá" lists the newest review first. */
+export type OrderItem = { id: number; name: string; variant: string; imageUrl: string | null; productSlug?: string; quantity: number; unitPrice: number; review: { id: number; rating: number; createdAt?: string } | null };
+export type OrderStatus = "Completed" | "Cancelled" | "Returned" | "Placed" | "Delivering";
+export type CustomerOrder = {
+  id: number;
+  code: string;
+  orderedAt: string;
+  status: OrderStatus;
+  totalAmount: number;
+  shippingAddress?: string | null;
+  confirmedAt?: string | null;
+  completedAt?: string | null;
+  cancelledAt?: string | null;
+  canCancel?: boolean;
+  canConfirmReceived?: boolean;
+  items: OrderItem[];
+};
+export type OrderFilter = "all" | "delivered" | "shipping" | "pending" | "reviewed" | "unreviewed";
+
+export const ORDER_STATUS_VALUES = ["Completed", "Cancelled", "Returned", "Placed", "Delivering"] as const;
 
 // The backend currently exposes stub endpoints without response DTOs. Keep the
 // proposed enriched response contract isolated here; never infer review status.
@@ -12,10 +29,10 @@ export function parseOrders(response: unknown): { items: CustomerOrder[]; totalC
   if (!Array.isArray(rows)) throw new Error("Định dạng đơn hàng chưa được hỗ trợ.");
   const items = rows.map((raw): CustomerOrder => {
     const order = raw as CustomerOrder;
-    const status = typeof order?.status === "number" ? (["Completed", "Cancelled", "Returned"] as const)[order.status] : order?.status;
-    if (!order || !Number.isSafeInteger(order.id) || order.id <= 0 || typeof order.code !== "string" || !Number.isFinite(Date.parse(order.orderedAt)) || !["Completed", "Cancelled", "Returned"].includes(status) || !Number.isFinite(order.totalAmount) || order.totalAmount < 0 || !Array.isArray(order.items)) throw new Error("Thông tin đơn hàng chưa đầy đủ.");
+    const status = typeof order?.status === "number" ? ORDER_STATUS_VALUES[order.status] : order?.status;
+    if (!order || !Number.isSafeInteger(order.id) || order.id <= 0 || typeof order.code !== "string" || !Number.isFinite(Date.parse(order.orderedAt)) || !ORDER_STATUS_VALUES.includes(status as (typeof ORDER_STATUS_VALUES)[number]) || !Number.isFinite(order.totalAmount) || order.totalAmount < 0 || !Array.isArray(order.items)) throw new Error("Thông tin đơn hàng chưa đầy đủ.");
     for (const item of order.items) {
-      if (!item || !Number.isSafeInteger(item.id) || item.id <= 0 || typeof item.name !== "string" || typeof item.variant !== "string" || !(item.imageUrl === null || typeof item.imageUrl === "string") || !Number.isInteger(item.quantity) || item.quantity < 1 || !Number.isFinite(item.unitPrice) || item.unitPrice < 0 || !(item.review === null || (item.review && Number.isSafeInteger(item.review.id) && item.review.id > 0 && Number.isInteger(item.review.rating) && item.review.rating >= 1 && item.review.rating <= 5))) throw new Error("Thông tin sản phẩm hoặc đánh giá chưa đầy đủ.");
+      if (!item || !Number.isSafeInteger(item.id) || item.id <= 0 || typeof item.name !== "string" || typeof item.variant !== "string" || !(item.imageUrl === null || typeof item.imageUrl === "string") || !Number.isInteger(item.quantity) || item.quantity < 1 || !Number.isFinite(item.unitPrice) || item.unitPrice < 0 || !(item.review === null || (item.review && Number.isSafeInteger(item.review.id) && item.review.id > 0 && Number.isInteger(item.review.rating) && item.review.rating >= 1 && item.review.rating <= 5 && (item.review.createdAt === undefined || Number.isFinite(Date.parse(item.review.createdAt)))))) throw new Error("Thông tin sản phẩm hoặc đánh giá chưa đầy đủ.");
     }
     return { ...order, status };
   });
@@ -36,11 +53,38 @@ export async function loadOrders(signal: AbortSignal): Promise<CustomerOrder[]> 
   throw new Error("Chưa tải được đầy đủ đơn hàng. Kiểm tra kết nối rồi thử lại.");
 }
 
+export async function cancelOrder(id: number): Promise<void> {
+  await apiRequest<void>(`/me/orders/${id}/cancel`, { method: "POST" });
+}
+
+export async function confirmOrderReceived(id: number): Promise<void> {
+  await apiRequest<void>(`/me/orders/${id}/received`, { method: "POST" });
+}
+
+/** Review time in ms; a review without a time counts as the order date so it still sorts sensibly. */
+const reviewedAt = (order: CustomerOrder, item: OrderItem) => Date.parse(item.review?.createdAt ?? "") || Date.parse(order.orderedAt) || 0;
+
+/**
+ * Tabs keep the API's newest-order-first order, except "Đã đánh giá": there the order with the latest review comes
+ * first, and inside an order the latest reviewed line comes first.
+ */
 export function filterOrders(orders: CustomerOrder[], filter: OrderFilter, search = "") {
+  const visible = matchOrders(orders, filter, search);
+  if (filter !== "reviewed") return visible;
+  const latest = (order: CustomerOrder) => Math.max(...order.items.map((item) => reviewedAt(order, item)));
+  return visible
+    .map((order) => ({ ...order, items: [...order.items].sort((a, b) => reviewedAt(order, b) - reviewedAt(order, a)) }))
+    .sort((a, b) => latest(b) - latest(a));
+}
+
+function matchOrders(orders: CustomerOrder[], filter: OrderFilter, search: string) {
   const normalize = (value: string) => value.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "").replaceAll("đ", "d");
   const query = normalize(search.trim());
   return orders.flatMap((order) => {
-    if (filter !== "all" && order.status !== "Completed") return [];
+    if (filter === "delivered" && order.status !== "Completed") return [];
+    if (filter === "shipping" && order.status !== "Delivering") return [];
+    if (filter === "pending" && order.status !== "Placed") return [];
+    if ((filter === "reviewed" || filter === "unreviewed") && order.status !== "Completed") return [];
     const items = order.items.filter((item) => (filter === "reviewed" ? item.review !== null : filter === "unreviewed" ? item.review === null : true) && (!query || normalize(order.code).includes(query) || normalize(item.name).includes(query)));
     return items.length ? [{ ...order, items, originalItemCount: order.items.length }] : [];
   });

@@ -8,10 +8,18 @@ public enum FeedbackClosedBy { Manager, SecondReply, AutoClose, Customer }
 public enum SurveyPurpose { Satisfaction, NewProduct, Other }
 public enum SurveyStatus { Draft, Open, Closed }
 public enum QuestionType { SingleChoice, MultiChoice, Rating, ShortText }
+/// <summary>What a survey question shows above its answers; stored as text.</summary>
+public enum SurveyMediaKind { Image, Video }
 public enum RecipientStatus { NotDone, Done }
 public enum PreferenceSource { Declared, Survey }
 public enum OrderChannel { Website, Store, Marketplace }
-public enum OrderStatus { Completed, Cancelled, Returned }
+/// <summary>
+/// Website orders move Placed → Delivering (staff or manager confirms) → Completed (the customer confirms receipt); a
+/// Placed order can be Cancelled by its customer. Only Completed lines can be reviewed or count in reports. New values
+/// go last so the numeric order of older ones never changes.
+/// </summary>
+public enum OrderStatus { Completed, Cancelled, Returned, Placed, Delivering }
 public enum RecommendationStatus { Active, Clicked, Dismissed, Expired }
 public enum RecommendationPlanStatus { Draft, Active, Ended }
-
+/// <summary>Why a one-time email code was issued; stored as text, new values go last.</summary>
+public enum PasswordTokenPurpose { Invitation, Reset }

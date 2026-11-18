@@ -57,6 +57,7 @@ export interface FeedbackDetail extends FeedbackListItem {
   /** When each step was reached; missing steps are still ahead. */
   statusTimes: Partial<Record<FeedbackStatus, string>>;
   replies: FeedbackReply[];
+  photos?: { id: number; url: string }[];
   followUp: FeedbackFollowUp | null;
   autoCloseAt: string | null;
   closedBy?: FeedbackClosedBy;

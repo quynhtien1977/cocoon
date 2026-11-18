@@ -70,7 +70,8 @@ public sealed class FeedbackController(AppDbContext db, IOptions<FeedbackOptions
             FollowUp = FollowUpOf(row.F),
             AutoCloseAt = row.F.Status == FeedbackStatus.Replied ? row.F.AutoCloseAt : null,
             ClosedBy = ClosedByOf(row.F, replies),
-            Edits = EditsOf(row.F)
+            Edits = EditsOf(row.F),
+            Photos = await FeedbackPhotosController.Photos(db, id, cancellationToken)
         });
     }
 
@@ -326,4 +327,5 @@ public sealed record FeedbackDetail : FeedbackListItem
     /// <summary>Set only when Closed: Manager, SecondReply, AutoClose or Customer.</summary>
     public required FeedbackClosedBy? ClosedBy { get; init; }
     public required FeedbackEdits Edits { get; init; }
+    public required List<FeedbackPhotoItem> Photos { get; init; }
 }

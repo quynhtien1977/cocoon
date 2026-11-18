@@ -8,7 +8,9 @@ public sealed record CustomerSurveyListItem(int Id, string Title, string Descrip
     DateTime? OpenAt, DateTime? CloseAt, DateTime? CompletedAt, int QuestionCount, int EstimatedMinutes, string? GoogleFormUrl = null);
 public sealed record CustomerSurveyDetails(int Id, string Title, string Description, SurveyStatus Status, DateTime? OpenAt,
     DateTime? CloseAt, DateTime? CompletedAt, IReadOnlyList<CustomerSurveyQuestion> Questions, IReadOnlyList<CustomerSurveyAnswerValue> Answers);
-public sealed record CustomerSurveyQuestion(int Id, string Text, QuestionType Type, bool IsRequired, IReadOnlyList<CustomerSurveyOption> Options);
+/// <summary>Media is optional and ordered: photos and YouTube videos shown above the answers.</summary>
+public sealed record CustomerSurveyQuestion(int Id, string Text, QuestionType Type, bool IsRequired, IReadOnlyList<CustomerSurveyOption> Options,
+    IReadOnlyList<CustomerQuestionMedia> Media);
 public sealed record CustomerSurveyOption(int Id, string Text);
 public sealed record CustomerSurveyAnswerValue(int QuestionId, int[]? OptionIds, decimal? NumericValue, string? TextValue);
 public sealed record CustomerSurveySubmitted(int Id, DateTime SubmittedAt);

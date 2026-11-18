@@ -8,14 +8,18 @@ export type CreateCustomerBody = components["schemas"]["CreateCustomerRequest"] 
 export const genderOptions = ["Nữ", "Nam", "Khác"];
 
 const digits = (value: string) => value.replace(/\s/g, "");
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export const customerDraftSchema = z.object({
   fullName: z.string().trim().min(1, "Nhập họ và tên.").max(200, "Họ tên tối đa 200 ký tự."),
-  email: z.string().trim().min(1, "Nhập email.").max(256, "Email tối đa 256 ký tự.").email("Email không hợp lệ."),
-  phone: z.string().refine((value) => /^0\d{9}$/.test(digits(value)), "Số điện thoại gồm 10 chữ số, bắt đầu bằng 0."),
+  // Simple rules, mirrored by CreateCustomerRequest in CustomersController.cs.
+  email: z.string().trim().min(1, "Nhập email.").max(256, "Email tối đa 256 ký tự.")
+    .regex(emailPattern, "Email không hợp lệ (ví dụ: ten@example.com)."),
+  phone: z.string().trim().min(1, "Nhập số điện thoại.")
+    .refine((value) => /^0\d{9}$/.test(digits(value)), "Số điện thoại gồm 10 chữ số, bắt đầu bằng 0."),
   dateOfBirth: z.string(),
   gender: z.string(),
-  address: z.string().trim().max(500, "Địa chỉ tối đa 500 ký tự."),
+  address: z.string().trim().min(1, "Nhập địa chỉ.").min(5, "Địa chỉ tối thiểu 5 ký tự.").max(500, "Địa chỉ tối đa 500 ký tự."),
   preferences: z.array(z.number()),
 });
 

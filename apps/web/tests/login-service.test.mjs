@@ -32,8 +32,8 @@ for (const [role, portal, destination] of [["Customer", "shared", "/account"], [
   });
 }
 
-for (const [role, portal, destination] of [["Customer", "shared", "/account/profile"], ["Manager", "shared", "/manager/profile"], ["Admin", "admin", "/admin/profile"]]) {
-  test(`${role} with a temporary password lands on the profile to change it`, async () => {
+for (const [role, portal, destination] of [["Customer", "shared", "/account"], ["Manager", "shared", "/manager"], ["Staff", "shared", "/staff/feedback"], ["Admin", "admin", "/admin"]]) {
+  test(`${role} still on the emailed password lands on the usual page`, async () => {
     globalThis.fetch = async (url) => url === "/api/v1/me" ? Response.json({ role, mustChangePassword: true }) : new Response(null, { status: 204 });
     assert.equal(await signIn("person@example.com", "test-password", portal), destination);
   });
@@ -64,11 +64,14 @@ test("the existing 501 stub displays unavailable without fabricating a session",
   assert.deepEqual(calls, ["/api/v1/auth/login"]);
 });
 
-test("only customers can return to the exact recommendation section after login", async () => {
+test("only customers can return to allowed destinations after login", async () => {
   let role = "Customer";
   globalThis.fetch = async url => String(url).endsWith("/me") ? Response.json({ role }) : new Response(null, { status: 204 });
   assert.equal(await signIn("person@example.com", "test-password", "shared", "/account#goi-y-cho-ban"), "/account#goi-y-cho-ban");
-  for (const target of ["https://evil.example", "//evil.example", "/admin", "/account#other"]) assert.equal(await signIn("person@example.com", "test-password", "shared", target), "/account");
+  assert.equal(await signIn("person@example.com", "test-password", "shared", "/account/products/11"), "/account/products/11");
+  assert.equal(await signIn("person@example.com", "test-password", "shared", "/account/products/dau-goi-bo-ket-500ml"), "/account/products/dau-goi-bo-ket-500ml");
+  for (const target of ["https://evil.example", "//evil.example", "/admin", "/account#other", "/account/products/../admin"]) assert.equal(await signIn("person@example.com", "test-password", "shared", target), "/account");
   role = "Manager";
   assert.equal(await signIn("person@example.com", "test-password", "shared", "/account#goi-y-cho-ban"), "/manager");
+  assert.equal(await signIn("person@example.com", "test-password", "shared", "/account/products/11"), "/manager");
 });

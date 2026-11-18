@@ -2,7 +2,7 @@ import "./dom-setup.mjs";
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import type { ReactNode } from "react";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 import { SurveyBuilder, SurveyBuilderPage } from "../features/surveys/components/survey-builder";
@@ -85,7 +85,7 @@ test("M8 creates a draft with POST, then saves again with PUT to the same survey
   await user.type(screen.getByLabelText(/Tên khảo sát/), "Khảo sát mới");
   await user.type(screen.getByLabelText("Nội dung câu hỏi"), "Bạn thích gì?");
   for (const [index, input] of screen.getAllByPlaceholderText(/Lựa chọn/).entries()) await user.type(input, `Ý ${index + 1}`);
-  await user.selectOptions(screen.getByLabelText("Gắn sở thích cho lựa chọn 1"), "6");
+  await user.selectOptions(screen.getByLabelText("Gắn nhu cầu cho lựa chọn 1"), "6");
   await user.click(screen.getByRole("button", { name: "Lưu bản nháp" }));
   assert.ok(await screen.findByText(/Đã lưu bản nháp/));
   assert.equal(screen.getByRole("link", { name: "Gửi khảo sát" }).getAttribute("href"), "/manager/surveys/90/send");
@@ -115,7 +115,7 @@ test("M8 edits questions of an existing draft and sends them with PUT", async ()
   assert.equal(requests.length, 0);
   await user.click(within(screen.getAllByRole("group")[1]).getByRole("button", { name: "Xóa lựa chọn 5" }));
   for (const [index, input] of within(screen.getAllByRole("group")[2]).getAllByPlaceholderText(/Lựa chọn/).entries()) await user.type(input, `Mức ${index + 1}`);
-  await user.selectOptions(within(screen.getAllByRole("group")[2]).getByLabelText("Gắn sở thích cho lựa chọn 1"), "6");
+  await user.selectOptions(within(screen.getAllByRole("group")[2]).getByLabelText("Gắn nhu cầu cho lựa chọn 1"), "6");
   await user.click(screen.getByRole("button", { name: "Lưu bản nháp" }));
   assert.ok(await screen.findByText(/Đã lưu bản nháp/));
   const [[method, url, body]] = writes() as [string, string, ReturnType<typeof toSurveyUpsertRequest>][];
@@ -162,12 +162,11 @@ test("M8 collapses questions and previews the draft read-only", async () => {
   assert.equal(within(dialog).getAllByRole("radio").every((input) => (input as HTMLInputElement).disabled), true);
 });
 
-test("M7 loads surveys, offers actions by status, publishes and deletes drafts through the API", async () => {
+test("M7 loads surveys, offers actions by status and deletes drafts through the API", async () => {
   let rows = [listRow(83, "Draft", "Nghiên cứu mặt nạ nghệ"), listRow(84, "Draft", "Nhu cầu dung tích lớn"), listRow(81, "Open", "Hài lòng gel bí đao"), listRow(75, "Closed", "Thói quen chống nắng")];
   stubFetch((url, init) => {
     const id = Number(url.match(/surveys\/(\d+)/)?.[1]);
     if (init?.method === "DELETE") rows = rows.filter((row) => row.id !== id);
-    if (url.endsWith("/publish")) rows = rows.map((row) => row.id === id ? { ...row, status: "Open" } : row);
     return init?.method === "GET" ? page(rows) : new Response(null, { status: 204 });
   });
   const user = userEvent.setup();
@@ -176,6 +175,7 @@ test("M7 loads surveys, offers actions by status, publishes and deletes drafts t
   const draftRow = within(table).getByText("Nghiên cứu mặt nạ nghệ").closest("tr")!;
   assert.equal(within(draftRow).getByRole("link", { name: "Chỉnh sửa Nghiên cứu mặt nạ nghệ" }).getAttribute("href"), "/manager/surveys/83/edit");
   assert.equal(within(draftRow).queryByRole("link", { name: /Xem kết quả/ }), null);
+  assert.equal(within(draftRow).queryByRole("button", { name: /Mở khảo sát/ }), null);
   const closedRow = within(table).getByText("Thói quen chống nắng").closest("tr")!;
   assert.equal(within(closedRow).getByRole("link", { name: "Thói quen chống nắng" }).getAttribute("href"), "/manager/surveys/75/results");
   assert.equal(within(closedRow).queryByRole("link", { name: /Chỉnh sửa|Gửi khảo sát/ }), null);
@@ -184,13 +184,9 @@ test("M7 loads surveys, offers actions by status, publishes and deletes drafts t
 
   await user.click(within(draftRow).getByRole("button", { name: "Xóa Nghiên cứu mặt nạ nghệ" }));
   await user.click(await screen.findByRole("button", { name: "Xóa bản nháp" }));
-  const afterDelete = await screen.findByRole("table", { name: /Khảo sát/ });
-  await user.click(await within(afterDelete).findByRole("button", { name: "Mở khảo sát Nhu cầu dung tích lớn" }));
-  await user.click(await screen.findByRole("button", { name: "Mở khảo sát" }));
   const reloaded = await screen.findByRole("table", { name: /Khảo sát/ });
-  assert.ok(await within(reloaded).findByRole("button", { name: "Đóng khảo sát Nhu cầu dung tích lớn" }));
-  assert.equal(within(reloaded).queryByText("Nghiên cứu mặt nạ nghệ"), null);
-  assert.deepEqual(writes(), [["DELETE", "/api/v1/surveys/83", undefined], ["POST", "/api/v1/surveys/84/publish", undefined]]);
+  await waitFor(() => assert.equal(within(reloaded).queryByText("Nghiên cứu mặt nạ nghệ"), null));
+  assert.deepEqual(writes(), [["DELETE", "/api/v1/surveys/83", undefined]]);
 });
 
 test("M7 keeps the close dialog open with the API message on conflict", async () => {
@@ -224,4 +220,65 @@ test("survey draft maps to SurveyUpsertRequest with API enum ordinals and back f
   const back = fromSurveyDetail(detail(83, "Draft"));
   assert.deepEqual([back.openAt, back.closeAt], ["2026-11-01", "2026-11-15"], "UTC instants map back to the Vietnam calendar day");
   assert.deepEqual(toSurveyUpsertRequest(back), toSurveyUpsertRequest(draft));
+});
+
+test("M8 question media requires saving draft before image upload, validates files and YouTube links, reorders, and previews", async () => {
+  let imageSeq = 40;
+  const rawWrites: { method: string; url: string }[] = [];
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    const method = init?.method ?? "GET";
+    rawWrites.push({ method, url: String(url) });
+    if (String(url).endsWith("/images") && method === "POST") {
+      imageSeq += 1;
+      return json({ id: imageSeq, url: `/api/v1/survey-media/${imageSeq}` }, 201);
+    }
+    return json(detail(95, "Draft"), method === "POST" ? 201 : 200);
+  }) as typeof fetch;
+
+  const user = userEvent.setup({ applyAccept: false });
+  render(<SurveyBuilder preferences={preferences} products={products} />);
+
+  // 1. Before saving draft, image upload button is disabled with guidance
+  assert.equal((screen.getByRole("button", { name: "Thêm ảnh" }) as HTMLButtonElement).disabled, true);
+  assert.ok(screen.getByText((_, node) => node?.tagName === "P" && /Lưu bản nháp trước/.test(node.textContent ?? "")));
+
+  // 2. Add a video item with an invalid link and verify per-field error without API call
+  await user.type(screen.getByLabelText(/Tên khảo sát/), "Khảo sát mẫu mới");
+  await user.type(screen.getByLabelText("Nội dung câu hỏi"), "Bạn thích mẫu nào?");
+  for (const [index, input] of screen.getAllByPlaceholderText(/Lựa chọn/).entries()) await user.type(input, `Mẫu ${index + 1}`);
+  await user.click(screen.getByRole("button", { name: "Thêm video YouTube" }));
+  const videoInput = screen.getByLabelText(/Link video YouTube #1/);
+  await user.type(videoInput, "https://vimeo.com/12345");
+  await user.click(screen.getByRole("button", { name: "Lưu bản nháp" }));
+  assert.match(screen.getByText(/Video cần là link YouTube/).textContent ?? "", /YouTube/);
+  assert.equal(rawWrites.length, 0);
+
+  // 3. Fix video URL and save draft -> enables image upload
+  await user.clear(videoInput);
+  await user.type(videoInput, "https://youtu.be/dQw4w9WgXcQ");
+  await user.click(screen.getByRole("button", { name: "Lưu bản nháp" }));
+  assert.ok(await screen.findByText(/Đã lưu bản nháp/));
+  assert.equal((screen.getByRole("button", { name: "Thêm ảnh" }) as HTMLButtonElement).disabled, false);
+
+  // 4. Invalid file type & oversized file fail client-side without API calls
+  const fileInput = screen.getByLabelText("Thêm ảnh cho câu 1") as HTMLInputElement;
+  await user.upload(fileInput, new File(["txt"], "bad.txt", { type: "text/plain" }));
+  assert.match(screen.getByRole("alert").textContent ?? "", /JPG, PNG hoặc WebP/);
+  await user.upload(fileInput, new File([new Uint8Array(2 * 1024 * 1024 + 10)], "big.png", { type: "image/png" }));
+  assert.match(screen.getByRole("alert").textContent ?? "", /tối đa 2 MB/);
+  assert.equal(rawWrites.filter((w) => w.url.endsWith("/images")).length, 0);
+
+  // 5. Upload 2 valid images sequentially
+  const png1 = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "a.png", { type: "image/png" });
+  const png2 = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "b.png", { type: "image/png" });
+  await user.upload(fileInput, [png1, png2]);
+  assert.ok(await screen.findByText("Ảnh minh họa #2"));
+  assert.equal(rawWrites.filter((w) => w.url === "/api/v1/surveys/95/images").length, 2);
+
+  // 6. Reorder item 2 up and open Preview sheet
+  await user.click(screen.getByRole("button", { name: "Đưa mục 2 của câu 1 lên" }));
+  await user.click(screen.getByRole("button", { name: "Xem trước khảo sát" }));
+  const dialog = await screen.findByRole("dialog");
+  assert.ok(within(dialog).getByTitle(/Video minh họa cho câu hỏi: Bạn thích mẫu nào\?/));
+  assert.equal(within(dialog).getAllByAltText(/Ảnh minh họa/).length, 2);
 });

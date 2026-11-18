@@ -12,7 +12,7 @@ let authenticated = false, recommendationStatus = 200, empty = false;
 const writes = [], runtimeErrors = [];
 const names = ['Gel rửa mặt bí đao', 'Nước dưỡng tóc tinh dầu bưởi', 'Thạch hoa hồng dưỡng ẩm', 'Nước sen Hậu Giang', 'Cà phê Đắk Lắk', 'Son dưỡng dầu dừa'];
 const photos = ['/images/manager-products/winter-melon.jpg', '/images/landing/product-1.jpg', '/images/manager-products/rose.jpg', '/images/manager-products/lotus.jpg', '/images/manager-products/coffee.jpg', '/images/manager-products/coconut.jpg'];
-const items = names.map((name, index) => ({ id: index + 71, score: 90 - index, product: { id: index + 101, name, minPrice: index ? 162000 : 299000, imageUrl: photos[index], avgRating: index ? 4.5 : null }, reasons: [{ code: 'preference', label: 'Phù hợp sở thích của bạn' }, { code: 'popular', label: 'Được yêu thích' }] }));
+const items = names.map((name, index) => ({ id: index + 71, score: 90 - index, product: { id: index + 101, name, minPrice: index ? 162000 : 299000, imageUrl: photos[index], avgRating: index ? 4.5 : null }, reasons: [{ code: 'preference', label: 'Phù hợp nhu cầu của bạn' }, { code: 'popular', label: 'Được yêu thích' }] }));
 const api = createServer((request, response) => {
   response.setHeader('Content-Type', 'application/json');
   const path = new URL(request.url, origin).pathname;

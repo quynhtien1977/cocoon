@@ -89,7 +89,7 @@ export function SurveyBuilder({ initial, surveyId, preferences, products }: Surv
 
   return (
     <form onSubmit={save} noValidate>
-      <PageHeader title={initial ? "Sửa khảo sát" : "Tạo khảo sát"} description="Câu hỏi 4 loại; lựa chọn có thể gắn sở thích để cập nhật hồ sơ khách khi họ trả lời."
+      <PageHeader title={initial ? "Sửa khảo sát" : "Tạo khảo sát"} description="Câu hỏi 4 loại; lựa chọn có thể gắn nhu cầu để cập nhật hồ sơ khách khi họ trả lời."
         actions={<StatusBadge kind="survey" status="Draft" />} />
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
@@ -163,7 +163,7 @@ export function SurveyBuilder({ initial, surveyId, preferences, products }: Surv
           </div>
           {errors.questions && <p role="alert" className="text-sm text-destructive">{errors.questions}</p>}
           {draft.questions.map((question, index) => (
-            <QuestionEditor key={question.key} index={index} total={draft.questions.length} question={question} preferences={preferences} errors={questionErrors(index)} collapsed={collapsed}
+            <QuestionEditor key={question.key} index={index} total={draft.questions.length} question={question} preferences={preferences} surveyId={savedId} errors={questionErrors(index)} collapsed={collapsed}
               onChange={(next) => setDraft((current) => ({ ...current, questions: current.questions.map((item, i) => i === index ? next : item) }))}
               onRemove={() => setDraft((current) => ({ ...current, questions: current.questions.filter((_, i) => i !== index) }))}
               onMove={(offset) => moveQuestion(index, offset)} />

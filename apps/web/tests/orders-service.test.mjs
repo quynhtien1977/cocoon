@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { filterOrders, loadOrders, parseOrders } from "../features/customer/orders-service.ts";
+import { cancelOrder, confirmOrderReceived, filterOrders, loadOrders, parseOrders } from "../features/customer/orders-service.ts";
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
@@ -21,9 +21,33 @@ test("review filters keep only matching items in partially reviewed completed or
   assert.equal(filterOrders(orders, "all", "unknown").length, 0);
 });
 
+test("Đã đánh giá lists the latest review first; Chờ đánh giá keeps the newest order first", () => {
+  const reviewed = (id, createdAt) => ({ ...item, id, review: { id: id + 100, rating: 5, createdAt } });
+  // The API sends the newest order first: ORDER-NEW was placed after ORDER-OLD.
+  const newer = { ...order, id: 10, code: "ORDER-NEW", orderedAt: "2026-11-10T00:00:00Z", items: [reviewed(11, "2026-11-11T08:00:00Z"), { ...item, id: 12 }] };
+  const older = { ...order, id: 20, code: "ORDER-OLD", orderedAt: "2026-10-01T00:00:00Z",
+    items: [reviewed(21, "2026-10-05T08:00:00Z"), reviewed(22, "2026-11-15T08:00:00Z"), { ...item, id: 23 }] };
+  const list = [newer, older];
+
+  // ORDER-OLD was reviewed most recently (15/11), so it leads, with that line first.
+  const tab = filterOrders(list, "reviewed");
+  assert.deepEqual(tab.map(o => o.code), ["ORDER-OLD", "ORDER-NEW"]);
+  assert.deepEqual(tab[0].items.map(i => i.id), [22, 21]);
+  assert.equal(tab[0].originalItemCount, 3);
+  assert.deepEqual(filterOrders(list, "unreviewed").map(o => o.code), ["ORDER-NEW", "ORDER-OLD"]);
+  assert.deepEqual(filterOrders(list, "all").map(o => o.code), ["ORDER-NEW", "ORDER-OLD"]);
+  assert.deepEqual(list[1].items.map(i => i.id), [21, 22, 23]);  // the loaded orders are not reordered in place
+});
+
 test("response adapter rejects missing review state and incomplete pagination", () => {
+  assert.equal(parseOrders([{ ...order, items: [{ ...item, review: { id: 5, rating: 4, createdAt: "2026-11-15T08:00:00Z" } }] }]).items[0].items[0].review.createdAt, "2026-11-15T08:00:00Z");
+  assert.throws(() => parseOrders([{ ...order, items: [{ ...item, review: { id: 5, rating: 4, createdAt: "không phải ngày" } }] }]));
   assert.deepEqual(parseOrders([order]).items, [order]);
   assert.equal(parseOrders([{ ...order, status: 0 }]).items[0].status, "Completed");
+  assert.equal(parseOrders([{ ...order, status: 3 }]).items[0].status, "Placed");
+  assert.equal(parseOrders([{ ...order, status: 4 }]).items[0].status, "Delivering");
+  assert.equal(parseOrders([{ ...order, status: "Placed" }]).items[0].status, "Placed");
+  assert.equal(parseOrders([{ ...order, status: "Delivering" }]).items[0].status, "Delivering");
   assert.throws(() => parseOrders({ items: [order] }));
   assert.throws(() => parseOrders([{ ...order, items: [{ ...item, review: undefined }] }]));
   assert.throws(() => parseOrders([{ ...order, totalAmount: -1 }]));
@@ -46,4 +70,32 @@ test("stub and repeated pages never become an empty or fabricated history", asyn
   await assert.rejects(loadOrders(new AbortController().signal), error => error.status === 501);
   globalThis.fetch = async () => Response.json({ items: [order], totalCount: 2 });
   await assert.rejects(loadOrders(new AbortController().signal));
+});
+
+test("cancelOrder and confirmOrderReceived send POST requests to customer endpoints", async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url: String(url), method: options?.method });
+    return new Response(null, { status: 204 });
+  };
+  await cancelOrder(42);
+  await confirmOrderReceived(42);
+  assert.deepEqual(calls, [
+    { url: "/api/v1/me/orders/42/cancel", method: "POST" },
+    { url: "/api/v1/me/orders/42/received", method: "POST" },
+  ]);
+});
+
+test("filterOrders filters correctly by pending and shipping status", () => {
+  const placedOrder = { ...order, id: 3, status: "Placed" };
+  const deliveringOrder = { ...order, id: 4, status: "Delivering" };
+  const list = [order, placedOrder, deliveringOrder];
+
+  assert.equal(filterOrders(list, "all").length, 3);
+  assert.equal(filterOrders(list, "pending").length, 1);
+  assert.equal(filterOrders(list, "pending")[0].id, 3);
+  assert.equal(filterOrders(list, "shipping").length, 1);
+  assert.equal(filterOrders(list, "shipping")[0].id, 4);
+  assert.equal(filterOrders(list, "delivered").length, 1);
+  assert.equal(filterOrders(list, "delivered")[0].id, 1);
 });

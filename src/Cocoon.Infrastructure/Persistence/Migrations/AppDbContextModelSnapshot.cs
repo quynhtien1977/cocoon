@@ -331,6 +331,46 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.ToTable("FeedbackAssignment");
                 });
 
+            modelBuilder.Entity("Cocoon.Domain.Entities.FeedbackPhoto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FeedbackId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FeedbackId");
+
+                    b.HasIndex("ObjectKey")
+                        .IsUnique();
+
+                    b.ToTable("FeedbackPhoto");
+                });
+
             modelBuilder.Entity("Cocoon.Domain.Entities.FeedbackReply", b =>
                 {
                     b.Property<int>("Id")
@@ -421,6 +461,9 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Channel")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -431,11 +474,24 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("ConfirmedBy")
+                        .HasColumnType("integer");
+
                     b.Property<int>("CustomerId")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("OrderedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ShippingAddress")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -451,10 +507,18 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
+                    b.HasIndex("ConfirmedBy");
+
                     b.HasIndex("CustomerId", "OrderedAt")
                         .IsDescending(false, true);
 
-                    b.ToTable("Order");
+                    b.HasIndex("Status", "OrderedAt")
+                        .IsDescending(false, true);
+
+                    b.ToTable("Order", t =>
+                        {
+                            t.HasCheckConstraint("CK_Order_Confirmed", "(\"ConfirmedAt\" IS NULL) = (\"ConfirmedBy\" IS NULL)");
+                        });
                 });
 
             modelBuilder.Entity("Cocoon.Domain.Entities.OrderItem", b =>
@@ -501,8 +565,19 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.Property<int>("AccountId")
                         .HasColumnType("integer");
 
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
@@ -514,12 +589,15 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AccountId");
-
                     b.HasIndex("TokenHash")
                         .IsUnique();
 
-                    b.ToTable("PasswordResetToken");
+                    b.HasIndex("AccountId", "CreatedAt");
+
+                    b.ToTable("PasswordResetToken", t =>
+                        {
+                            t.HasCheckConstraint("CK_PasswordResetToken_Attempts", "\"Attempts\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Cocoon.Domain.Entities.Preference", b =>
@@ -636,6 +714,10 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("HoverImageUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
                     b.Property<string>("ImageUrl")
                         .HasMaxLength(2048)
                         .HasColumnType("character varying(2048)");
@@ -670,6 +752,36 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.ToTable("ProductVariant", t =>
                         {
                             t.HasCheckConstraint("CK_ProductVariant_Price", "\"Price\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Cocoon.Domain.Entities.ProductVariantImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ProductVariantId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductVariantId", "SortOrder")
+                        .IsUnique();
+
+                    b.ToTable("ProductVariantImage", t =>
+                        {
+                            t.HasCheckConstraint("CK_ProductVariantImage_SortOrder", "\"SortOrder\" > 0");
                         });
                 });
 
@@ -1008,6 +1120,43 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.ToTable("SurveyAnswer");
                 });
 
+            modelBuilder.Entity("Cocoon.Domain.Entities.SurveyImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SurveyId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ObjectKey")
+                        .IsUnique();
+
+                    b.HasIndex("SurveyId");
+
+                    b.ToTable("SurveyImage");
+                });
+
             modelBuilder.Entity("Cocoon.Domain.Entities.SurveyQuestion", b =>
                 {
                     b.Property<int>("Id")
@@ -1040,6 +1189,45 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.HasIndex("SurveyId");
 
                     b.ToTable("SurveyQuestion");
+                });
+
+            modelBuilder.Entity("Cocoon.Domain.Entities.SurveyQuestionMedia", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ImageId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("YoutubeVideoId")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImageId");
+
+                    b.HasIndex("QuestionId", "SortOrder")
+                        .IsUnique();
+
+                    b.ToTable("SurveyQuestionMedia", t =>
+                        {
+                            t.HasCheckConstraint("CK_SurveyQuestionMedia_Kind", "(\"Kind\" = 'Image' AND \"ImageId\" IS NOT NULL AND \"YoutubeVideoId\" IS NULL) OR (\"Kind\" = 'Video' AND \"YoutubeVideoId\" IS NOT NULL AND \"ImageId\" IS NULL)");
+                        });
                 });
 
             modelBuilder.Entity("Cocoon.Domain.Entities.SurveyRecipient", b =>
@@ -1189,6 +1377,15 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Cocoon.Domain.Entities.FeedbackPhoto", b =>
+                {
+                    b.HasOne("Cocoon.Domain.Entities.Feedback", null)
+                        .WithMany()
+                        .HasForeignKey("FeedbackId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Cocoon.Domain.Entities.FeedbackReply", b =>
                 {
                     b.HasOne("Cocoon.Domain.Entities.Feedback", null)
@@ -1215,6 +1412,11 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Cocoon.Domain.Entities.Order", b =>
                 {
+                    b.HasOne("Cocoon.Domain.Entities.Account", null)
+                        .WithMany()
+                        .HasForeignKey("ConfirmedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Cocoon.Domain.Entities.CustomerProfile", null)
                         .WithMany()
                         .HasForeignKey("CustomerId")
@@ -1280,6 +1482,15 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                     b.HasOne("Cocoon.Domain.Entities.Product", null)
                         .WithMany()
                         .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Cocoon.Domain.Entities.ProductVariantImage", b =>
+                {
+                    b.HasOne("Cocoon.Domain.Entities.ProductVariant", null)
+                        .WithMany()
+                        .HasForeignKey("ProductVariantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -1396,11 +1607,34 @@ namespace Cocoon.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Cocoon.Domain.Entities.SurveyImage", b =>
+                {
+                    b.HasOne("Cocoon.Domain.Entities.Survey", null)
+                        .WithMany()
+                        .HasForeignKey("SurveyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Cocoon.Domain.Entities.SurveyQuestion", b =>
                 {
                     b.HasOne("Cocoon.Domain.Entities.Survey", null)
                         .WithMany()
                         .HasForeignKey("SurveyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Cocoon.Domain.Entities.SurveyQuestionMedia", b =>
+                {
+                    b.HasOne("Cocoon.Domain.Entities.SurveyImage", null)
+                        .WithMany()
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Cocoon.Domain.Entities.SurveyQuestion", null)
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

@@ -13,6 +13,16 @@ export const deleteSurvey = (id: number) => apiRequest<void>(`/surveys/${id}`, {
 export const publishSurvey = (id: number) => apiRequest<void>(`/surveys/${id}/publish`, { method: "POST" });
 export const closeSurvey = (id: number) => apiRequest<void>(`/surveys/${id}/close`, { method: "POST" });
 
+/**
+ * Photo for a question of a saved draft (409 SURVEY_NOT_DRAFT otherwise); jpg/png/webp ≤ 2 MB, checked by content.
+ * Put the returned id in the question's media and save the draft; photos no question uses are cleaned up later.
+ */
+export function uploadQuestionImage(surveyId: number, file: File) {
+  const form = new FormData();
+  form.append("image", file);
+  return apiRequest<{ id: number; url: string }>(`/surveys/${surveyId}/images`, { method: "POST", body: form });
+}
+
 export const addRecipients = (id: number, target: { segment: SegmentFilterValue } | { customerIds: number[] }) =>
   apiRequest<RecipientsAdded>(`/surveys/${id}/recipients`, { method: "POST", json: toRecipientsRequest(target) });
 export const previewSegment = (filter: SegmentFilterValue, signal?: AbortSignal) =>

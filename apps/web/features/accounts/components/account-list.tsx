@@ -26,12 +26,12 @@ interface ActionHandlers {
 }
 
 /** Every change goes through ConfirmDialog naming the account and the consequence (spec 8.5). */
-function AccountActions({ row, onRole, onToggleLock, onDelete }: { row: AccountListItem } & ActionHandlers) {
+function AccountActions({ row, align = "end", onRole, onToggleLock, onDelete }: { row: AccountListItem; align?: "center" | "end" } & ActionHandlers) {
   const id = useId();
   const [role, setRole] = useState(row.role);
   const locked = row.status === "Locked";
   return (
-    <span className="flex items-center justify-end gap-1">
+    <span className={cn("flex items-center gap-1", align === "center" ? "justify-center" : "justify-end")}>
       <ConfirmDialog portal="admin" title="Đổi vai trò tài khoản" description={`Chọn vai trò mới cho ${row.fullName}. Quyền truy cập thay đổi theo vai trò mới.`} confirmLabel="Lưu vai trò"
         trigger={<Button type="button" variant="ghost" size="icon-lg" className={iconButton} aria-label={`Đổi vai trò ${row.fullName}`} title="Đổi vai trò"><UserCog aria-hidden="true" /></Button>}
         onOpenChange={(open) => { if (open) setRole(row.role); }}
@@ -54,7 +54,7 @@ function AccountActions({ row, onRole, onToggleLock, onDelete }: { row: AccountL
 }
 
 const filters: DataFilter<AccountListItem>[] = [
-  { id: "role", label: "Vai trò", options: (Object.keys(roleLabels) as AccountRole[]).map((value) => ({ value, label: roleLabels[value] })), matches: (row, value) => row.role === value },
+  { id: "role", label: "Vai trò", options: assignableRoles.map((value) => ({ value, label: roleLabels[value] })), matches: (row, value) => row.role === value },
   { id: "status", label: "Trạng thái", options: [{ value: "Active", label: "Hoạt động" }, { value: "Locked", label: "Đã khóa" }], matches: (row, value) => row.status === value },
 ];
 
@@ -82,12 +82,12 @@ export function AccountList() {
     { id: "role", header: "Vai trò", value: (row) => roleLabels[row.role], searchable: false, cell: (row) => <StatusBadge kind="role" status={row.role} /> },
     { id: "status", header: "Trạng thái", value: (row) => row.status, searchable: false, cell: (row) => <StatusBadge kind="account" status={row.status} /> },
     { id: "lastLogin", header: "Lần đăng nhập cuối", value: (row) => row.lastLoginAt, sortable: true, searchable: false, cell: (row) => <span className={cn("whitespace-nowrap", !row.lastLoginAt && "text-muted-foreground")}>{lastLogin(row)}</span> },
-    { id: "actions", header: "Thao tác", value: () => null, searchable: false, cell: (row) => <AccountActions row={row} {...handlers} /> },
+    { id: "actions", header: "Thao tác", align: "center", value: () => null, searchable: false, cell: (row) => <AccountActions row={row} align="center" {...handlers} /> },
   ];
 
   return (
     <>
-      <PageHeader title="Quản trị tài khoản" description="Quản lý tài khoản và phân quyền người dùng trong toàn hệ thống Cocoon CRM." actions={
+      <PageHeader title="Quản trị tài khoản" description="Tài khoản và phân quyền của quản trị viên, quản lý và nhân viên. Tài khoản khách hàng do người quản lý phụ trách." actions={
         <Link href="/admin/accounts/new" className={cn(buttonVariants(), "h-12 px-4")}><Plus aria-hidden="true" />Tạo tài khoản mới</Link>
       } />
       <DataTable data={accounts} columns={columns} getRowId={(row) => row.id} caption="Tài khoản" filters={filters} loading={loading} error={error} onRetry={() => { setEdited(null); retry(); }} cardsUntil="xl" renderCard={(row) => (

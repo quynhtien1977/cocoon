@@ -142,7 +142,12 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
             var definition = DemoCatalog.Products[index];
             var name = definition.Name;
             var categoryId = selectedCategories.Single(c => c.Name == definition.Category).Id;
+            // Placeholders written by earlier seeds; replaced by the official page text whenever nobody has edited them.
             var description = $"Sản phẩm Cocoon. Thông tin chính thức: {definition.Variants[0].SourceUrl}";
+            const string ingredientsPlaceholder = "Xem thành phần trên trang sản phẩm chính thức.";
+            const string benefitsPlaceholder = "Xem công dụng trên trang sản phẩm chính thức.";
+            const string usagePlaceholder = "Sử dụng theo hướng dẫn trên trang sản phẩm chính thức.";
+            var content = definition.Content;
             var product = productIds.Length == 1 ? existingProducts.Single(p => p.Id == productIds[0])
                 : existingProducts.SingleOrDefault(p => p.NameNormalized == SearchText.Normalize(name)
                     || p.NameNormalized == SearchText.Normalize(definition.LegacyName));
@@ -151,9 +156,9 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
                 product = Add(new Product
                 {
                     Name = name, NameNormalized = SearchText.Normalize(name), CategoryId = categoryId,
-                    Description = description,
-                    Ingredients = "Xem thành phần trên trang sản phẩm chính thức.", Benefits = "Xem công dụng trên trang sản phẩm chính thức.",
-                    Usage = "Sử dụng theo hướng dẫn trên trang sản phẩm chính thức.",
+                    Description = content?.Description ?? description,
+                    Ingredients = content?.Ingredients ?? ingredientsPlaceholder, Benefits = content?.Benefits ?? benefitsPlaceholder,
+                    Usage = content?.Usage ?? usagePlaceholder,
                     Status = index >= 22 ? ProductStatus.Upcoming : index == 21 ? ProductStatus.Inactive : ProductStatus.Active,
                     CreatedAt = referenceUtc.AddMonths(-12)
                 });
@@ -171,9 +176,16 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
                     (product.Name, product.NameNormalized) = (name, SearchText.Normalize(name));
                 if (product.CategoryId == selectedCategories[index / 4].Id) product.CategoryId = categoryId;
                 if (product.Description == $"{definition.LegacyName} — sản phẩm mô phỏng phục vụ đồ án CRM.") product.Description = description;
-                if (product.Ingredients == "Thành phần mô phỏng từ thực vật.") product.Ingredients = "Xem thành phần trên trang sản phẩm chính thức.";
-                if (product.Benefits == "Chăm sóc cá nhân theo nhu cầu.") product.Benefits = "Xem công dụng trên trang sản phẩm chính thức.";
-                if (product.Usage == "Dữ liệu minh họa, không phải hướng dẫn sử dụng sản phẩm thật.") product.Usage = "Sử dụng theo hướng dẫn trên trang sản phẩm chính thức.";
+                if (product.Ingredients == "Thành phần mô phỏng từ thực vật.") product.Ingredients = ingredientsPlaceholder;
+                if (product.Benefits == "Chăm sóc cá nhân theo nhu cầu.") product.Benefits = benefitsPlaceholder;
+                if (product.Usage == "Dữ liệu minh họa, không phải hướng dẫn sử dụng sản phẩm thật.") product.Usage = usagePlaceholder;
+                if (content is not null)
+                {
+                    if (product.Description == description) product.Description = content.Description;
+                    if (product.Ingredients == ingredientsPlaceholder) product.Ingredients = content.Ingredients;
+                    if (product.Benefits == benefitsPlaceholder) product.Benefits = content.Benefits;
+                    if (product.Usage == usagePlaceholder) product.Usage = content.Usage;
+                }
             }
             for (var variantIndex = 0; variantIndex < Math.Max(1 + index % 3, definition.Variants.Length); variantIndex++)
             {
@@ -211,7 +223,31 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
             result.Add(product);
         }
         await db.SaveChangesAsync(ct);
+        await AddCatalogPhotos(ct);
         return result;
+    }
+
+    /// <summary>
+    /// Hover and gallery photos for catalog variants that still show their catalog photo. A variant that already has a
+    /// gallery or another main photo is left alone, so a rerun never duplicates rows or mixes photos of two products.
+    /// </summary>
+    private async Task AddCatalogPhotos(CancellationToken ct)
+    {
+        var variants = (await db.Set<ProductVariant>().Where(v => v.Sku.StartsWith("COC-V1-")).ToListAsync(ct)).ToDictionary(v => v.Sku);
+        var withGallery = (await db.Set<ProductVariantImage>().Select(i => i.ProductVariantId).Distinct().ToListAsync(ct)).ToHashSet();
+        for (var index = 0; index < DemoCatalog.Products.Length; index++)
+            for (var variantIndex = 0; variantIndex < DemoCatalog.Products[index].Variants.Length; variantIndex++)
+            {
+                var source = DemoCatalog.Products[index].Variants[variantIndex];
+                if (!variants.TryGetValue($"COC-V1-{index + 1:000}-{variantIndex + 1}", out var variant) || variant.ImageUrl != source.ImageUrl)
+                    continue;
+                variant.HoverImageUrl ??= source.HoverImageUrl;
+                if (withGallery.Contains(variant.Id)) continue;
+                var gallery = source.Gallery ?? [];
+                for (var position = 0; position < gallery.Length; position++)
+                    Add(new ProductVariantImage { ProductVariantId = variant.Id, SortOrder = position + 1, Url = gallery[position] });
+            }
+        await db.SaveChangesAsync(ct);
     }
 
     private async Task AddOrders(List<CustomerProfile> customers, List<Product> products, CancellationToken ct)
@@ -231,15 +267,17 @@ public sealed partial class DemoDataSeeder(AppDbContext db, Func<Account, string
             var preferMatch = (index / 80 + index % 80) % 10 < 7;
             var candidates = active.Where(p => tags.Any(t => t.ProductId == p.Id && preferenceIds.Contains(t.PreferenceId)) == preferMatch).ToList();
             if (candidates.Count < 2)
-                throw new InvalidOperationException("Danh mục hoặc sở thích demo đã thay đổi; không đủ sản phẩm cho quy luật mua. Seed đã dừng và không ghi đè dữ liệu.");
+                throw new InvalidOperationException("Danh mục hoặc nhu cầu demo đã thay đổi; không đủ sản phẩm cho quy luật mua. Seed đã dừng và không ghi đè dữ liệu.");
             var chosen = candidates.Take(2).Select(p => variants.Where(v => v.ProductId == p.Id)
                 .OrderBy(v => v.Sku, StringComparer.Ordinal).First()).ToArray();
             var quantity = 1 + index % 3;
+            var status = index % 20 == 18 ? OrderStatus.Cancelled : index % 20 == 19 ? OrderStatus.Returned : OrderStatus.Completed;
+            var orderedAt = referenceUtc.AddMonths(-(index % 12)).AddDays(-(index / 12 % 21));
             var order = Add(new Order
             {
-                Code = code, CustomerId = customer.AccountId, Channel = (OrderChannel)(index % 3),
-                Status = index % 20 == 18 ? OrderStatus.Cancelled : index % 20 == 19 ? OrderStatus.Returned : OrderStatus.Completed,
-                OrderedAt = referenceUtc.AddMonths(-(index % 12)).AddDays(-(index / 12 % 21)),
+                Code = code, CustomerId = customer.AccountId, Channel = (OrderChannel)(index % 3), Status = status, OrderedAt = orderedAt,
+                // Same rule as migration AddWebsiteOrders: a seeded Completed order was completed when placed.
+                CompletedAt = status == OrderStatus.Completed ? orderedAt : null,
                 TotalAmount = chosen.Sum(v => quantity * v.Price)
             });
             await db.SaveChangesAsync(ct);

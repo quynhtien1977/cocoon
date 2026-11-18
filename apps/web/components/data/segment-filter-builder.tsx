@@ -111,7 +111,7 @@ export function SegmentFilterBuilder({ value, onChange, preferences, categories,
           {genders.map((gender) => <Chip key={gender} selected={value.genders.includes(gender)} onToggle={() => update({ genders: toggled(value.genders, gender) })}>{gender}</Chip>)}
         </ChipGroup>
 
-        <ChipGroup legend="Sở thích" hint="Khách có ít nhất một sở thích được chọn." className="md:col-span-2">
+        <ChipGroup legend="Nhu cầu" hint="Khách có ít nhất một nhu cầu được chọn." className="md:col-span-2">
           {preferences.map((item) => <Chip key={item.id} selected={value.preferenceIds.includes(item.id)} onToggle={() => update({ preferenceIds: toggled(value.preferenceIds, item.id) })}>{item.name}</Chip>)}
         </ChipGroup>
 

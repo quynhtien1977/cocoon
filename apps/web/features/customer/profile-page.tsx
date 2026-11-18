@@ -8,7 +8,8 @@ import { ArrowLeft, Check, ChevronDown, Leaf, LoaderCircle, RotateCcw, UserRound
 import { preferenceGroups } from "../auth/register-service";
 import { loadPreferences, loadProfile, localToday, profileErrorMessage, savePreferences, saveProfile, validateProfile, type CustomerPreferences, type CustomerProfile, type ProfileErrors } from "./profile-service";
 
-const control = "w-full min-h-12 rounded border border-[#d8ccba] bg-[#fffdf8] px-3 py-3 text-base text-[#30291f] outline-none focus:border-[#8a6a2b] focus:ring-2 focus:ring-[#8a6a2b]/15 aria-invalid:border-red-700 disabled:opacity-60";
+const control = "w-full min-h-12 rounded border border-[#d8ccba] bg-[#fffdf8] px-3 py-3 text-base text-[#30291f] outline-none focus:border-[#8a6a2b] focus:ring-2 focus:ring-[#8a6a2b]/15 aria-invalid:border-red-700 disabled:cursor-not-allowed disabled:opacity-60";
+const textControl = `${control} read-only:cursor-not-allowed read-only:bg-muted read-only:text-muted-foreground read-only:focus:border-[#d8ccba] read-only:focus:ring-0`;
 const primary = "inline-flex min-h-12 items-center justify-center gap-2 rounded bg-[#211e18] px-6 py-3 font-label text-lg font-semibold uppercase text-[#fefbf4] hover:bg-[#41382a] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8a6a2b] disabled:cursor-not-allowed disabled:opacity-40";
 const secondary = "inline-flex min-h-12 items-center justify-center gap-2 rounded border border-[#d8ccba] px-4 py-3 text-sm text-[#65563e] hover:bg-[#f4eddf] focus-visible:outline-2 focus-visible:outline-[#8a6a2b] disabled:cursor-not-allowed disabled:opacity-40";
 
@@ -98,10 +99,10 @@ function PersonalInformation() {
     {state.loading ? <Loading /> : !values ? <Unavailable error={state.error} retry={state.retry} /> : <form aria-label="Chỉnh sửa thông tin cá nhân" noValidate onSubmit={submit} aria-busy={state.pending}>
       <fieldset disabled={state.pending} className="m-0 grid min-w-0 gap-4 border-0 p-0 sm:grid-cols-2">
         <legend className="sr-only">Thông tin tài khoản</legend>
-        <div className="grid gap-2 sm:col-span-2"><label htmlFor="profile-email" className="text-sm font-semibold">Email đăng ký</label><input id="profile-email" type="email" value={values.email} readOnly className={`${control} bg-[#f4f1ea] text-[#756b5e]`} aria-describedby="email-help" /><p id="email-help" className="text-xs leading-5 text-[#756b5e]">Email dùng để đăng nhập, hiện chưa hỗ trợ thay đổi.</p></div>
+        <div className="grid gap-2 sm:col-span-2"><label htmlFor="profile-email" className="text-sm font-semibold">Email đăng ký</label><input id="profile-email" type="email" value={values.email} readOnly className={textControl} /></div>
         {fields.map(field => <div key={field.key} className={`grid content-start gap-2 ${field.key === "fullName" ? "sm:col-span-2" : ""}`}>
           <label htmlFor={`profile-${field.key}`} className="text-sm font-semibold">{field.label}{field.key === "fullName" && <span className="text-[#977438]"> *</span>}</label>
-          <input id={`profile-${field.key}`} name={field.key} type={field.type} autoComplete={field.autoComplete} maxLength={"max" in field ? field.max : undefined} min={field.key === "dateOfBirth" ? "1900-01-01" : undefined} max={field.key === "dateOfBirth" ? localToday() : undefined} value={values[field.key]} onChange={event => update(field.key, event.target.value)} required={field.key === "fullName"} aria-invalid={!!errors[field.key]} aria-describedby={errors[field.key] ? `${field.key}-error` : undefined} className={control} />
+          <input id={`profile-${field.key}`} name={field.key} type={field.type} autoComplete={field.autoComplete} maxLength={"max" in field ? field.max : undefined} min={field.key === "dateOfBirth" ? "1900-01-01" : undefined} max={field.key === "dateOfBirth" ? localToday() : undefined} value={values[field.key]} onChange={event => update(field.key, event.target.value)} required={field.key === "fullName"} aria-invalid={!!errors[field.key]} aria-describedby={errors[field.key] ? `${field.key}-error` : undefined} className={textControl} />
           {errors[field.key] && <p id={`${field.key}-error`} role="alert" className="text-sm text-red-800">{errors[field.key]}</p>}
         </div>)}
         <div className="grid gap-2 sm:col-span-2"><label htmlFor="profile-gender" className="text-sm font-semibold">Giới tính</label>
@@ -110,7 +111,7 @@ function PersonalInformation() {
             {values.gender && !["Nữ", "Nam", "Khác"].includes(values.gender) && <option value={values.gender}>{values.gender}</option>}
           </select>
         </div>
-        <div className="grid gap-2 sm:col-span-2"><label htmlFor="profile-address" className="text-sm font-semibold">Địa chỉ</label><textarea id="profile-address" name="address" autoComplete="street-address" maxLength={1000} rows={2} value={values.address} onChange={event => update("address", event.target.value)} className={`${control} resize-y`} aria-invalid={!!errors.address} aria-describedby={errors.address ? "address-error" : undefined} />{errors.address && <p id="address-error" role="alert" className="text-sm text-red-800">{errors.address}</p>}</div>
+        <div className="grid gap-2 sm:col-span-2"><label htmlFor="profile-address" className="text-sm font-semibold">Địa chỉ</label><textarea id="profile-address" name="address" autoComplete="street-address" maxLength={1000} rows={2} value={values.address} onChange={event => update("address", event.target.value)} className={`${textControl} resize-y`} aria-invalid={!!errors.address} aria-describedby={errors.address ? "address-error" : undefined} />{errors.address && <p id="address-error" role="alert" className="text-sm text-red-800">{errors.address}</p>}</div>
         <label className="flex items-start gap-3 text-sm leading-6 text-[#756b5e] sm:col-span-2"><input type="checkbox" checked={values.consentPersonalData} onChange={event => update("consentPersonalData", event.target.checked)} className="mt-1 size-4 shrink-0 accent-[#846530]" />Tôi đồng ý cho Cocoon sử dụng thông tin cá nhân để chăm sóc và tư vấn sản phẩm phù hợp.</label>
       </fieldset>
       <div className="mt-4 space-y-3">{state.error && <ErrorMessage message={state.error} />}{state.success && <p role="status" className="flex items-center gap-2 text-sm text-[#4c623e]"><Check size={18} />Đã lưu thông tin cá nhân.</p>}</div>
@@ -124,11 +125,11 @@ const persistPreferences = (value: CustomerPreferences, signal?: AbortSignal) =>
 function Preferences() {
   const state = useEditableSection(loadPreferences, persistPreferences);
   const values = state.draft;
-  const groups = [...preferenceGroups.map(group => ({ key: group.key as string, label: group.label as string })), { key: "other", label: "Sở thích khác đã lưu" }];
-  return <Section id="customer-preferences" title="Sở thích của bạn" description="Để Cocoon hiểu làn da và những điều bạn yêu thích." icon={<Leaf size={22} strokeWidth={1.5} />}>
-    {state.loading ? <Loading /> : !values ? <Unavailable error={state.error} retry={state.retry} /> : <form aria-label="Chỉnh sửa sở thích" onSubmit={event => { event.preventDefault(); void state.save(); }} aria-busy={state.pending}>
+  const groups = [...preferenceGroups.map(group => ({ key: group.key as string, label: group.label as string })), { key: "other", label: "Nhu cầu khác đã lưu" }];
+  return <Section id="customer-preferences" title="Nhu cầu của bạn" description="Để Cocoon hiểu làn da và những điều bạn yêu thích." icon={<Leaf size={22} strokeWidth={1.5} />}>
+    {state.loading ? <Loading /> : !values ? <Unavailable error={state.error} retry={state.retry} /> : <form aria-label="Chỉnh sửa nhu cầu" onSubmit={event => { event.preventDefault(); void state.save(); }} aria-busy={state.pending}>
       <p className="mb-6 text-sm leading-6 text-[#756b5e]">Các lựa chọn từ khi đăng ký được hiển thị tại đây. Bạn có thể chọn nhiều mục hoặc để trống.</p>
-      {values.derived.length > 0 && <div className="mb-6 rounded bg-[#f4f1ea] p-4 text-sm text-[#756b5e]"><p className="font-semibold">Sở thích từ khảo sát</p><p className="mt-2">Được cập nhật theo câu trả lời khảo sát, không thay đổi khi lưu các lựa chọn bên dưới.</p><ul className="mt-2 flex flex-wrap gap-2">{values.derived.map(item => <li key={item.id} className="rounded border border-[#d8ccba] px-3 py-1">{item.label}</li>)}</ul></div>}
+      {values.derived.length > 0 && <div className="mb-6 rounded bg-[#f4f1ea] p-4 text-sm text-[#756b5e]"><p className="font-semibold">Nhu cầu từ khảo sát</p><p className="mt-2">Được cập nhật theo câu trả lời khảo sát, không thay đổi khi lưu các lựa chọn bên dưới.</p><ul className="mt-2 flex flex-wrap gap-2">{values.derived.map(item => <li key={item.id} className="rounded border border-[#d8ccba] px-3 py-1">{item.label}</li>)}</ul></div>}
       <div className="grid gap-6">{groups.map(group => {
         const options = values.options.filter(option => option.group === group.key);
         if (!options.length && group.key === "other") return null;
@@ -136,7 +137,7 @@ function Preferences() {
         return <div key={group.key} className="grid gap-3">
           <span id={`profile-preference-${group.key}`} className="text-sm font-semibold">{group.label}</span>
           <Select.Root multiple value={selected} disabled={state.pending || !options.length} onValueChange={ids => state.update({ ...values, selected: [...values.selected.filter(id => !options.some(option => option.id === id)), ...ids] })}>
-            <Select.Trigger aria-labelledby={`profile-preference-${group.key}`} className={`${control} flex items-center justify-between gap-3 text-left`}><span className="text-sm">{!options.length ? "Chưa có lựa chọn khả dụng" : selected.length ? `Đã chọn ${selected.length} mục` : "Chọn sở thích của bạn"}</span><Select.Icon><ChevronDown size={18} /></Select.Icon></Select.Trigger>
+            <Select.Trigger aria-labelledby={`profile-preference-${group.key}`} className={`${control} flex items-center justify-between gap-3 text-left`}><span className="text-sm">{!options.length ? "Chưa có lựa chọn khả dụng" : selected.length ? `Đã chọn ${selected.length} mục` : "Chọn nhu cầu của bạn"}</span><Select.Icon><ChevronDown size={18} /></Select.Icon></Select.Trigger>
             <Select.Portal><Select.Positioner sideOffset={6} align="start" alignItemWithTrigger={false} collisionPadding={12} className="z-50 outline-none"><Select.Popup className="max-h-[min(320px,var(--available-height))] w-[var(--anchor-width)] max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain rounded border border-[#d8ccba] bg-[#fffdf8] p-1 shadow-lg"><Select.List>
               {options.map(option => <Select.Item key={option.id} value={option.id} label={option.label} disabled={option.inactive && !selected.includes(option.id)} className="flex cursor-pointer items-start gap-3 rounded p-3 text-sm leading-6 text-[#40372a] outline-none data-highlighted:bg-[#f3ecdf] data-disabled:opacity-50"><span className="mt-1 grid size-4 shrink-0 place-items-center rounded-sm border border-[#ad956d]"><Select.ItemIndicator><Check size={14} /></Select.ItemIndicator></span><Select.ItemText>{option.label}{option.inactive && <small className="block text-[#756b5e]">Không còn trong danh mục · có thể bỏ chọn</small>}</Select.ItemText></Select.Item>)}
             </Select.List></Select.Popup></Select.Positioner></Select.Portal>
@@ -144,9 +145,9 @@ function Preferences() {
           {selected.length > 0 && <ul className="flex flex-wrap gap-2" aria-label={`${group.label} đã chọn`}>{selected.map(id => <li key={id} className="flex max-w-full items-center gap-1 rounded bg-[#f3ecdf] py-1 pl-3 pr-1 text-sm text-[#6d542d]"><span className="min-w-0 break-words">{options.find(option => option.id === id)?.label}</span><button type="button" disabled={state.pending} aria-label={`Bỏ ${options.find(option => option.id === id)?.label}`} onClick={() => state.update({ ...values, selected: values.selected.filter(value => value !== id) })} className="grid size-8 shrink-0 cursor-pointer place-items-center rounded hover:bg-[#e6d8c1] focus-visible:outline-2"><X size={14} /></button></li>)}</ul>}
         </div>;
       })}</div>
-      {values.selected.length > 0 && <button type="button" disabled={state.pending} onClick={() => state.update({ ...values, selected: [] })} className="mt-4 min-h-11 text-sm text-[#80602d] underline underline-offset-4 disabled:opacity-50">Bỏ tất cả sở thích</button>}
-      <div className="mt-4 space-y-3">{state.error && <ErrorMessage message={state.error} />}{state.success && <p role="status" className="flex items-center gap-2 text-sm text-[#4c623e]"><Check size={18} />Đã lưu sở thích.</p>}</div>
-      <Actions pending={state.pending} dirty={state.dirty} undo={state.undo} label="Lưu sở thích" undoLabel="Hoàn tác sở thích" />
+      {values.selected.length > 0 && <button type="button" disabled={state.pending} onClick={() => state.update({ ...values, selected: [] })} className="mt-4 min-h-11 text-sm text-[#80602d] underline underline-offset-4 disabled:opacity-50">Bỏ tất cả nhu cầu</button>}
+      <div className="mt-4 space-y-3">{state.error && <ErrorMessage message={state.error} />}{state.success && <p role="status" className="flex items-center gap-2 text-sm text-[#4c623e]"><Check size={18} />Đã lưu nhu cầu.</p>}</div>
+      <Actions pending={state.pending} dirty={state.dirty} undo={state.undo} label="Lưu nhu cầu" undoLabel="Hoàn tác nhu cầu" />
     </form>}
   </Section>;
 }

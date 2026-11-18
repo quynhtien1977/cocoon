@@ -1,11 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 using Cocoon.Application.Recommendations;
+using Cocoon.Application.Shop;
 using Cocoon.Application.Surveys;
 using Cocoon.Domain.Entities;
 using Cocoon.Domain.Enums;
 using Cocoon.Infrastructure.Feedbacks;
 using Cocoon.Infrastructure.Persistence;
 using Cocoon.Infrastructure.Recommendations;
+using Cocoon.Infrastructure.Shop;
 using Cocoon.Infrastructure.Surveys;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,7 +21,7 @@ namespace Cocoon.Api.Controllers;
 [Route("api/v1/me")]
 [Authorize(Policy = "RequireCustomer")]
 public sealed class CustomerPortalController(AppDbContext db, RecommendationService recommendations, CustomerSurveyService surveys,
-    IOptions<FeedbackOptions> feedbackOptions) : ApiStubController
+    IOptions<FeedbackOptions> feedbackOptions, ShopService shop) : ApiStubController
 {
     [HttpGet("home")]
     public async Task<IActionResult> Home(CancellationToken cancellationToken)
@@ -55,6 +57,26 @@ public sealed class CustomerPortalController(AppDbContext db, RecommendationServ
         var order = await db.Set<Order>().SingleOrDefaultAsync(o => o.Id == id && o.CustomerId == me, cancellationToken);
         return order is null ? NotFound() : Ok(ToView(order, await OrderLines([order.Id], cancellationToken)));
     }
+
+    /// <summary>"Mua ngay": places a website order (Placed). Prices are read from the database, not from the request.</summary>
+    [HttpPost("orders"), ProducesResponseType<OrderPlaced>(StatusCodes.Status201Created)]
+    public Task<IActionResult> PlaceOrder(PlaceOrderInput request, CancellationToken cancellationToken) =>
+        ShopResult(async () => StatusCode(StatusCodes.Status201Created, await shop.PlaceAsync(AccountId, request, cancellationToken)));
+
+    [HttpPost("orders/{id:int}/cancel")]
+    public Task<IActionResult> CancelOrder(int id, CancellationToken cancellationToken) =>
+        ShopResult(async () => { await shop.CancelAsync(AccountId, id, cancellationToken); return NoContent(); });
+
+    /// <summary>"Đã nhận hàng": the order becomes Completed, so its lines can be reviewed and purchases feed suggestions.</summary>
+    [HttpPost("orders/{id:int}/received")]
+    public Task<IActionResult> ReceiveOrder(int id, CancellationToken cancellationToken) =>
+        ShopResult(async () =>
+        {
+            var me = AccountId;
+            await shop.ReceiveAsync(me, id, cancellationToken);
+            await recommendations.RebuildAsync([me], cancellationToken);
+            return NoContent();
+        });
 
     [HttpGet("reviewable-items")]
     public async Task<IActionResult> ReviewableItems(CancellationToken cancellationToken) =>
@@ -96,7 +118,8 @@ public sealed class CustomerPortalController(AppDbContext db, RecommendationServ
             CanEditRating = canEditRating,
             RatingEditableUntil = canEditRating ? ratingUntil : null,
             CanEditContent = ContentEditable(f.Status, f.RepliedAt),
-            CanClose = f.Status != FeedbackStatus.Closed
+            CanClose = f.Status != FeedbackStatus.Closed,
+            Photos = await FeedbackPhotosController.Photos(db, id, cancellationToken)
         });
     }
 
@@ -339,11 +362,15 @@ public sealed class CustomerPortalController(AppDbContext db, RecommendationServ
             {
                 i.OrderId,
                 Item = new CustomerOrderItem(i.Id, p.Id, p.Id.ToString(), p.Name, v.Name, v.ImageUrl, i.Quantity, i.UnitPrice,
-                    f == null ? null : new FeedbackRef(f.Id, f.Rating))
+                    f == null ? null : new FeedbackRef(f.Id, f.Rating, f.CreatedAt))
             }).ToListAsync(cancellationToken)).ToLookup(x => x.OrderId, x => x.Item);
 
     private static CustomerOrder ToView(Order o, ILookup<int, CustomerOrderItem> lines) =>
-        new(o.Id, o.Code, o.OrderedAt, o.Status, o.TotalAmount, lines[o.Id].ToList());
+        new(o.Id, o.Code, o.OrderedAt, o.Status, o.TotalAmount, lines[o.Id].ToList())
+        {
+            ShippingAddress = o.ShippingAddress, ConfirmedAt = o.ConfirmedAt, CompletedAt = o.CompletedAt, CancelledAt = o.CancelledAt,
+            CanCancel = o.Status == OrderStatus.Placed, CanConfirmReceived = o.Status == OrderStatus.Delivering
+        };
 
     private IQueryable<MyFeedbackRow> MyFeedback(int me) =>
         from f in db.Set<Feedback>()
@@ -374,11 +401,22 @@ public sealed record CustomerHome(IReadOnlyList<PendingSurvey> PendingSurveys, I
     IReadOnlyList<RecommendationItem> Recommendations, int UnreadNotifications);
 public sealed record PendingSurvey(int Id, string Title, DateTime? CloseAt, int QuestionCount);
 public sealed record ReviewableItem(int OrderItemId, int ProductId, string Name, string Variant, string? ImageUrl, string OrderCode, DateTime OrderedAt);
-public sealed record CustomerOrder(int Id, string Code, DateTime OrderedAt, OrderStatus Status, decimal TotalAmount, IReadOnlyList<CustomerOrderItem> Items);
+public sealed record CustomerOrder(int Id, string Code, DateTime OrderedAt, OrderStatus Status, decimal TotalAmount, IReadOnlyList<CustomerOrderItem> Items)
+{
+    public string? ShippingAddress { get; init; }
+    public DateTime? ConfirmedAt { get; init; }
+    public DateTime? CompletedAt { get; init; }
+    public DateTime? CancelledAt { get; init; }
+    /// <summary>True while Placed: the shop has not confirmed it yet.</summary>
+    public bool CanCancel { get; init; }
+    /// <summary>True while Delivering: "Đã nhận hàng" completes it.</summary>
+    public bool CanConfirmReceived { get; init; }
+}
 /// <param name="ProductSlug">The C2 page links products by this value; C9 reads it back as the product id.</param>
 public sealed record CustomerOrderItem(int Id, int ProductId, string ProductSlug, string Name, string Variant, string? ImageUrl,
     int Quantity, decimal UnitPrice, FeedbackRef? Review);
-public sealed record FeedbackRef(int Id, int Rating);
+/// <param name="CreatedAt">When the customer reviewed the line; "Đã đánh giá" lists the newest review first.</param>
+public sealed record FeedbackRef(int Id, int Rating, DateTime CreatedAt);
 public sealed record FeedbackProduct(int Id, string Name, string Variant, string? ImageUrl);
 public sealed record MyFeedbackItem(int Id, int Rating, string Content, FeedbackStatus Status, DateTime CreatedAt, string? OrderCode,
     FeedbackProduct Product, bool HasReply);
@@ -398,6 +436,7 @@ public sealed record MyFeedbackDetail(int Id, int Rating, string Content, Feedba
     public bool CanEditContent { get; init; }
     /// <summary>True while open: the customer may end the conversation ("Tôi không cần hỗ trợ thêm").</summary>
     public bool CanClose { get; init; }
+    public IReadOnlyList<FeedbackPhotoItem> Photos { get; init; } = [];
 }
 public sealed record FollowUpRequest([Required] string Content);
 public sealed record EditFeedbackRequest([Range(1, 5)] int Rating, [Required] string Content);

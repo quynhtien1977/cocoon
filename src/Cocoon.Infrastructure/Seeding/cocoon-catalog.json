@@ -1,5 +1,5 @@
 {
-  "verifiedOn": "2026-11-05",
+  "verifiedOn": "2026-11-14",
   "products": [
     {
       "legacyName": "Sữa rửa mặt sen Hậu Giang",
@@ -11,9 +11,22 @@
           "price": 339000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Artboard_12_ea031b6b39.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/sua-rua-mat-sen-hau-giang-310ml",
-          "sourceTitle": "Sữa rửa mặt sen Hậu Giang 310ml"
+          "sourceTitle": "Sữa rửa mặt sen Hậu Giang 310ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_1_dcfa1bbf4e.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Avatar_2_b410879481.jpg",
+            "https://image.cocoonvietnam.com/uploads/Lamellar_078c139e24.png",
+            "https://image.cocoonvietnam.com/uploads/554756182_810437861343651_7121688203284243728_n_d2ab596dcf.jpg",
+            "https://image.cocoonvietnam.com/uploads/Mau_fb52e3dc81.png"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Khai thác sức mạnh từ những đóa sen hữu cơ ở vùng đất Hậu Giang kết hợp cùng các hoạt chất làm dịu và dưỡng ẩm, Sữa Rửa Mặt Sen Hậu Giang dành riêng cho làn da rất nhạy cảm, giúp làm sạch sâu, loại bỏ bụi bẩn và dầu thừa nhưng vẫn duy trì độ ẩm tự nhiên cho da, bảo vệ hàng rào độ ẩm, mang lại làn da mềm mại và tươi mới.\nPhù hợp với: Mọi loại da. Da thường tới da khô, da nhạy cảm tới rất nhạy cảm.",
+        "benefits": "Làm sạch, làm dịu da và dưỡng ẩm",
+        "ingredients": "Thành phần chính: Chiết xuất sen, Madecassoside, B5, Beta-glucan và Sodium PCA.",
+        "usage": "Lấy 1 lượng vừa đủ và mát-xa nhẹ nhàng trên da ướt. Rửa sạch lại với nước. Dùng buổi sáng và tối."
+      }
     },
     {
       "legacyName": "Nước sen Hậu Giang",
@@ -25,16 +38,33 @@
           "price": 192000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Web_Avatar_Nuoc_Sen_140ml_copy_100_14377247e3.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/nuoc-sen-hau-giang-140ml",
-          "sourceTitle": "Nước sen Hậu Giang 140ml"
+          "sourceTitle": "Nước sen Hậu Giang 140ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/HS_Nuoc_sen_3_7e4f7a8418.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Product_Sen_Website_Avatar_02_67c513805c.jpg",
+            "https://image.cocoonvietnam.com/uploads/Avatar_Toner_Sen_140ml_04_641fc9cb27.jpg",
+            "https://image.cocoonvietnam.com/uploads/HS_Nuoc_sen_3_7e4f7a8418.jpg"
+          ]
         },
         {
           "name": "310ml",
           "price": 299000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Web_Avatar_Nuoc_Sen_310ml_copy_100_996dc09029.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/nuoc-sen-hau-giang-310ml",
-          "sourceTitle": "Nước sen Hậu Giang 310ml"
+          "sourceTitle": "Nước sen Hậu Giang 310ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/HS_Nuoc_sen_3_7e4f7a8418.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/z5421345221560_ded0136681dc93fd158807939849abc8_690e94429b.jpg",
+            "https://image.cocoonvietnam.com/uploads/HS_Nuoc_sen_3_7e4f7a8418.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Khai thác sức mạnh từ những đoá sen tinh khiết từ vùng đất Hậu Giang kết hợp cùng các hoạt chất khoa học tiên tiến gồm Madecassoside, vitamin B5, B12, Beta-glucan (prebiotic) và Sweetone® (chiết xuất quả ngũ vị tử), nước sen Hậu Giang dịu lành giúp bảo vệ hàng rào độ ẩm của làn da nhạy cảm, giảm mẩn đỏ và ngứa do khô ráp, mang lại cho làn da một cảm giác nhẹ nhàng, êm ái như được vỗ về.\nPhù hợp với: Da rất nhạy cảm.",
+        "benefits": "Hỗ trợ cân bằng hệ vi sinh",
+        "ingredients": "Thành phần chính: Chiết xuất sen, Madecassoside, B5, B12, Beta-glucan và Sweetone®.",
+        "usage": "Sau khi làm sạch da bằng tẩy trang và sữa rửa mặt, lấy một lượng sản phẩm vào lòng bàn tay, thoa đều lên da, vỗ nhẹ nhàng để sản phẩm thẩm thấu vào da. Dùng buổi sáng và tối."
+      }
     },
     {
       "legacyName": "Gel rửa mặt bí đao",
@@ -46,23 +76,46 @@
           "price": 192000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/z4394607669965_ca1ceaa3a09cb9e3f966f4ac4256dd9a_1_f787014de5.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/gel-bi-dao-rua-mat-140ml",
-          "sourceTitle": "Gel bí đao rửa mặt 140ml"
+          "sourceTitle": "Gel bí đao rửa mặt 140ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/gel_bi_dao_rua_mat_mat_sau_936e515ab5.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/gel_bi_dao_rua_mat_texture_5eaab2bbe3.jpg",
+            "https://image.cocoonvietnam.com/uploads/29892181_slide_2_7e4e7f82a1.jpg",
+            "https://image.cocoonvietnam.com/uploads/z4727571380348_d9fea5abc9cc75106c94676b570071d6_a800916a97.jpg"
+          ]
         },
         {
           "name": "310ml",
           "price": 299000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/z3526520930085_8478409d6ac4058a7b77514ce71bdada_d14a16f231.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/gel-bi-dao-rua-mat-310ml",
-          "sourceTitle": "Gel bí đao rửa mặt 310ml"
+          "sourceTitle": "Gel bí đao rửa mặt 310ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/gel_bi_dao_rua_mat_mat_sau_936e515ab5.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/gel_bi_dao_rua_mat_texture_5eaab2bbe3.jpg",
+            "https://image.cocoonvietnam.com/uploads/31989099_slide_2_9583e65dc4.jpg",
+            "https://image.cocoonvietnam.com/uploads/z4727571380348_d9fea5abc9cc75106c94676b570071d6_a800916a97.jpg"
+          ]
         },
         {
           "name": "500ml",
           "price": 441000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Website_Gel_bi_dao_rua_mat_500ml_65368b5c9e.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/gel-bi-dao-rua-mat-500ml",
-          "sourceTitle": "Gel bí đao rửa mặt 500ml"
+          "sourceTitle": "Gel bí đao rửa mặt 500ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/gel_bi_dao_rua_mat_mat_sau_936e515ab5.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/gel_bi_dao_rua_mat_texture_5eaab2bbe3.jpg",
+            "https://image.cocoonvietnam.com/uploads/z4727571380348_d9fea5abc9cc75106c94676b570071d6_a800916a97.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Gel Bí Đao Rửa Mặt giúp làm sạch sâu và giảm dầu thừa, đồng thời giúp làm giảm việc hình thành mụn, cung cấp độ ẩm cho da, giúp làm dịu và giảm kích ứng cho làn da thông qua sự kết hợp của các thành phần gồm chiết xuất bí đao, chiết xuất rau má, tinh dầu tràm trà cùng với BHA, vitamin B3, B5 và Betaine.\nPhù hợp với: Mọi loại da, đặc biệt là da dầu mụn.",
+        "benefits": "Giảm dầu và mụn",
+        "ingredients": "Thành phần chính: Chiết xuất bí đao, chiết xuất rau má, tinh dầu tràm trà và BHA\nBí đao: Theo sách y học cổ truyền, bí đao có đặc tính làm mát, làm giảm nhiệt, kháng viêm và diệt khuẩn giúp điều trị mụn trứng cá, mụn viêm.",
+        "usage": "Lấy một lượng vừa đủ mát-xa nhẹ nhàng trên da ướt. Rửa sạch lại với nước. Dùng buổi sáng và tối."
+      }
     },
     {
       "legacyName": "Nước tẩy trang bí đao",
@@ -74,9 +127,20 @@
           "price": 299000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Artboard_6_3ec256ca12.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/nuoc-tay-trang-bi-dao-500ml",
-          "sourceTitle": "Nước tẩy trang bí đao 500ml"
+          "sourceTitle": "Nước tẩy trang bí đao 500ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892150_back_4bcb783962.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Hinh_3_29162f2a67.jpg",
+            "https://image.cocoonvietnam.com/uploads/Hinh_4_7e36be8667.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Từ phương châm làn da dầu và mụn rất nhạy cảm nên cần được thiết kế một loại nước tẩy trang phù hợp, với công nghệ micellar và NatraGem™ S150, Nước Tẩy Trang Bí Đao giúp làm sạch hiệu quả lớp trang điểm, bụi bẩn và dầu thừa, mang lại làn da sạch thoáng và mềm mịn.\nPhù hợp với: Da dầu, da mụn.",
+        "benefits": "Làm sạch và giảm dầu",
+        "ingredients": "Thành phần chính: Chiết xuất bí đao, chiết xuất rau má, tinh dầu tràm trà và NatraGem™ S150\nBí đao: Theo sách y học cổ truyền, bí đao có đặc tính làm mát, làm giảm nhiệt, kháng viêm và diệt khuẩn giúp điều trị mụn trứng cá, mụn viêm.",
+        "usage": "Thấm đều sản phẩm lên bông tẩy trang, nhẹ nhàng lau khắp mặt để làm sạch lớp trang điểm và bụi bẩn. Dịu nhẹ cho vùng môi và mắt."
+      }
     },
     {
       "legacyName": "Tinh chất nghệ Hưng Yên",
@@ -88,9 +152,21 @@
           "price": 320000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Skin_N_Tinh_chat_nghe_C10_a7b2be4596.png",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/tinh-chat-nghe-hung-yen-30ml",
-          "sourceTitle": "Tinh chất nghệ Hưng Yên C10 30ml"
+          "sourceTitle": "Tinh chất nghệ Hưng Yên C10 30ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/30382208_back_75cb18d093.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_ca406d4971.jpg",
+            "https://image.cocoonvietnam.com/uploads/30382208_slide_3_b60a1bfcec.jpg",
+            "https://image.cocoonvietnam.com/uploads/Artboard_csa62_f8a4e76fb5.png"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Dầu nghệ chiết xuất từ củ nghệ Hưng yên rất giàu turmerone, được xé nhỏ và lơ lửng trong một hỗn hợp kết cấu mọng nước chứa Vitamin B3, NAG và Vitamin C (3-o-ethyl ascorbic acid) tạo thành tinh chất nghệ có tác dụng ngăn ngừa oxy hóa tăng cường khả năng làm sáng da, cải thiện làn da xỉn màu và làm mờ vết thâm.\nPhù hợp với: Mọi loại da.",
+        "benefits": "Sáng da và mờ vết thâm",
+        "ingredients": "Thành phần chính: Dầu củ nghệ, 4% Vitamin B3, 2% NAG và 10% Vitamin C\nTinh dầu nghệ: có tác dụng tăng cường hàng rào bảo vệ của da.",
+        "usage": "Lấy 4-6 giọt tinh chất vào lòng bàn tay, xoa đều và mát-xa lên da mặt sạch, tránh vùng mắt. Sử dụng sáng và tối."
+      }
     },
     {
       "legacyName": "Kem dưỡng bí đao",
@@ -102,16 +178,34 @@
           "price": 192000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Artboard_46_1412dc8aa4.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/thach-bi-dao-30ml",
-          "sourceTitle": "Thạch bí đao 30ml"
+          "sourceTitle": "Thạch bí đao 30ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/34211376_back_83ef2dd0e2.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_80603a3734.jpg",
+            "https://image.cocoonvietnam.com/uploads/34211376_slide_2_ae991ad490.jpg",
+            "https://image.cocoonvietnam.com/uploads/34211376_slide_3_c752820dfc.jpg"
+          ]
         },
         {
           "name": "100ml",
           "price": 378000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Artboard_41_d59cbd8b7e.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/thach-bi-dao-100ml",
-          "sourceTitle": "Thạch bí đao 100ml"
+          "sourceTitle": "Thạch bí đao 100ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/34211377_back_dcf91de6c7.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_4_a074f8f1e0.jpg",
+            "https://image.cocoonvietnam.com/uploads/34211377_slide_2_d6ee956311.jpg",
+            "https://image.cocoonvietnam.com/uploads/34211377_slide_3_e2496b9fb2.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Với sự kết hợp giữa chiết xuất bí đao thanh mát, 5α-AVOCUTA® được chưng cất phân tử từ dầu quả bơ và CENTELLA CAST trích ly từ rau má, thạch dưỡng bí đao với kết cấu mỏng nhẹ tan nhanh vào da giúp cung cấp độ ẩm, giảm lượng dầu thừa và cải thiện tình trạng mụn.\nPhù hợp với: Da dầu, da mụn, da hỗn hợp thiên dầu.",
+        "benefits": "Giảm dầu và mụn",
+        "ingredients": "Thành phần chính: Chiết xuất bí đao, 5α-AVOCUTA®, CENTELLA CAST\nChiết xuất bí đao: đây là nguyên liệu lành tính, thanh mát giúp giảm bớt tình trạng căng thẳng và khó chịu của làn da đang bị mụn. Dịch chiết từ quả bí đao có tác dụng kháng khuẩn, chống ôxi hoá, hạn chế sự hình thành những gốc tự do, từ đó giúp điều hoà và làm dịu mụn viêm.",
+        "usage": "Sản phẩm sử dụng sau bước tinh chất. Bạn thoa đều một lượng vừa đủ lên da mặt. Dùng 2 lần mỗi ngày, sáng và tối để đạt hiệu quả tốt nhất."
+      }
     },
     {
       "legacyName": "Mặt nạ cà phê Đắk Lắk",
@@ -123,9 +217,19 @@
           "price": 172000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Ca_phe_Dak_Lak_Lam_Sach_Da_Chet_Mat_150ml_ec5910e863.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/ca-phe-dak-lak-lam-sach-da-chet-mat-150ml",
-          "sourceTitle": "Cà phê Đắk Lắk làm sạch da chết mặt 150ml"
+          "sourceTitle": "Cà phê Đắk Lắk làm sạch da chết mặt 150ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892144_back_0289748668.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/29892144_slide_2_a241a3841e.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Những hạt cà phê Đắk Lắk xay nhuyễn giàu caffeine hòa quyện với bơ cacao giúp bạn loại bỏ lớp tế bào chết già cỗi và xỉn màu, đánh thức làn da tươi mới cùng cảm giác mượt mà và mềm mịn lan tỏa.\nPhù hợp với: Mọi loại da.",
+        "benefits": "Cho làn da mềm mại và rạng rỡ",
+        "ingredients": "Thành phần chính: Hạt cà phê nguyên chất và bơ ca cao\nCà phê Đăk Lăk : Hạt cà phê trong sản phẩm được xay nhuyễn và sàng lọc với tỉ lệ hoàn hảo, đảm bảo làm sạch các tế bào chết trên da mặt nhưng không gây tổn thương đến làn da. Hạt cà phê tác dụng cao trong việc chống oxi hóa, đặc biệt caffeine trong hạt cà phê sẽ giúp da trở nên săn chắc, đều màu, mang lại làn da mềm mại, rạng rỡ và nhiều năng lượng.",
+        "usage": "Thoa một lượng sản phẩm vừa đủ lên da ướt. Mát-xa nhẹ nhàng tránh vùng mắt. Rửa sạch lại với nước. Dùng 2 – 3 lần một tuần để đạt hiệu quả tốt nhất."
+      }
     },
     {
       "legacyName": "Tinh chất rau má",
@@ -137,9 +241,22 @@
           "price": 261000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Artboard_18_e4234e2f81.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/tinh-chat-hoa-hong-30ml",
-          "sourceTitle": "Tinh chất hoa hồng 30ml"
+          "sourceTitle": "Tinh chất hoa hồng 30ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892134_back_11222dc901.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_ddecb646cb.jpg",
+            "https://image.cocoonvietnam.com/uploads/29892134_slide_2_15f2c41040.jpg",
+            "https://image.cocoonvietnam.com/uploads/29892134_slide_3_0b3c6fca1c.jpg",
+            "https://image.cocoonvietnam.com/uploads/slide_4_5a43f33bbd.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Với kết cấu mọng nước, tinh chất hoa hồng sẽ thẩm thấu nhanh và mang các dưỡng chất ngậm nước đi sâu vào các tầng da, giúp dưỡng ẩm sâu, cải thiện làn da do sự mất nước gây ra, mang lại làn da căng mọng và ẩm mịn, đồng thời trả lại sự đầy đặn và tươi mới vốn có của làn da.\nPhù hợp với: Da khô, Da hỗn hợp thiên khô, Da thường.",
+        "benefits": "Cấp ẩm và làm mềm mịn da",
+        "ingredients": "Thành phần chính: Chiết xuất hoa hồng, 5% vitamin B5, 5% betaine, 5% urea, ectoin & HA\nNước cất hoa hồng hữu cơ (hydrosol): được chiết xuất từ quá trình chưng cất tinh dầu hoa hồng, mang mùi hương hoa hồng đặc trưng, có tác dụng làm mềm, chống oxy hóa và làm dịu da.",
+        "usage": "Lấy 4-6 giọt tinh chất vào lòng bàn tay, xoa đều và mát-xa lên da mặt sạch, tránh vùng mắt. Sử dụng sáng và tối."
+      }
     },
     {
       "legacyName": "Kem chống nắng bí đao",
@@ -151,9 +268,20 @@
           "price": 388000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/z4389424986730_1e574bdd58278206885aaafd9cf54665_f04a0b7f9b.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/kem-chong-nang-bi-dao-50ml",
-          "sourceTitle": "Kem chống nắng bí đao 50ml"
+          "sourceTitle": "Kem chống nắng bí đao 50ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/mat_sau_1aa348d2b1.png",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_fdd028ff30.jpg",
+            "https://image.cocoonvietnam.com/uploads/IMG_5890_3_320fa750cd.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Với công thức đột phá kết hợp các màng lọc thế hệ mới, chiết xuất bí đao và các thành phần ngăn ngừa oxy hoá, kem chống nắng bí đao mang lại khả năng bảo vệ phổ rộng trước bức xạ UVA và UVB là nguyên nhân gây ra tác hại lên da như bỏng rát, cháy nắng, kích ứng, lão hoá và tổn thương tế bào da.\nSản phẩm dễ tán vào da, không bị vón và giúp tạo lớp nền hoàn thiện đẹp, không bị cakey, tone da sáng nhẹ ở 3 phút đầu sau khi thoa, sau đó tiệp dần vào da mang lại lớp hoàn thiện tự nhiên\nPhù hợp với: Mọi loại da, da mụn, nhạy cảm.",
+        "benefits": "Chống nắng, bảo vệ da trước các tia UV",
+        "ingredients": "Thành phần chính: Chiết xuất bí đao và các thành phần chống ôxi hoá gồm: Vitamin E, Vitamin B3, Hydroxymethoxyphenyl Decanone, Tetrahexyldecul Ascorbate. Hệ thống màng lọc gồm: Tinosorb S, Tinosorb A2B, Uvinul T150, Uvinul A+, Parsol 1789",
+        "usage": "Sử dụng vào buổi sáng, trước khi trang điểm và trước khi ra nắng 15 phút. Nên thoa một lượng nhiều, đảm bảo che phủ toàn mặt và cổ. Thoa lại khi cần để duy trì lớp bảo vệ, đặc biệt là sau khi đổ mồ hôi, bơi lội hoặc dùng khăn lau.\nSản phẩm không chứa Oxybenzone & Octinoxate\nThân thiện với rạn san hô."
+      }
     },
     {
       "legacyName": "Sữa chống nắng nghệ",
@@ -165,9 +293,22 @@
           "price": 432000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/website_1_99aec50414.png",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/sua-chong-nang-bi-dao-50ml",
-          "sourceTitle": "Sữa chống nắng bí đao 50ml"
+          "sourceTitle": "Sữa chống nắng bí đao 50ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/Ecom_Skin_BD_Sua_chong_nang_bi_dao_50ml_mo_nap_4241adf5e3.png",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Ecom_Skin_BD_Sua_chong_nang_bi_dao_50ml_01_01_9df155e3a1.png",
+            "https://image.cocoonvietnam.com/uploads/Ecom_Skin_BD_Sua_chong_nang_bi_dao_50ml_mo_nap_4241adf5e3.png",
+            "https://image.cocoonvietnam.com/uploads/Avatar_1_ce2d0d0b63.png",
+            "https://image.cocoonvietnam.com/uploads/Avatar_3_31b6f83568.png"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Kết hợp các màng lọc thế hệ mới, chiết xuất bí đao, Synoxyl AZ và Melanin, sữa chống nắng bí đao giúp bảo vệ da trước tia UVA, UVB và ánh sáng năng lượng cao nhìn thấy được.\nVới kết cấu không trọng lượng, lướt nhẹ và thấm nhanh vào da mà không để lại vệt trắng, sữa chống nắng bí đao mang lại lớp nền trong trẻo, khoẻ khoắn và cảm giác thoải mái khi sử dụng. Sản phẩm phù hợp cho mọi loại da, kể cả da dầu và da nhạy cảm.\nPhù hợp với: Da dầu, da mụn, nhạy cảm.",
+        "benefits": "Chống nắng, bảo vệ da trước các tia UV",
+        "ingredients": "Thành phần chính: Các màng lọc UV thế hệ mới, chiết xuất bí đao, Synoxyl AZ và Melanin.",
+        "usage": "Lắc đều sản phẩm trước khi dùng. Thoa một lượng nhiều, đảm bảo che phủ toàn mặt và cổ. Sử dụng vào buổi sáng, trước khi trang điểm và trước khi ra nắng 15 phút. Thoa lại khi cần để duy trì lớp bảo vệ, đặc biệt là sau khi đổ mồ hôi, bơi lội hoặc dùng khăn lau."
+      }
     },
     {
       "legacyName": "Kem chống nắng rau má",
@@ -179,16 +320,43 @@
           "price": 195000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Sua_chong_nang_sen_Hau_Giang_15ml_Beige_d37d7037da.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/sua-chong-nang-vo-co-sen-hau-giang-15ml-tone-up-beige",
-          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 15ml - Tone up Beige"
+          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 15ml - Tone up Beige",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/Website_Hinh_10_f8af5e7d04.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_10_f8af5e7d04.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_1_c756dd76ba.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_7_190e500664.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_8_d550431303.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_9_bbe435e06a.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_6_68f37c91d5.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_5_be4126bd19.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_4_416ad36bf9.jpg"
+          ]
         },
         {
           "name": "50ml",
           "price": 449000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Sua_chong_nang_sen_Hau_Giang_50ml_Beige_284980728e.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/sua-chong-nang-vo-co-sen-hau-giang-50ml-tone-up-beige",
-          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 50ml - Tone up Beige"
+          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 50ml - Tone up Beige",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/Website_Hinh_10_f8af5e7d04.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_1_c756dd76ba.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_7_190e500664.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_8_d550431303.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_9_bbe435e06a.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_6_68f37c91d5.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_5_be4126bd19.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_4_416ad36bf9.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Kết hợp màng lọc vô cơ Zinc Oxide non-nano (>100 nm) cùng chiết xuất Sen Hậu Giang, Ceramide, Soothex và Bisabolol, sản phẩm giúp bảo vệ da trước tia UVB, UVA, tia hồng ngoại, ánh sáng xanh và ánh sáng khả kiến; đồng thời hỗ trợ làm dịu, duy trì độ ẩm và hàng rào bảo vệ da. Hiệu ứng nâng tông tự nhiên giúp da đều màu, rạng rỡ với độ che phủ nhẹ. Chất kem mỏng, ráo mịn, hạn chế bóng dầu.\nPhù hợp với: Da rất nhạy cảm.",
+        "benefits": "Nâng tông tự nhiên - bảo vệ cao cho da rất nhạy cảm",
+        "ingredients": "Thành phần chính: Zinc Oxide, Chiết xuất sen Hậu Giang hữu cơ, Hạt đậu dầu, Rễ cam thảo, Cánh hoa sen, Soothex, Bisabolol và Phức hợp Ceramide V.",
+        "usage": "Lắc đều sản phẩm trước khi dùng. Thoa một lượng nhiều, đảm bảo che phủ toàn mặt và cổ. Sử dụng vào buổi sáng, trước khi trang điểm và trước khi ra nắng 15 phút. Thoa lại khi cần để duy trì lớp bảo vệ, đặc biệt là sau khi đổ mồ hôi, bơi lội hoặc dùng khăn lau.​\n​\nHướng dẫn bảo quản: Đóng kín nắp sau khi sử dụng. Bảo quản nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp và nhiệt độ cao."
+      }
     },
     {
       "legacyName": "Sữa chống nắng hoa sen",
@@ -200,16 +368,34 @@
           "price": 195000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Sua_chong_nang_sen_Hau_Giang_15ml_Pink_084ca30b14.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/sua-chong-nang-vo-co-sen-hau-giang-15ml-tone-up-pink",
-          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 15ml - Tone up Pink"
+          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 15ml - Tone up Pink",
+          "hoverImageUrl": null,
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_7_190e500664.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_8_d550431303.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_9_bbe435e06a.jpg"
+          ]
         },
         {
           "name": "50ml",
           "price": 449000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Sua_chong_nang_sen_Hau_Giang_50ml_Pink_49d7c36474.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/sua-chong-nang-vo-co-sen-hau-giang-50ml-tone-up-pink",
-          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 50ml - Tone up Pink"
+          "sourceTitle": "Sữa chống nắng vô cơ Sen Hậu Giang 50ml - Tone up Pink",
+          "hoverImageUrl": null,
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_7_190e500664.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_8_d550431303.jpg",
+            "https://image.cocoonvietnam.com/uploads/Website_Hinh_9_bbe435e06a.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Sữa chống nắng vô cơ sen Hậu Giang kết hợp màng lọc vô cơ Zinc Oxide non-nano (>100 nm) cùng chiết xuất Sen Hậu Giang, Ceramide, Soothex và Bisabolol, sản phẩm giúp bảo vệ da trước tia UVB, UVA, tia hồng ngoại, ánh sáng xanh và ánh sáng khả kiến; đồng thời hỗ trợ làm dịu, duy trì độ ẩm và hàng rào bảo vệ da. Hiệu ứng nâng tông tự nhiên giúp da đều màu, rạng rỡ với độ che phủ nhẹ. Chất kem mỏng, ráo mịn, hạn chế bóng dầu. Phù hợp cho da rất nhạy cảm.\nPhù hợp với: Da rất nhạy cảm.",
+        "benefits": "Nâng tông tự nhiên - bảo vệ cao cho da rất nhạy cảm",
+        "ingredients": "Thành phần chính: Zinc Oxide, Chiết xuất sen Hậu Giang hữu cơ, Hạt đậu dầu, Rễ cam thảo, Cánh hoa sen, Soothex, Bisabolol và Phức hợp Ceramide V.",
+        "usage": "Lắc đều sản phẩm trước khi dùng. Thoa một lượng nhiều, đảm bảo che phủ toàn mặt và cổ. Sử dụng vào buổi sáng, trước khi trang điểm và trước khi ra nắng 15 phút. Thoa lại khi cần để duy trì lớp bảo vệ, đặc biệt là sau khi đổ mồ hôi, bơi lội hoặc dùng khăn lau.​\n​\nHướng dẫn bảo quản: Đóng kín nắp sau khi sử dụng. Bảo quản nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp và nhiệt độ cao."
+      }
     },
     {
       "legacyName": "Dầu gội bưởi",
@@ -221,9 +407,19 @@
           "price": 261000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/z3955699562722_f08debe9657c26ce2a9a6333b3295060_1476261cc8.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/dau-goi-buoi-310ml",
-          "sourceTitle": "Dầu gội bưởi không sulfate 310ml"
+          "sourceTitle": "Dầu gội bưởi không sulfate 310ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/33518591_back_571fe54619.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_518d38980c.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Từ tinh dầu vỏ bưởi Việt Nam truyền thống kết hợp với vitamin B5, hoạt chất dưỡng ẩm Xylishine™ cùng công thức dịu nhẹ không chứa sulfate, dầu gội bưởi giúp làm sạch tóc và giảm gãy rụng, mang lại mái tóc đen dày, chắc khoẻ và mượt mà\nPhù hợp với: Mọi loại tóc.",
+        "benefits": "Giảm gãy rụng và làm mềm tóc",
+        "ingredients": "Thành phần chính: Tinh dầu bưởi, Vitamin B5, Xylishine™ và Axít amin\nTinh dầu vỏ bưởi: Do có tính kháng khuẩn và chống oxy hóa cao, tinh dầu vỏ bưởi giúp ngăn ngừa nhiễm trùng, mang lại cho bạn da đầu và tóc khỏe mạnh, cải thiện rõ rệt tình trạng gãy rụng tóc.",
+        "usage": "Thoa sản phẩm lên tóc ướt và tạo bọt, mát-xa nhẹ nhàng từ gốc đến ngọn, sau đó gội sạch. Sử dụng hằng ngày để có kết quả tốt nhất. Tránh tiếp xúc với mắt."
+      }
     },
     {
       "legacyName": "Dầu xả bưởi",
@@ -235,16 +431,30 @@
           "price": 192000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Ecom_Hair_B_Dau_xa_buoi_310ml_230821_54e210a145.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/dau-xa-buoi-310ml",
-          "sourceTitle": "Dầu xả bưởi 310ml"
+          "sourceTitle": "Dầu xả bưởi 310ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/33518621_back_295972e50e.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_f862e65918.jpg"
+          ]
         },
         {
           "name": "50ml",
           "price": 49000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Artboard_27_1183759e8f.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/dau-xa-buoi-50ml",
-          "sourceTitle": "Dầu xả bưởi 50ml"
+          "sourceTitle": "Dầu xả bưởi 50ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/33518621_back_295972e50e.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_f862e65918.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Sự kết hợp hài hoà giữa tinh dầu bưởi Việt Nam truyền thống, vitamin B5 và hoạt chất dưỡng ẩm Xylishine™ đã tạo nên dầu xả bưởi giàu dưỡng chất giúp giảm gãy rụng và làm mềm từng sợi tóc, mang lại mái tóc mượt mà và nhẹ nhàng sau khi xả.\nPhù hợp với: Mọi loại tóc.",
+        "benefits": "Giảm gãy rụng và làm mềm tóc",
+        "ingredients": "Thành phần chính: Tinh dầu vỏ bưởi, Xylishine™, Vitamin B5 (D-panthenol), Axít amin\nTinh dầu vỏ bưởi: Do có tính kháng khuẩn và chống oxy hóa cao, tinh dầu vỏ bưởi giúp ngăn ngừa nhiễm trùng, mang lại cho bạn da đầu và tóc khỏe mạnh, cải thiện rõ rệt tình trạng gãy rụng tóc.",
+        "usage": "Thoa sản phẩm lên tóc ướt, mát-xa nhẹ nhàng lên thân tóc, sau đó xả sạch lại với nước. Sử dụng hằng ngày để có kết quả tốt nhất. Tránh tiếp xúc với mắt."
+      }
     },
     {
       "legacyName": "Tinh dầu dưỡng tóc bưởi",
@@ -256,16 +466,34 @@
           "price": 162000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Nuoc_duong_toc_tinh_dau_buoi_140ml_Cai_tien_moi_240629_7819f9ba98.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/nuoc-duong-toc-tinh-dau-buoi-140ml-1",
-          "sourceTitle": "Nước dưỡng tóc tinh dầu bưởi 140ml"
+          "sourceTitle": "Nước dưỡng tóc tinh dầu bưởi 140ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/Website_Avatar_Nuoc_duong_toc_tinh_dau_buoi_140ml_670a87b3c5.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Hair_B_Avatar_Website_KV_Suboi_Website_1_1f6db8c177.jpg",
+            "https://image.cocoonvietnam.com/uploads/Hair_B_Avatar_Website_KV_Suboi_Website_2_132850218d.jpg",
+            "https://image.cocoonvietnam.com/uploads/Hinh_buoi_240618_b42356057e.jpg"
+          ]
         },
         {
           "name": "310ml",
           "price": 320000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Website_Avatar_Nuoc_duong_toc_tinh_dau_buoi_310ml_fac4084ecb.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/nuoc-duong-toc-tinh-dau-buoi-310ml",
-          "sourceTitle": "Nước dưỡng tóc tinh dầu bưởi 310ml"
+          "sourceTitle": "Nước dưỡng tóc tinh dầu bưởi 310ml",
+          "hoverImageUrl": null,
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Export_launching_ghep_label_moi_copy_ada8b999fe.jpg",
+            "https://image.cocoonvietnam.com/uploads/nuocbuoifinal_ghep_label_moi_89279427fb.jpg",
+            "https://image.cocoonvietnam.com/uploads/HAIR_TREATMENT_Label_moi_1x1_2_0a25c3c1da.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Sản phẩm treatment dành cho tóc, phù hợp với tình trạng tóc rụng, tóc yếu, tóc thưa mỏng. Sản phẩm có thành phần từ tinh dầu bưởi Việt Nam truyền thống, Xylishine, Vitamin B5, Baicapil và Bisabolol. Nước dưỡng tóc tinh dầu bưởi giúp ngăn ngừa 60% nguyên nhân rụng tóc, làm gia tăng mật độ của tóc, từ đó giúp tóc dày lên trông thấy. Đồng thời, sản phẩm cung cấp độ ẩm cho tóc.\nPhù hợp với: Tóc yếu gãy rụng.",
+        "benefits": "Giảm gãy rụng và làm mềm tóc",
+        "ingredients": "Thành phần chính: Tinh dầu vỏ bưởi nguyên chất, Vitamin B5 (Panthenol), Xylishine, Baicapil, Bisabolol.",
+        "usage": "Lắc đều chai trước khi vặn đầu vòi để mở. Sau đó, cầm dốc ngược sản phẩm sao cho đầu vòi tiếp xúc với da đầu, di chuyển vòi và cảm nhận nước dưỡng tóc phủ đều trên da đầu. Dùng ngón tay mát-xa để sản phẩm thẩm thấu. Dùng trên tóc khô và sạch, 2 lần mỗi ngày vào sáng và tối để mang lại hiệu quả tốt nhất."
+      }
     },
     {
       "legacyName": "Xịt dưỡng tóc hương nhu",
@@ -277,9 +505,21 @@
           "price": 182000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Hair_BK_Nuoc_duong_da_dau_bo_ket_140ml_front_05520b4595.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/nuoc-duong-da-dau-bo-ket-140ml",
-          "sourceTitle": "Nước dưỡng da đầu bồ kết 140ml"
+          "sourceTitle": "Nước dưỡng da đầu bồ kết 140ml",
+          "hoverImageUrl": null,
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Hinh_con_1_31a6876853.jpg",
+            "https://image.cocoonvietnam.com/uploads/Hinh_con_2_5f3a73b8b3.jpg",
+            "https://image.cocoonvietnam.com/uploads/Hinh_con_4_e8101ba757.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Da đầu khoẻ mạnh là nền tảng cho một mái tóc chắc khoẻ. Vận dụng sức mạnh từ nguyên liệu bồ kết truyền thống giúp cung cấp hoạt chất khoa học tiên tiến. Nước Dưỡng Da Đầu Bồ Kết được thiết kế chuyên biệt cho da đầu nhạy cảm, giúp làm sạch gàu, bã nhờn hỗ trợ cân bằng hệ vi sinh và củng cố hàng rào bảo vệ trên da đầu. Sản phẩm không gây khô và bết tóc.\nPhù hợp với: Da đầu gàu, ngứa và da đầu nhạy cảm.",
+        "benefits": "Giảm gàu & chăm sóc da dầu nhạy cảm",
+        "ingredients": "Thành phần chính: Chiết xuất bồ kết, chiết xuất chanh dây, Crinipan PMC Green, Fluidipure 8G, 5α-Avocuta® T và Tocopherol.",
+        "usage": "Chia tóc thành từng phần nhỏ, xịt sản phẩm trực tiếp lên da đầu sạch, rồi massage nhẹ nhàng để dưỡng chất thẩm thấu. Thực hiện đều đặn 1-2 lần mỗi ngày để đạt kết quả tốt nhất."
+      }
     },
     {
       "legacyName": "Sữa tắm cà phê",
@@ -291,9 +531,23 @@
           "price": 275000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Website_Gel_tam_nghe_Hung_Yen_500ml_mat_sau_9a8b4a4573.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/gel-tam-nghe-hung-yen-500ml",
-          "sourceTitle": "Gel tắm nghệ Hưng Yên 500ml"
+          "sourceTitle": "Gel tắm nghệ Hưng Yên 500ml",
+          "hoverImageUrl": null,
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Hinh_1_3x_100_bbc2125851.jpg",
+            "https://image.cocoonvietnam.com/uploads/Artboard_2_3x_100_655926e546.jpg",
+            "https://image.cocoonvietnam.com/uploads/Artboard_3_3x_100_af0cc34aba.jpg",
+            "https://image.cocoonvietnam.com/uploads/Artboard_4_3x_100_b526ee1d70.jpg",
+            "https://image.cocoonvietnam.com/uploads/Artboard_7_3x_100_59932386e6.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Gel tắm Nghệ Hưng Yên giúp làm sạch cơ thể, loại bỏ tế bào chết dịu nhẹ, hỗ trợ dưỡng sáng da và ngăn ngừa oxy hóa. Công thức cung cấp độ ẩm cần thiết giúp làn da mềm mại, mịn màng hơn sau khi làm sạch.\nPhù hợp với: Mọi loại da.",
+        "benefits": "Làm sạch, dưỡng sáng da",
+        "ingredients": "Thành phần chính: Dầu nghệ Hưng Yên, AHA (Lactic Acid), Vitamin B5, Sodium Lactate & Sodium PCA và Dầu Dừa.\nTinh bột nghệ: tinh bột nghệ từ củ nghệ trồng ở Hưng Yên có làm lượng curcumin cao gấp 3 lần so với nghệ trồng ở các vùng khác. Curcumin là chất nổi bật trong nhóm curcuminoid giúp chống oxy hoá, bảo vệ tế bào da khỏi những gốc tự do, điều hoà việc hình thành melanin giúp da sáng khoẻ, đều màu và làm mờ vết thâm nhanh chóng.",
+        "usage": "Lấy một lượng vừa đủ sản phẩm vào lòng bàn tay hoặc miếng bọt biển. Massage nhẹ nhàng trên da ướt để tạo bọt, sau đó rửa sạch lại với nước."
+      }
     },
     {
       "legacyName": "Tẩy da chết cà phê",
@@ -305,23 +559,46 @@
           "price": 133000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/z4147355364575_e4b88c65711b8261d9c996e6797b60a1_83f203bec3.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/ca-phe-dak-lak-lam-sach-da-chet-co-the-200ml",
-          "sourceTitle": "Cà phê Đắk Lắk làm sạch da chết cơ thể 200ml"
+          "sourceTitle": "Cà phê Đắk Lắk làm sạch da chết cơ thể 200ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892166_back_1fadce72bc.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_437158eaa0.jpg",
+            "https://image.cocoonvietnam.com/uploads/29892166_slide_2_0b4a1c8139.jpg",
+            "https://image.cocoonvietnam.com/uploads/z4727571374255_78089ff78f6258b59cbb86f217a6e73e_2e06a2ea90.jpg"
+          ]
         },
         {
           "name": "Túi refill 600ml",
           "price": 339000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Website_Tui_refill_Ca_phe_Dak_Lak_lam_sach_da_chet_co_the_600ml_3d48515de3.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/ca-phe-dak-lak-lam-sach-da-chet-600ml",
-          "sourceTitle": "Túi Refill Cà phê Đắk Lắk làm sạch da chết 600ml"
+          "sourceTitle": "Túi Refill Cà phê Đắk Lắk làm sạch da chết 600ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/slide_2_437158eaa0.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_437158eaa0.jpg",
+            "https://image.cocoonvietnam.com/uploads/CAFE_TUI_1_d5385bee7c.png",
+            "https://image.cocoonvietnam.com/uploads/CAFE_TUI_2_43da3fd0ac.png"
+          ]
         },
         {
           "name": "Túi refill 200ml",
           "price": 118000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Website_Tui_refill_Ca_phe_Dak_Lak_lam_sach_da_chet_co_the_200ml_ec53c387a0.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/tui-refill-ca-phe-dak-lak-lam-sach-da-chet-co-the-200-ml",
-          "sourceTitle": "Túi Refill Cà Phê Đắk Lắk Làm Sạch Da Chết Cơ Thể 200ML"
+          "sourceTitle": "Túi Refill Cà Phê Đắk Lắk Làm Sạch Da Chết Cơ Thể 200ML",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892166_back_1fadce72bc.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_437158eaa0.jpg",
+            "https://image.cocoonvietnam.com/uploads/45_tui_refill_cafe_body_200_1265f226b9.png"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Những hạt cà phê Đắk Lắk xay nhuyễn giàu caffeine hòa quyện với bơ cacao giúp bạn loại bỏ lớp tế bào chết sần sùi và xỉn màu, đánh thức làn da tươi mới cùng cảm giác mượt mà và mềm mịn lan tỏa.\nPhù hợp với: Mọi loại da cơ thể.",
+        "benefits": "Cho làn da mềm mại và rạng rỡ",
+        "ingredients": "Thành phần chính: Với hạt cà phê nguyên chất và Bơ ca cao\nCà phê Đăk Lăk: Cà phê có tác dụng cao trong việc chống oxi hóa, đặc biệt cafein trong hạt cà phê sẽ giúp da trở nên săn chắc, đều màu, mang lại nhiều nguồn năng lượng cho làn da luôn mềm mại và rạng rỡ.",
+        "usage": "Thoa một lượng sản phẩm lên da ướt. Mát-xa nhẹ nhàng từ cổ đến chân, sau đó tắm sạch lại với nước. Dùng 2-3 lần một tuần để đạt kết quả tốt nhất."
+      }
     },
     {
       "legacyName": "Sữa dưỡng thể dừa",
@@ -333,9 +610,20 @@
           "price": 241000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Ecom_Body_CP_Bo_duong_the_200ml_4a14a2094c.png",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/bo-duong-the-ca-phe-dak-lak-200ml",
-          "sourceTitle": "Bơ dưỡng thể cà phê Đắk Lắk 200ml"
+          "sourceTitle": "Bơ dưỡng thể cà phê Đắk Lắk 200ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/31228483_back_54c9dd233a.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_e79b590999.jpg",
+            "https://image.cocoonvietnam.com/uploads/z4727354008333_dd7cdd4b8f4013b010a0ed4e5af38085_6f0c997469.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Dầu cà phê Đắk Lắk rất giàu cafein, kết hợp với dầu mù u và bơ cacao, tất cả hòa quyện nên một thể bơ sánh mịn giúp dưỡng ẩm, làm mềm và ngăn ngừa oxi hóa, mang lại làn da cơ thể luôn mượt mà, tươi mới rạng rỡ.\nPhù hợp với: Mọi loại da cơ thể.",
+        "benefits": "Cho làn da mềm mại và rạng rỡ",
+        "ingredients": "Thành phần chính: Dầu cà phê, Dầu mù u, Bơ ca cao\nDầu cà phê: từ các nông trại Đắk Lắk rất giàu axit linoleic, cafein giúp chống oxi hoá, bảo vệ lớp biểu bì chống lại các gốc tự do, ngăn mất nước từ đó duy trì độ ẩm của da.",
+        "usage": "Thoa đều lên cơ thể, mát-xa nhẹ nhàng theo chuyển động tròn đến khi sản phẩm thẩm thấu."
+      }
     },
     {
       "legacyName": "Gel tắm hoa sen",
@@ -347,9 +635,17 @@
           "price": 275000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Avatar_Website_Gel_tam_bi_dao_500ml_0870b26d17.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/gel-tam-bi-dao-500ml",
-          "sourceTitle": "Gel tắm bí đao 500ml"
+          "sourceTitle": "Gel tắm bí đao 500ml",
+          "hoverImageUrl": null,
+          "gallery": []
         }
-      ]
+      ],
+      "content": {
+        "description": "Với chiết xuất bí đao, BHA, tinh dầu tràm trà và Crinipan PMC, gel tắm giúp làm sạch hiệu quả bã nhờn, hỗ trợ giảm mụn cơ thể và cung cấp độ ẩm cho da, cho làn da sạch, mềm mại và mịn màng. Mùi hương từ tinh dầu tràm trà kết hợp với công nghệ hương REACTEK & DEODIFF hỗ trợ làm giảm mùi cơ thể hiệu quả.\nPhù hợp với: Da cơ thể có mụn.",
+        "benefits": "Sạch bã nhờn, giảm mụn và mùi cơ thể",
+        "ingredients": "Thành phần chính: Với chiết xuất bí đao, BHA, Tinh dầu tràm trà & Crinipan PMC.\nBí đao: Theo sách y học cổ truyền, bí đao có đặc tính làm mát, làm giảm nhiệt, kháng viêm và diệt khuẩn giúp điều trị mụn trứng cá, mụn viêm.",
+        "usage": "Lấy một lượng vừa đủ sản phẩm vào lòng bàn tay hoặc miếng bọt biển. Massage nhẹ nhàng trên da ướt để tạo bọt, sau đó rửa sạch lại với nước."
+      }
     },
     {
       "legacyName": "Son dưỡng dầu dừa",
@@ -361,9 +657,21 @@
           "price": 32000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Son_duong_dau_dua_26498c9936.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/son-duong-dau-dua-ben-tre-5g",
-          "sourceTitle": "Son dưỡng dầu dừa Bến Tre 5g"
+          "sourceTitle": "Son dưỡng dầu dừa Bến Tre 5g",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892178_back_d4ee5440f2.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_e3f7a6323c.jpg",
+            "https://image.cocoonvietnam.com/uploads/29892178_slide_2_1d91cc459b.jpg",
+            "https://image.cocoonvietnam.com/uploads/29892178_slide_3_7ff1ac2322.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Son dưỡng có mùi thơm tự nhiên từ dầu dừa Bến Tre giúp dưỡng ẩm, bảo vệ và chống khô môi do thời tiết. Nhờ vào kết cấu mỏng nhẹ và không quá bóng, son dưỡng trả lại sự mềm mại, mang đến cảm giác thoải mái cho đôi môi của bạn.\nPhù hợp với: Da môi.",
+        "benefits": "Giúp môi mềm mượt",
+        "ingredients": "Thành phần chính: Với bơ hạt mỡ và Vitamin E\nDầu dừa Bến Tre: với hàm lượng axit lauric cao dầu dừa giữ vai trò như một loại dầu khóa ẩm cho đôi môi luôn mềm mịn, căng mọng",
+        "usage": "Thoa sản phẩm trực tiếp lên môi, có thể dùng như một lớp lót trước khi thoa son màu để tránh gây khô môi.\nDùng mỗi ngày để đạt kết quả tốt nhất."
+      }
     },
     {
       "legacyName": "Son dưỡng cà phê",
@@ -375,9 +683,21 @@
           "price": 74000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/CP_Ca_phe_moi_1a1b8ddbf1.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/ca-phe-dak-lak-lam-sach-da-chet-moi-5g",
-          "sourceTitle": "Cà phê Đắk Lắk làm sạch da chết môi 5g"
+          "sourceTitle": "Cà phê Đắk Lắk làm sạch da chết môi 5g",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892152_back_9470adca0a.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_d3162d63a2.jpg",
+            "https://image.cocoonvietnam.com/uploads/29892152_slide_3_2fa7938dc7.png",
+            "https://image.cocoonvietnam.com/uploads/29892152_slide_2_27292b7da5.png"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Những hạt cà phê li ti hòa quyện vào dầu mắc-ca và bơ hạt mỡ sẽ nhẹ nhàng làm bong những tế bào da chết ở môi, đem lại làn môi mềm và mịn màng.\nPhù hợp với: Da môi.",
+        "benefits": "Làm sạch da chết và làm mềm môi",
+        "ingredients": "Thành phần chính: Với hạt cà phê nguyên chất xay mịn, dầu mắc - ca và bơ hạt mỡ\nCà phê Đăk Lăk được rang xay bằng tay: Cà phê có tác dụng cao trong việc chống oxi hóa, đặc biệt cafein trong hạt cà phê sẽ giúp da môi hồng hào, mang lại làn môi mềm mịn.",
+        "usage": "Làm ẩm môi. Thoa sản phẩm trực tiếp lên môi bằng chuyển động trượt qua lại trong 30 giây, lớp tế bào chết sẽ nhẹ nhàng bong ra. Lau đi bằng khăn giấy hoặc khăn ấm. Sử dụng 3-4 lần một tuần để đạt kết quả tốt nhất."
+      }
     },
     {
       "legacyName": "Son dưỡng sen mới",
@@ -389,16 +709,32 @@
           "price": 241000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Website_240627_14_cc24cef100.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/tinh-chat-xit-duong-sen-hau-giang-100ml",
-          "sourceTitle": "Tinh chất xịt dưỡng Sen Hậu Giang 100ml"
+          "sourceTitle": "Tinh chất xịt dưỡng Sen Hậu Giang 100ml",
+          "hoverImageUrl": null,
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Tinh_chat_xit_duong_SHG_1_e621e26603.jpg",
+            "https://image.cocoonvietnam.com/uploads/Tinh_chat_xit_duong_SHG_KV_411995d512.jpg"
+          ]
         },
         {
           "name": "200ml",
           "price": 368000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Website_240627_15_d093502192.jpg",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/tinh-chat-xit-duong-sen-hau-giang-200ml",
-          "sourceTitle": "Tinh chất xịt dưỡng Sen Hậu Giang 200ml"
+          "sourceTitle": "Tinh chất xịt dưỡng Sen Hậu Giang 200ml",
+          "hoverImageUrl": null,
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/Tinh_chat_xit_duong_SHG_1_e621e26603.jpg",
+            "https://image.cocoonvietnam.com/uploads/Tinh_chat_xit_duong_SHG_KV_411995d512.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Tinh chất xịt dưỡng Sen Hậu Giang có kết cấu hai tầng dầu dưỡng và tinh chất hòa quyện, tạo nên những tia sương mịn nhẹ trên da. Công thức kết hợp chiết xuất sen hữu cơ Hậu Giang, phức hợp prebiotics, squalane và các hoạt chất làm dịu giúp cấp ẩm sâu, tăng cường độ bóng khỏe tự nhiên, giúp bảo vệ hàng rào độ ẩm, ngăn ngừa và giảm thiểu tình trạng thoát nước qua da, hỗ trợ cân bằng hệ vi sinh cho da rất nhạy cảm.\nPhù hợp với: Da thường tới da khô, da nhạy cảm tới rất nhạy cảm.",
+        "benefits": "Cấp ẩm sâu, làm dịu và tăng độ bóng khỏe.",
+        "ingredients": "Thành phần chính: Chiết xuất sen, Squalane và phức hợp prebiotics.",
+        "usage": "Lắc kỹ để hai tầng hòa quyện. Giữ chai cách mặt 20–25cm, nhắm mắt và xịt 2–3 lần. Có thể dùng trước hoặc sau trang điểm, bất cứ khi nào da cần cấp ẩm và phục hồi độ bóng khỏe."
+      }
     },
     {
       "legacyName": "Mặt nạ môi dừa mới",
@@ -410,9 +746,21 @@
           "price": 192000,
           "imageUrl": "https://image.cocoonvietnam.com/uploads/Ecom_Hair_S_Serum_sa_chi_70ml_0c3c4772cb.png",
           "sourceUrl": "https://cocoonvietnam.com/san-pham/serum-sa-chi-phuc-hoi-toc-70ml",
-          "sourceTitle": "Serum Sa-chi phục hồi tóc 70ml"
+          "sourceTitle": "Serum Sa-chi phục hồi tóc 70ml",
+          "hoverImageUrl": "https://image.cocoonvietnam.com/uploads/29892180_back_587f156493.jpg",
+          "gallery": [
+            "https://image.cocoonvietnam.com/uploads/slide_2_ffaaea5720.jpg",
+            "https://image.cocoonvietnam.com/uploads/z5117174672712_d476e957e4d9e37e2191cf448e7761d7_f3c62acd91.jpg",
+            "https://image.cocoonvietnam.com/uploads/z5117174656433_290ef64ca3d7ed250779997cc9ad4e42_515299ca45.jpg"
+          ]
         }
-      ]
+      ],
+      "content": {
+        "description": "Dầu Sa-chi khi kết hợp cùng Vitamin E, tinh dầu hương nhu và Phospholipid sẽ tăng cường khả năng ngăn ngừa oxy hóa, cải thiện các sợi tóc hư tổn, giúp bảo vệ tóc trước những hư tổn do nhiệt và tia UV. Ngăn ngừa oxy hoá và chăm sóc tóc hư tổn, giúp tóc chắc khoẻ và đầy sức sống.\nPhù hợp với: Mọi loại tóc.",
+        "benefits": "Phục hồi và bảo vệ tối đa",
+        "ingredients": "Thành phần chính: Vitamin E và Tinh dầu hương nhu\nDầu Sa-chi: được biết đến là một loại dầu rất đặc biệt với hàm lượng chất béo không bão hòa lên đến 94% gồm Omega 3,6 và 9. Hàm lượng Omega 3 trong dầu Sachi vượt trên tất cả các loại dầu khác, gấp 49 lần dầu Oliu, 40 lần dầu argan và gấp 17 lần dầu cá hồi. Chính vì vậy mà dầu Sa-chi có tác dụng rất tốt trong việc giữ và dưỡng ẩm cho tóc, đặc biệt hiệu quả rất cao khi sử dụng cho các loại tóc bị khô, xơ và thiếu sức sống.",
+        "usage": "Lấy một lượng vừa đủ xoa đều vào lòng bàn tay, thoa từ chân tóc đến ngọn tóc và mát-xa nhẹ nhàng. Sản phẩm dùng trên tóc ẩm hoặc tóc khô đều được."
+      }
     }
   ]
 }

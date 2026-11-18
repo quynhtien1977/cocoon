@@ -75,7 +75,7 @@ public sealed partial class AccountManagementService
         };
     }
 
-    public Task<AccountCreated> CreateCustomerAsync(int actor, string email, CustomerInput input, CancellationToken ct) => Write(async () =>
+    public Task<ProvisionedAccount> CreateCustomerAsync(int actor, string email, CustomerInput input, CancellationToken ct) => Write(async () =>
     {
         await ValidateCustomer(input, ct);
         var created = await CreateCoreAsync(actor, email, input.FullName, AccountRole.Customer, ct);
@@ -101,9 +101,9 @@ public sealed partial class AccountManagementService
         if (input.Gender is not (null or "" or "Nam" or "Nữ" or "Khác")) Invalid("gender", "Giới tính không hợp lệ.");
         if (input.DateOfBirth > DateOnly.FromDateTime(DateTime.UtcNow)) Invalid("dateOfBirth", "Ngày sinh không được ở tương lai.");
         var ids = (input.PreferenceIds ?? []).Distinct().ToArray();
-        if (ids.Length > 0 && !input.ConsentPersonalData) Invalid("consentPersonalData", "Cần có đồng ý trước khi ghi sở thích.");
+        if (ids.Length > 0 && !input.ConsentPersonalData) Invalid("consentPersonalData", "Cần có đồng ý trước khi ghi nhu cầu.");
         if (await db.Set<Preference>().CountAsync(p => ids.Contains(p.Id) && p.IsActive, ct) != ids.Length)
-            Invalid("preferenceIds", "Có sở thích không còn hoạt động.");
+            Invalid("preferenceIds", "Có nhu cầu không còn hoạt động.");
     }
 
     private async Task ApplyCustomer(CustomerProfile c, CustomerInput input, CancellationToken ct)

@@ -61,6 +61,9 @@ public sealed class FeedbackApiTests : IClassFixture<DatabaseFixture>, IDisposab
         var line = orders.GetProperty("items").EnumerateArray().SelectMany(o => o.GetProperty("items").EnumerateArray())
             .Single(i => i.GetProperty("id").GetInt32() == shop.CompletedItemId);
         Assert.Equal(feedbackId, line.GetProperty("review").GetProperty("id").GetInt32());
+        // "Đã đánh giá" sorts by when the line was reviewed, so the order list carries that time.
+        Assert.InRange(line.GetProperty("review").GetProperty("createdAt").GetDateTime().ToUniversalTime(),
+            DateTime.UtcNow.AddMinutes(-5), DateTime.UtcNow.AddMinutes(1));
 
         var detail = await Json(await Send(HttpMethod.Get, $"/api/v1/me/feedback/{feedbackId}", customer));
         Assert.Equal("New", detail.GetProperty("status").GetString());

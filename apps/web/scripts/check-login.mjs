@@ -151,7 +151,8 @@ try {
   assert.ok(Math.abs(await evaluate(() => scrollY) - initialScroll) < 5, 'Closing restores background position');
   await evaluate(() => history.forward());
   await until(() => evaluate(() => location.pathname === '/login' && !!document.querySelector('[role="dialog"]')));
-  await evaluate(() => document.querySelector('[role="dialog"] a[href="/admin/login"]').click());
+  assert.equal(await evaluate(() => document.querySelector('[role="dialog"] a[href="/admin/login"]')), null, 'Login dialog has no admin link');
+  await navigate('/admin/login');
   await until(() => evaluate(() => location.pathname === '/admin/login' && !!document.querySelector('form')));
   assert.equal(await evaluate(() => document.querySelector('[role="dialog"]')), null, 'Admin entry has its own page');
   assert.equal(await evaluate(() => document.querySelector('h1').textContent), 'Đăng nhập quản trị');
@@ -231,7 +232,7 @@ try {
   await until(() => evaluate(() => !!document.querySelector('#register-password')));
   assert.equal(await evaluate(() => document.querySelector('#register-password').value), 'Password1');
   assert.equal(await evaluate(() => document.querySelector('#register-fullName').value), 'Nguyễn An');
-  await evaluate(() => document.querySelector('[aria-label="Sang bước 2: Sở thích"]').click());
+  await evaluate(() => document.querySelector('[aria-label="Sang bước 2: Nhu cầu"]').click());
   await until(() => evaluate(() => !!document.querySelector('[aria-labelledby="preference-skin"]')));
   assert.equal(await evaluate(() => document.querySelector('[aria-labelledby="preference-skin"]').textContent.includes('1')), true, 'Preferences survive back/next');
   await evaluate(() => document.querySelector('[role="dialog"] form').requestSubmit());
@@ -297,7 +298,7 @@ try {
   for (const href of ['/account/products', '/account/surveys', '/account/orders']) {
     assert.equal(await evaluate(`!!document.querySelector('header nav[aria-label="Điều hướng chính"] a[href="${href}"]')`), true);
   }
-  assert.equal(await evaluate(() => !!document.querySelector('header nav[aria-label="Khám phá"] button[aria-haspopup="dialog"]')), true);
+  assert.equal(await evaluate(() => !!document.querySelector('header nav[aria-label="Khám phá"] a[href*="ket-noi"]')), true);
   await screenshot('customer-home-desktop');
   await evaluate(() => document.querySelector('header a[href="/account/products"]').click());
   await until(() => evaluate(() => location.pathname === '/account/products' && document.querySelectorAll('#catalog-grid article').length === 5));
@@ -317,16 +318,6 @@ try {
   await evaluate(() => document.querySelector('header a[href="/account"]').click());
   await until(() => evaluate(() => location.pathname === '/account' && !!document.querySelector('#bestseller-track')));
   await evaluate(() => document.querySelector('#bestseller-track').scrollIntoView({ behavior: 'instant', block: 'center' }));
-  const cartScroll = await evaluate(() => scrollY);
-  await evaluate(() => { const b = document.querySelector('header nav[aria-label="Khám phá"] button'); b.focus({ preventScroll: true }); b.click(); });
-  await until(() => evaluate(() => !!document.querySelector('[aria-label="Đóng giỏ hàng"]')));
-  await delay(350);
-  assert.equal(await evaluate(() => location.pathname), '/account', 'Cart opens without route navigation');
-  assert.ok(Math.abs(await evaluate(() => scrollY) - cartScroll) < 5);
-  await screenshot('cart-desktop');
-  await key('Escape');
-  await until(() => evaluate(() => !document.querySelector('[role="dialog"]')));
-  assert.ok(Math.abs(await evaluate(() => scrollY) - cartScroll) < 5);
   await evaluate(() => document.querySelector('#bestseller-track article a').click());
   await until(() => evaluate(() => location.pathname.includes('/account/products/') && !!document.querySelector('h1')));
   assert.equal(await evaluate(() => location.hostname), '127.0.0.1', 'Customer product stays on own site');
@@ -335,11 +326,7 @@ try {
   assert.equal(await evaluate(() => document.querySelector('button[aria-label="Xem ảnh sản phẩm 2"]').getAttribute('aria-pressed')), 'true');
   await until(() => evaluate(() => [...document.querySelectorAll('main img')].every(img => img.complete && img.naturalWidth > 0)));
   await screenshot('product-detail-desktop');
-  await navigate('/account/cart');
-  await until(() => evaluate(() => !!document.querySelector('[role="dialog"] a[href="/account/products"]')));
-  await evaluate(() => document.querySelector('[role="dialog"] a').click());
-  await until(() => evaluate(() => location.pathname === '/account/products' && !document.querySelector('[role="dialog"]')));
-  console.log('PASS cart drawer: scroll, Escape, direct route, continue shopping; internal product detail and gallery');
+  console.log('PASS product detail: internal product detail and gallery');
   await navigate('/login');
   await until(() => evaluate(() => !!document.querySelector('#login-email')));
   await evaluate(() => document.querySelector('#login-email').focus());
@@ -361,15 +348,6 @@ try {
     await until(() => evaluate(() => location.pathname === '/account/products' && !document.querySelector('[role="dialog"]')));
     assert.equal(await evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Catalog does not overflow');
     await screenshot(`customer-products-${width}`);
-    await evaluate(() => document.querySelector('header button[aria-label="Mở menu"]').click());
-    await until(() => evaluate(() => !!document.querySelector('[role="dialog"] nav button')));
-    await evaluate(() => document.querySelector('[role="dialog"] nav button').click());
-    await until(() => evaluate(() => !!document.querySelector('[aria-label="Đóng giỏ hàng"]') && document.querySelectorAll('[role="dialog"]').length === 1));
-    await delay(350);
-    assert.equal(await evaluate(() => { const r = document.querySelector('[role="dialog"]').getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight; }), true, 'Cart fits viewport');
-    await screenshot(`cart-${width}`);
-    await evaluate(() => document.querySelector('[aria-label="Đóng giỏ hàng"]').click());
-    await until(() => evaluate(() => !document.querySelector('[role="dialog"]')));
   }
   console.log('PASS customer responsive: 1024/390/320px menu and catalog');
   for (const width of [1366, 390, 320]) {
@@ -461,7 +439,7 @@ try {
   await until(() => evaluate(() => !!document.querySelector('#review-content')));
   await evaluate(() => document.querySelector('[role="radio"][aria-label="5 sao"]').click());
   await evaluate(() => document.querySelector('#review-content').focus());
-  await send('Input.insertText', { text: '  Nhan xet that  ' });
+  await send('Input.insertText', { text: '  Nhan xet that sau mot tuan  ' });
   await attachPhotos('valid', 1);
   await until(() => evaluate(() => document.querySelectorAll('[aria-label="Ảnh đính kèm đánh giá"] img').length === 1));
   await evaluate(() => document.querySelector('main form').requestSubmit());
@@ -470,8 +448,8 @@ try {
   await evaluate(() => document.querySelector('[aria-label="Ảnh đính kèm đánh giá"] button').click());
   await evaluate(() => document.querySelector('main form').requestSubmit());
   await until(() => evaluate(() => document.querySelector('main [role="alert"]')?.textContent.includes('chưa khả dụng')));
-  assert.equal(await evaluate(() => document.querySelector('#review-content').value), '  Nhan xet that  ');
-  assert.deepEqual(feedbackSubmissions[0], { orderItemId: 91, rating: 5, content: 'Nhan xet that' });
+  assert.equal(await evaluate(() => document.querySelector('#review-content').value), '  Nhan xet that sau mot tuan  ');
+  assert.deepEqual(feedbackSubmissions[0], { orderItemId: 91, rating: 5, content: 'Nhan xet that sau mot tuan' });
   feedbackStatus = 200;
   await evaluate(() => { document.querySelector('main form').requestSubmit(); document.querySelector('main form').requestSubmit(); });
   await until(() => evaluate(() => document.querySelector('main h2[tabindex]')?.textContent === 'Cảm ơn bạn đã chia sẻ!'));
@@ -501,11 +479,11 @@ try {
   await until(() => evaluate(() => [...document.querySelectorAll('[role="listbox"]')].every(e => e.getBoundingClientRect().height === 0)));
   const beforeCreate = registrations.length;
   await evaluate(() => document.querySelector('[role="dialog"] form').requestSubmit());
-  await until(() => evaluate(() => document.querySelector('[role="alert"]')?.textContent.includes('chưa lưu được sở thích')));
+  await until(() => evaluate(() => document.querySelector('[role="alert"]')?.textContent.includes('chưa lưu được nhu cầu')));
   assert.equal(registrations.length, beforeCreate + 1);
   assert.equal(await evaluate(() => !!document.querySelector('[role="dialog"] form')), false, 'Partial success cannot recreate the account');
   catalogStatus = 200;
-  await evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent === 'Lưu lại sở thích').click());
+  await evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent === 'Lưu lại nhu cầu').click());
   await until(() => evaluate(() => location.pathname === '/account/profile'));
   assert.equal(registrations.length, beforeCreate + 1, 'Preference retry never repeats registration');
   assert.deepEqual(preferenceWrites.at(-1), { preferenceIds: [42] });

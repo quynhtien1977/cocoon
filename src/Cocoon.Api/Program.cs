@@ -5,11 +5,16 @@ using Cocoon.Api.Configuration;
 using Cocoon.Api.Seeding;
 using Cocoon.Application.Recommendations;
 using Cocoon.Infrastructure.Recommendations;
+using Cocoon.Application.Storage;
+using Cocoon.Infrastructure.Storage;
+using Cocoon.Application.Email;
+using Cocoon.Infrastructure.Email;
 using Cocoon.Application.Accounts;
 using Cocoon.Infrastructure.Accounts;
 using Cocoon.Application.Reports;
 using Cocoon.Infrastructure.Reports;
 using Cocoon.Infrastructure.Surveys;
+using Cocoon.Infrastructure.Shop;
 using Cocoon.Api.Feedbacks;
 using Cocoon.Infrastructure.Feedbacks;
 using Cocoon.Domain.Entities;
@@ -39,7 +44,7 @@ builder.Services.AddSerilog(config => config
     .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
     .Enrich.FromLogContext()
     .WriteTo.Console(new RenderedCompactJsonFormatter()));
-builder.Services.AddControllers(options => { options.Filters.Add(new AuthorizeFilter()); options.Filters.Add<MustChangePasswordFilter>(); })
+builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilter()))
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
     .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = context =>
     {
@@ -52,11 +57,22 @@ builder.Services.AddExceptionHandler<AccountExceptionHandler>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAccountPasswords, AccountPasswords>();
 builder.Services.AddScoped<AccountManagementService>();
+builder.Services.AddOptions<SmtpOptions>().BindConfiguration("Smtp");
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddOptions<PasswordResetOptions>().Configure<IConfiguration>((options, config) =>
+{
+    options.Secret = config["Jwt:Key"] ?? "";
+    options.WebOrigin = config["Web:Origin"] ?? "http://localhost:3000";
+});
+builder.Services.AddScoped<PasswordResetService>();
 builder.Services.AddOptions<RecommendationWeights>().BindConfiguration("Recommendation:Weights");
 builder.Services.AddScoped<CustomerFactsService>();
 builder.Services.AddScoped<RecommendationService>();
+builder.Services.AddOptions<StorageOptions>().BindConfiguration("Storage");
+builder.Services.AddSingleton<IObjectStorage, MinioObjectStorage>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<CustomerSurveyService>();
+builder.Services.AddScoped<ShopService>();
 builder.Services.AddOptions<FeedbackOptions>().BindConfiguration("Feedback")
     .Validate(o => o.AutoCloseDays is >= FeedbackOptions.MinDays and <= FeedbackOptions.MaxDays, "Feedback:AutoCloseDays must be 1-30.")
     .ValidateOnStart();
